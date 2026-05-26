@@ -1,0 +1,5 @@
+Parking\Controller\ParkingController.class
+Parking\Model\Slot.class
+Parking\Service\SlotService.class
+Parking\Main.class
+Parking\Repository\SlotRepository.class

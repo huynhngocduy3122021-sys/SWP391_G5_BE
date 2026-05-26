@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Parking Slot Manager</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: #f4f4f9;
+      }
+      h1,
+      h2 {
+        color: #333;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+      }
+      th,
+      td {
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        text-align: left;
+      }
+      th {
+        background: #2d6cdf;
+        color: white;
+      }
+      tr:nth-child(even) {
+        background: #fafafa;
+      }
+      input,
+      select,
+      button {
+        padding: 8px 10px;
+        margin: 4px 0;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      button {
+        cursor: pointer;
+        background: #2d6cdf;
+        color: white;
+        border: none;
+      }
+      button:hover {
+        background: #1f52b0;
+      }
+      .card {
+        background: white;
+        padding: 18px;
+        border-radius: 8px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        margin-bottom: 20px;
+      }
+      .flex {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .flex > div {
+        flex: 1;
+        min-width: 220px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Quản lý bãi gửi xe</h1>
+      <p>
+        Ứng dụng Spring Boot đã kết nối SQL Server. Sử dụng trang này để xem,
+        tạo, cập nhật và xóa các slot.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Danh sách slot</h2>
+      <button onclick="loadSlots()">Tải lại</button>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Mã slot</th>
+            <th>Loại phương tiện</th>
+            <th>Trạng thái</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="slotTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Tạo slot mới</h2>
+      <div class="flex">
+        <div>
+          <label>Mã slot</label><br />
+          <input id="newSlotCode" placeholder="VD: A1" />
+        </div>
+        <div>
+          <label>Loại phương tiện</label><br />
+          <input id="newVehicleType" placeholder="Xe máy / Ô tô" />
+        </div>
+        <div>
+          <label>Trạng thái</label><br />
+          <select id="newAvailable">
+            <option value="true">Có sẵn</option>
+            <option value="false">Đã được dùng</option>
+          </select>
+        </div>
+      </div>
+      <button onclick="createSlot()">Tạo</button>
+    </div>
+
+    <div class="card">
+      <h2>Cập nhật slot</h2>
+      <div class="flex">
+        <div>
+          <label>ID slot</label><br />
+          <input id="updateSlotId" placeholder="ID" type="number" />
+        </div>
+        <div>
+          <label>Mã slot mới</label><br />
+          <input id="updateSlotCode" placeholder="VD: A1" />
+        </div>
+        <div>
+          <label>Loại phương tiện mới</label><br />
+          <input id="updateVehicleType" placeholder="Xe máy / Ô tô" />
+        </div>
+        <div>
+          <label>Trạng thái</label><br />
+          <select id="updateAvailable">
+            <option value="true">Có sẵn</option>
+            <option value="false">Đã được dùng</option>
+          </select>
+        </div>
+      </div>
+      <button onclick="updateSlot()">Cập nhật</button>
+    </div>
+
+    <script>
+      // Hàm tải lại danh sách các slot đỗ xe từ Backend API và hiển thị lên bảng HTML
+      async function loadSlots() {
+        try {
+          // Gửi yêu cầu GET tới API lấy toàn bộ danh sách slot
+          const resp = await fetch("/api/parking/slots");
+          // Chuyển kết quả phản hồi sang định dạng JSON
+          const slots = await resp.json();
+          // Lấy thẻ tbody của bảng danh sách
+          const tbody = document.getElementById("slotTableBody");
+          // Xóa các dòng cũ trong bảng trước khi render mới
+          tbody.innerHTML = "";
+          
+          // Lặp qua từng slot đỗ xe và thêm vào bảng
+          slots.forEach((slot) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                        <td>${slot.id ?? ""}</td>
+                        <td>${slot.slotCode ?? ""}</td>
+                        <td>${slot.vehicleType ?? ""}</td>
+                        <td>${slot.available ? "Có sẵn" : "Không có"}</td>
+                        <td><button onclick="deleteSlot(${slot.id})">Xóa</button></td>
+                    `;
+            tbody.appendChild(row);
+          });
+        } catch (error) {
+          // Hiển thị thông báo nếu không tải được dữ liệu
+          alert("Không tải được danh sách slot: " + error.message);
+        }
+      }
+
+      // Hàm tạo mới một slot đỗ xe bằng cách gọi POST API của backend
+      async function createSlot() {
+        // Lấy thông tin từ các thẻ input nhập liệu trên giao diện
+        const slot = {
+          slotCode: document.getElementById("newSlotCode").value,
+          vehicleType: document.getElementById("newVehicleType").value,
+          available: document.getElementById("newAvailable").value === "true",
+        };
+        try {
+          // Gửi yêu cầu POST chứa dữ liệu JSON lên backend
+          const resp = await fetch("/api/parking/slots", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(slot),
+          });
+          if (!resp.ok) throw new Error("Lỗi tạo slot");
+          // Đọc dữ liệu JSON trả về
+          await resp.json();
+          // Tải lại danh sách bảng
+          loadSlots();
+          alert("Tạo slot thành công");
+        } catch (error) {
+          alert("Không thể tạo slot: " + error.message);
+        }
+      }
+
+      // Hàm cập nhật thông tin slot đỗ xe bằng cách gọi PUT API của backend
+      async function updateSlot() {
+        // Lấy ID slot cần sửa và thông tin cần cập nhật
+        const id = document.getElementById("updateSlotId").value;
+        const slot = {
+          slotCode: document.getElementById("updateSlotCode").value,
+          vehicleType: document.getElementById("updateVehicleType").value,
+          available:
+            document.getElementById("updateAvailable").value === "true",
+        };
+        if (!id) {
+          alert("Vui lòng nhập ID slot cần cập nhật");
+          return;
+        }
+        try {
+          // Gửi yêu cầu PUT chứa dữ liệu JSON lên backend kèm ID trên đường dẫn
+          const resp = await fetch("/api/parking/slots/" + id, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(slot),
+          });
+          if (!resp.ok) throw new Error("Lỗi cập nhật slot");
+          await resp.json();
+          // Tải lại danh sách bảng
+          loadSlots();
+          alert("Cập nhật thành công");
+        } catch (error) {
+          alert("Không thể cập nhật slot: " + error.message);
+        }
+      }
+
+      // Hàm xóa slot đỗ xe bằng cách gọi DELETE API của backend
+      async function deleteSlot(id) {
+        // Hỏi người dùng xác nhận trước khi xóa
+        if (!confirm("Xóa slot " + id + " ?")) return;
+        try {
+          // Gửi yêu cầu DELETE lên backend kèm ID trên đường dẫn
+          const resp = await fetch("/api/parking/slots/" + id, {
+            method: "DELETE",
+          });
+          if (!resp.ok) throw new Error("Lỗi xóa slot");
+          // Tải lại danh sách bảng
+          loadSlots();
+          alert("Xóa slot thành công");
+        } catch (error) {
+          alert("Không thể xóa slot: " + error.message);
+        }
+      }
+
+      // Đăng ký sự kiện: Khi trang web tải xong (load), tự động gọi hàm loadSlots() để hiện dữ liệu
+      window.addEventListener("load", loadSlots);
+    </script>
+  </body>
+</html>
