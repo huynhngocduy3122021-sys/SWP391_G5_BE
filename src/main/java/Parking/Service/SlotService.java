@@ -1,7 +1,7 @@
-package Parking.Service;
+package Parking.service;
 
-import Parking.Model.Slot;
-import Parking.Repository.SlotRepository;
+import Parking.model.Slot;
+import Parking.repository.SlotRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

@@ -1,7 +1,8 @@
-package Parking.Controller;
+package Parking.controller;
 
-import Parking.Model.Slot;
-import Parking.Service.SlotService;
+import Parking.model.Slot;
+import Parking.service.SlotService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import java.util.List;
 @CrossOrigin("*")
 // Tự động tạo Constructor tiêm phụ thuộc (Dependency Injection) cho thuộc tính final 'slotService' thông qua Lombok
 @RequiredArgsConstructor
+@SecurityRequirement(name = "api_key") // Yêu cầu bảo mật bằng API Key cho tất cả API trong controller này
 public class ParkingController {
 
     // Khai báo lớp Service chứa logic xử lý
