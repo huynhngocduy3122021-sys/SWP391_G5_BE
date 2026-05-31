@@ -12,6 +12,7 @@ public class UserResponse {
     private String userPhone;
     private String userAddress;
     private String userRole;
+    private boolean deleted;
     private String token;
 
 
