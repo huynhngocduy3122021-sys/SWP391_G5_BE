@@ -5,11 +5,13 @@ D:\Ki7\SWP391\Index\Index\src\main\java\Parking\service\TokenService.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\repository\UserRepository.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\config\ModelMapperConfig.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\model\Slot.java
+D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\UpdateUserRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\exception\APIExceptionHandler.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\repository\SlotRepository.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\config\OpenApiConfig.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\UserRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Main.java
+D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\ChangePasswordRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\response\UserResponse.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\exception\exceptions\AuthenticationException.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\service\SlotService.java

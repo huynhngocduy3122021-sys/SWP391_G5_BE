@@ -46,7 +46,7 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole userRole = UserRole.USER;
-
+    @Column
     private boolean deleted = false;
 
     @Override
@@ -55,12 +55,12 @@ public class User implements UserDetails {
     }
 
     @Override
-    public String getPassword() {
+    public String getPassword() { 
         return userPassword;
     }
 
     @Override
-    public String getUsername() {
+    public String getUsername() { // spring security tự hiểu dùng email tài khoảng
         return userEmail;
     }
 
@@ -70,7 +70,7 @@ public class User implements UserDetails {
     }
 
     @Override
-    public boolean isAccountNonLocked() {
+    public boolean isAccountNonLocked() { // hàm này dùng để biết là tài khoảng bị khoá chưa
         return !deleted;
     }
 

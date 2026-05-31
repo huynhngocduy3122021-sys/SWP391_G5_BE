@@ -18,7 +18,7 @@ import java.util.List;
 @CrossOrigin("*")
 // Tự động tạo Constructor tiêm phụ thuộc (Dependency Injection) cho thuộc tính final 'slotService' thông qua Lombok
 @RequiredArgsConstructor
-@SecurityRequirement(name = "api_key") // Yêu cầu bảo mật bằng API Key cho tất cả API trong controller này
+
 public class ParkingController {
 
     // Khai báo lớp Service chứa logic xử lý

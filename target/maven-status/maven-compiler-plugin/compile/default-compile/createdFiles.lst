@@ -1,11 +1,13 @@
 Parking\exception\APIExceptionHandler.class
 Parking\config\ModelMapperConfig.class
+Parking\dto\request\ChangePasswordRequest.class
 Parking\model\User.class
 Parking\dto\response\UserResponse.class
 Parking\config\filter.class
 Parking\dto\request\LoginRequest.class
 Parking\model\Slot.class
 Parking\controller\AuthController.class
+Parking\dto\request\UpdateUserRequest.class
 Parking\exception\exceptions\AuthenticationException.class
 Parking\service\SlotService.class
 Parking\dto\request\UserRequest.class
@@ -13,6 +15,7 @@ Parking\repository\SlotRepository.class
 Parking\repository\UserRepository.class
 Parking\service\UserService.class
 Parking\service\TokenService.class
+Parking\config\OpenApiConfig.class
 Parking\Main.class
 Parking\enums\UserRole.class
 Parking\controller\ParkingController.class
