@@ -1,4 +1,4 @@
-package Parking.model;
+package Parking.Model;
 
 import Parking.enums.UserRole;
 import jakarta.persistence.*;

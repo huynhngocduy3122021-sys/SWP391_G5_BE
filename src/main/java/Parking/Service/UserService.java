@@ -1,12 +1,12 @@
-package Parking.service;
+package Parking.Service;
 
 import org.springframework.stereotype.Service;
 import Parking.dto.request.LoginRequest;
 import Parking.dto.request.UpdateUserRequest;
 import Parking.dto.request.UserRequest;
 import Parking.dto.response.UserResponse;
-import Parking.model.User;
-import Parking.repository.UserRepository;
+import Parking.Model.User;
+import Parking.Repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;

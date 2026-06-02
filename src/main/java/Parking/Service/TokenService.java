@@ -1,13 +1,13 @@
-package Parking.service;
+package Parking.Service;
 
 import org.springframework.beans.factory.annotation.Autowired;  
-import Parking.repository.UserRepository;
+import Parking.Repository.UserRepository;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
 import java.util.Date;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
-import Parking.model.User;
+import Parking.Model.User;
 import io.jsonwebtoken.Claims;
 import java.util.function.Function;
 import org.springframework.stereotype.Service;

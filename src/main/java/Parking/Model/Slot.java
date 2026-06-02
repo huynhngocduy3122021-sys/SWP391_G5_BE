@@ -1,4 +1,4 @@
-package Parking.model;
+package Parking.Model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

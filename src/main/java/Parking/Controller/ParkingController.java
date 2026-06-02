@@ -1,7 +1,7 @@
-package Parking.controller;
+package Parking.Controller;
 
-import Parking.model.Slot;
-import Parking.service.SlotService;
+import Parking.Model.Slot;
+import Parking.Service.SlotService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
