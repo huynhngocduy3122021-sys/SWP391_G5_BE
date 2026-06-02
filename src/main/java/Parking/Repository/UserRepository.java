@@ -1,6 +1,6 @@
-package Parking.repository;
+package Parking.Repository;
 import org.springframework.data.jpa.repository.JpaRepository;
-import Parking.model.User;
+import Parking.Model.User;
 
 
 public interface UserRepository extends JpaRepository<User, Long> {

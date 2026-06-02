@@ -1,9 +1,9 @@
-package Parking.repository;
+package Parking.Repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import Parking.model.Slot;
+import Parking.Model.Slot;
 
 // Đăng ký interface này như một Bean Repository trong Spring Container quản lý cơ sở dữ liệu
 @Repository

@@ -7,7 +7,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.servlet.HandlerExceptionResolver;
-import Parking.service.TokenService;
+import Parking.Service.TokenService;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import jakarta.servlet.FilterChain;
@@ -15,7 +15,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.filter.OncePerRequestFilter;
-import Parking.model.User;
+import Parking.Model.User;
 import java.util.List;
 import java.io.IOException;
 import Parking.exception.exceptions.AuthenticationException;
@@ -30,12 +30,18 @@ public class filter extends OncePerRequestFilter {
     private TokenService tokenService;
 
     private final List<String> PUBLIC_API_ENDPOINTS = List.of(
-               "/api/auth/**",
+               "/",
+                "/index.html",
+                "/favicon.ico",
+                "/style.css",
+                "/app.js",
+                "/api/auth/**",
+                "/error",
                 "/swagger-ui/**",
                 "/swagger-ui.html",
                 "/swagger-ui/index.html",
                 "/v3/api-docs/**",
-                "/v3/api-docs"             // OpenAPI docs endpoint chính
+                "/v3/api-docs"             
     );
 
             public boolean isPublicAPI(String uri) {
