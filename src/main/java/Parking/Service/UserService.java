@@ -174,7 +174,24 @@ public class UserService implements UserDetailsService  {
         return convertToResponse(updatedUser);
     }
 
-    // reset password
+    // delete user
+    public UserResponse deleteUser(Long userId) {
+        User user = userRepository.findById(userId)
+                                  .orElseThrow(() -> new AuthenticationException("User not found"));
+                                
+       
+         // tạm thời cho hàm này để chuyển đổi giữa tài khoảng xoá hay chưa xoá (demo)
+        
+        user.setDeleted(!user.isDeleted());
+        
+        userRepository.save(user);
+        return convertToResponse(user);
+
+    }
+
+
+
+// reset password
     public UserResponse resetPassword(ResetPasswordRequest resetPasswordRequest) {
         String identifier = resetPasswordRequest.getEmailOrPhone();
         User user = userRepository.findByUserEmail(identifier);
@@ -197,18 +214,4 @@ public class UserService implements UserDetailsService  {
         return convertToResponse(updatedUser);
     }
 
-    // delete user
-    public UserResponse deleteUser(Long userId) {
-        User user = userRepository.findById(userId)
-                                  .orElseThrow(() -> new AuthenticationException("User not found"));
-                                
-       
-         // tạm thời cho hàm này để chuyển đổi giữa tài khoảng xoá hay chưa xoá (demo)
-        
-        user.setDeleted(!user.isDeleted());
-        
-        userRepository.save(user);
-        return convertToResponse(user);
-
-    }
 }
