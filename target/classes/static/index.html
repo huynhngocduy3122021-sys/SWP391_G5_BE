@@ -1,257 +1,323 @@
 <!doctype html>
 <html lang="vi">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quản lý bãi gửi xe</title>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
-    <!-- Link to external stylesheet -->
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <!-- ========================================================================= -->
-    <!-- ĐIỀU KIỆN 1: PHẦN GIAO DIỆN CHƯA ĐĂNG NHẬP                                -->
-    <!-- (Ẩn/Hiện toàn bộ cụm này dựa vào trạng thái đăng nhập trong checkAuthStatus) -->
-    <!-- ========================================================================= -->
-    <div class="auth-wrapper" id="authWrapper">
-      <div class="auth-card">
-        <!-- Các nút tab để chuyển đổi qua lại giữa Đăng nhập & Đăng ký -->
-        <div class="auth-tabs">
-          <button class="tab-btn active" id="tabLogin" onclick="showRegister(false)">Đăng nhập</button>
-          <button class="tab-btn" id="tabRegister" onclick="showRegister(true)">Đăng ký</button>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quản lý bãi gửi xe</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap"
+    rel="stylesheet">
+  <!-- Link to external stylesheet -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <!-- ========================================================================= -->
+  <!-- ĐIỀU KIỆN 1: PHẦN GIAO DIỆN CHƯA ĐĂNG NHẬP                                -->
+  <!-- (Ẩn/Hiện toàn bộ cụm này dựa vào trạng thái đăng nhập trong checkAuthStatus) -->
+  <!-- ========================================================================= -->
+  <div class="auth-wrapper" id="authWrapper">
+    <div class="auth-card">
+      <!-- Các nút tab để chuyển đổi qua lại giữa Đăng nhập & Đăng ký -->
+      <div class="auth-tabs">
+        <button class="tab-btn active" id="tabLogin" onclick="showRegister(false)">Đăng nhập</button>
+        <button class="tab-btn" id="tabRegister" onclick="showRegister(true)">Đăng ký</button>
+      </div>
+
+      <div class="auth-card-body">
+        <!-- Logo ParkingSystem dùng chung -->
+        <div class="logo-container">
+          <svg width="40" height="25" viewBox="0 0 40 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="25" rx="6" fill="#00455c" />
+            <circle cx="9" cy="12.5" r="3" fill="white" />
+            <line x1="16" y1="9" x2="32" y2="9" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+            <line x1="16" y1="12.5" x2="32" y2="12.5" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+            <line x1="16" y1="16" x2="32" y2="16" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+          </svg>
+          <span class="logo-text">ParkingSystem</span>
         </div>
 
-        <div class="auth-card-body">
-          <!-- Logo ParkingSystem dùng chung -->
-          <div class="logo-container">
-            <svg width="40" height="25" viewBox="0 0 40 25" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="40" height="25" rx="6" fill="#00455c"/>
-              <circle cx="9" cy="12.5" r="3" fill="white"/>
-              <line x1="16" y1="9" x2="32" y2="9" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-              <line x1="16" y1="12.5" x2="32" y2="12.5" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-              <line x1="16" y1="16" x2="32" y2="16" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-            </svg>
-            <span class="logo-text">ParkingSystem</span>
+        <!-- ========================================================================= -->
+        <!-- ĐIỀU KIỆN 1.1: FORM ĐĂNG NHẬP (loginCard)                                 -->
+        <!-- (Ẩn/Hiện dựa theo trạng thái tham số 'show' trong hàm showRegister)        -->
+        <!-- ========================================================================= -->
+        <div id="loginCard">
+          <h2 class="welcome-text">Chào mừng trở lại ParkingSystem!</h2>
+
+          <div class="form-group">
+            <label class="form-label">Email/Số điện thoại</label>
+            <input id="loginEmail" type="text" class="form-input" placeholder="Nhập email hoặc số điện thoại" />
           </div>
 
-          <!-- ========================================================================= -->
-          <!-- ĐIỀU KIỆN 1.1: FORM ĐĂNG NHẬP (loginCard)                                 -->
-          <!-- (Ẩn/Hiện dựa theo trạng thái tham số 'show' trong hàm showRegister)        -->
-          <!-- ========================================================================= -->
-          <div id="loginCard">
-            <h2 class="welcome-text">Chào mừng trở lại ParkingSystem!</h2>
-            
-            <div class="form-group">
-              <label class="form-label">Email/Số điện thoại</label>
-              <input id="loginEmail" type="text" class="form-input" placeholder="Nhập email hoặc số điện thoại" />
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Mật khẩu</label>
-              <div class="password-wrapper">
-                <input id="loginPassword" type="password" class="form-input" placeholder="Nhập mật khẩu" />
-                <button type="button" class="password-toggle" onclick="togglePasswordVisibility('loginPassword', this)">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                </button>
-              </div>
-            </div>
-            
-            <div class="form-options">
-              <label class="checkbox-container">
-                <input type="checkbox" id="rememberMe">
-                Ghi nhớ đăng nhập
-              </label>
-              <a href="#" class="forgot-link" onclick="alert('Tính năng đang được phát triển!')">Quên mật khẩu?</a>
-            </div>
-            
-            <button class="btn-primary" onclick="login()">ĐĂNG NHẬP</button>
-            
-            <div class="divider">
-              <span>Hoặc đăng nhập bằng:</span>
-            </div>
-            
-            <div class="social-buttons">
-              <button type="button" class="btn-social" onclick="socialLogin('Google')">
-                <svg width="18" height="18" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.5-.1.97-1.15 2.1l-.01.01v2.54h2.52c1.48-1.36 2.69-3.7 2.69-6.5z"/>
-                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.83-2.97c-1.08.73-2.48 1.16-4.1 1.16-3.15 0-5.81-2.13-6.76-5.01H.95v3.08C2.92 21.3 7.15 24 12 24z"/>
-                  <path fill="#FBBC05" d="M5.24 14.27c-.24-.73-.38-1.5-.38-2.27s.14-1.54.38-2.27V6.65H.95A11.94 11.94 0 0 0 0 12c0 1.92.45 3.74 1.25 5.37l3.99-3.1z"/>
-                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.15 0 2.92 2.7 1.25 6.65L5.24 9.75c.95-2.88 3.61-5 6.76-5z"/>
+          <div class="form-group">
+            <label class="form-label">Mật khẩu</label>
+            <div class="password-wrapper">
+              <input id="loginPassword" type="password" class="form-input" placeholder="Nhập mật khẩu" />
+              <button type="button" class="password-toggle" onclick="togglePasswordVisibility('loginPassword', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
                 </svg>
-                Google
-              </button>
-              <button type="button" class="btn-social" onclick="socialLogin('Facebook')">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-                Facebook
               </button>
             </div>
           </div>
 
-          <!-- ========================================================================= -->
-          <!-- ĐIỀU KIỆN 1.2: FORM ĐĂNG KÝ (registerCard)                                -->
-          <!-- (Ẩn/Hiện dựa theo trạng thái tham số 'show' trong hàm showRegister)        -->
-          <!-- ========================================================================= -->
-          <div id="registerCard" style="display: none;">
-            <h2 class="welcome-text">Đăng ký tài khoản ParkingSystem!</h2>
-            
-            <div class="form-group">
-              <label class="form-label">Họ và tên</label>
-              <input id="regName" type="text" class="form-input" placeholder="Nguyễn Văn A" />
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <input id="regEmail" type="email" class="form-input" placeholder="VD: mail@gmail.com" />
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Mật khẩu</label>
-              <div class="password-wrapper">
-                <input id="regPassword" type="password" class="form-input" placeholder="Tối thiểu 6 ký tự" />
-                <button type="button" class="password-toggle" onclick="togglePasswordVisibility('regPassword', this)">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                </button>
-              </div>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Số điện thoại</label>
-              <input id="regPhone" type="text" class="form-input" placeholder="03XXXXXXXX" />
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Địa chỉ</label>
-              <input id="regAddress" type="text" class="form-input" placeholder="Địa chỉ của bạn" />
-            </div>
-            
-            <button class="btn-primary" onclick="register()">ĐĂNG KÝ</button>
-            
-            <div class="divider">
-              <span>Hoặc đăng ký bằng:</span>
-            </div>
-            
-            <div class="social-buttons">
-              <button type="button" class="btn-social" onclick="socialLogin('Google')">
-                <svg width="18" height="18" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.5-.1.97-1.15 2.1l-.01.01v2.54h2.52c1.48-1.36 2.69-3.7 2.69-6.5z"/>
-                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.83-2.97c-1.08.73-2.48 1.16-4.1 1.16-3.15 0-5.81-2.13-6.76-5.01H.95v3.08C2.92 21.3 7.15 24 12 24z"/>
-                  <path fill="#FBBC05" d="M5.24 14.27c-.24-.73-.38-1.5-.38-2.27s.14-1.54.38-2.27V6.65H.95A11.94 11.94 0 0 0 0 12c0 1.92.45 3.74 1.25 5.37l3.99-3.1z"/>
-                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.15 0 2.92 2.7 1.25 6.65L5.24 9.75c.95-2.88 3.61-5 6.76-5z"/>
-                </svg>
-                Google
-              </button>
-              <button type="button" class="btn-social" onclick="socialLogin('Facebook')">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-                Facebook
-              </button>
-            </div>
+          <div class="form-options">
+            <label class="checkbox-container">
+              <input type="checkbox" id="rememberMe">
+              Ghi nhớ đăng nhập
+            </label>
+            <a href="#" class="forgot-link" onclick="showForgetPassword()">Quên mật khẩu?</a>
+          </div>
+
+          <button class="btn-primary" onclick="login()">ĐĂNG NHẬP</button>
+
+          <div class="divider">
+            <span>Hoặc đăng nhập bằng:</span>
+          </div>
+
+          <div class="social-buttons">
+            <button type="button" class="btn-social" onclick="socialLogin('Google')">
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.5-.1.97-1.15 2.1l-.01.01v2.54h2.52c1.48-1.36 2.69-3.7 2.69-6.5z" />
+                <path fill="#34A853"
+                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.83-2.97c-1.08.73-2.48 1.16-4.1 1.16-3.15 0-5.81-2.13-6.76-5.01H.95v3.08C2.92 21.3 7.15 24 12 24z" />
+                <path fill="#FBBC05"
+                  d="M5.24 14.27c-.24-.73-.38-1.5-.38-2.27s.14-1.54.38-2.27V6.65H.95A11.94 11.94 0 0 0 0 12c0 1.92.45 3.74 1.25 5.37l3.99-3.1z" />
+                <path fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.15 0 2.92 2.7 1.25 6.65L5.24 9.75c.95-2.88 3.61-5 6.76-5z" />
+              </svg>
+              Google
+            </button>
+            <button type="button" class="btn-social" onclick="socialLogin('Facebook')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2">
+                <path
+                  d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+              </svg>1
+              Facebook
+            </button>
           </div>
         </div>
+
+        <!-- ========================================================================= -->
+        <!-- ĐIỀU KIỆN 1.2: FORM ĐẶT LẠI MẬT KHẨU (forgotPasswordCard)                  -->
+        <!-- ========================================================================= -->
+        <div id="forgotPasswordCard" style="display: none;">
+          <h2 class="welcome-text">Đặt lại mật khẩu</h2>
+          <p class="auth-subtitle">
+            Nhập email của bạn để đặt lại mật khẩu
+          </p>
+          <div class="form-group">
+            <label class="form-label">Email/Số điện thoại</label>
+            <input id="resetEmail" type="text" class="form-input"
+              placeholder="Nhập email hoặc số điện thoại tài khoản" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Mật khẩu mới</label>
+            <div class="password-wrapper">
+              <input id="resetPassword" type="password" class="form-input" placeholder="Nhập mật khẩu mới" />
+              <button type="button" class="password-toggle" onclick="togglePasswordVisibility('resetPassword', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Xác nhận mật khẩu mới</label>
+            <div class="password-wrapper">
+              <input id="resetConfirmPassword" type="password" class="form-input" placeholder="Nhập lại mật khẩu mới" />
+              <button type="button" class="password-toggle"
+                onclick="togglePasswordVisibility('resetConfirmPassword', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <button class="btn-primary" onclick="handleResetPassword()">XÁC NHẬN</button>
+
+          <div class="back-to-login">
+            <a href="#" class="forgot-link" onclick="backToLogin()">Quay lại Đăng nhập</a>
+          </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- ĐIỀU KIỆN 1.3: FORM ĐĂNG KÝ (registerCard)                                -->
+        <!-- ========================================================================= -->
+        <div id="registerCard" style="display: none;">
+          <h2 class="welcome-text">Đăng ký tài khoản ParkingSystem!</h2>
+          <div class="form-group">
+            <label class="form-label">Họ và tên</label>
+            <input id="regName" type="text" class="form-input" placeholder="Nguyễn Văn A" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input id="regEmail" type="email" class="form-input" placeholder="VD: mail@gmail.com" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Mật khẩu</label>
+            <div class="password-wrapper">
+              <input id="regPassword" type="password" class="form-input" placeholder="Tối thiểu 6 ký tự" />
+              <button type="button" class="password-toggle" onclick="togglePasswordVisibility('regPassword', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Số điện thoại</label>
+            <input id="regPhone" type="text" class="form-input" placeholder="03XXXXXXXX" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Địa chỉ</label>
+            <input id="regAddress" type="text" class="form-input" placeholder="Địa chỉ của bạn" />
+          </div>
+
+          <button class="btn-primary" onclick="register()">ĐĂNG KÝ</button>
+
+          <div class="divider">
+            <span>Hoặc đăng ký bằng:</span>
+          </div>
+
+          <div class="social-buttons">
+            <button type="button" class="btn-social" onclick="socialLogin('Google')">
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.5-.1.97-1.15 2.1l-.01.01v2.54h2.52c1.48-1.36 2.69-3.7 2.69-6.5z" />
+                <path fill="#34A853"
+                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.83-2.97c-1.08.73-2.48 1.16-4.1 1.16-3.15 0-5.81-2.13-6.76-5.01H.95v3.08C2.92 21.3 7.15 24 12 24z" />
+                <path fill="#FBBC05"
+                  d="M5.24 14.27c-.24-.73-.38-1.5-.38-2.27s.14-1.54.38-2.27V6.65H.95A11.94 11.94 0 0 0 0 12c0 1.92.45 3.74 1.25 5.37l3.99-3.1z" />
+                <path fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.15 0 2.92 2.7 1.25 6.65L5.24 9.75c.95-2.88 3.61-5 6.76-5z" />
+              </svg>
+              Google
+            </button>
+            <button type="button" class="btn-social" onclick="socialLogin('Facebook')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2">
+                <path
+                  d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+              </svg>
+              Facebook
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
+  </div>
 
-    <!-- ========================================================================= -->
-    <!-- ĐIỀU KIỆN 2: PHẦN GIAO DIỆN SAU KHI ĐĂNG NHẬP THÀNH CÔNG                  -->
-    <!-- (Ẩn/Hiện toàn bộ cụm này dựa vào trạng thái đăng nhập trong checkAuthStatus) -->
-    <!-- ========================================================================= -->
-    <div class="dashboard-container" id="mainDashboard">
-      <!-- Title & User Info Header -->
-      <div class="header-card" id="headerCard">
-        <div class="header-card-info">
-          <h1>Quản lý bãi gửi xe</h1>
-          <p>Ứng dụng Spring Boot đã kết nối SQL Server. Xem, tạo, cập nhật và xóa các slot.</p>
-        </div>
-        <span id="userInfo" style="display: none;">
-          Chào <strong id="userEmailDisplay"></strong> | <a href="#" onclick="logout()">Đăng xuất</a>
-        </span>
+  <!-- ========================================================================= -->
+  <!-- ĐIỀU KIỆN 2: PHẦN GIAO DIỆN SAU KHI ĐĂNG NHẬP THÀNH CÔNG                  -->
+  <!-- (Ẩn/Hiện toàn bộ cụm này dựa vào trạng thái đăng nhập trong checkAuthStatus) -->
+  <!-- ========================================================================= -->
+  <div class="dashboard-container" id="mainDashboard">
+    <!-- Title & User Info Header -->
+    <div class="header-card" id="headerCard">
+      <div class="header-card-info">
+        <h1>Quản lý bãi gửi xe</h1>
+        <p>Ứng dụng Spring Boot đã kết nối SQL Server. Xem, tạo, cập nhật và xóa các slot.</p>
       </div>
-
-      <!-- Main Content Panel (Hidden until Login) -->
-      <div id="mainContent" style="display: none;">
-        <!-- Slots List Card -->
-        <div class="card">
-          <h2>Danh sách slot</h2>
-          <button class="btn-dash" onclick="loadSlots()">Tải lại</button>
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Mã slot</th>
-                <th>Loại phương tiện</th>
-                <th>Trạng thái</th>
-                <th>Hành động</th>
-              </tr>
-            </thead>
-            <tbody id="slotTableBody"></tbody>
-          </table>
-        </div>
-
-        <!-- Create Slot Card -->
-        <div class="card">
-          <h2>Tạo slot mới</h2>
-          <div class="flex">
-            <div>
-              <label>Mã slot</label>
-              <input id="newSlotCode" placeholder="VD: A1" />
-            </div>
-            <div>
-              <label>Loại phương tiện</label>
-              <input id="newVehicleType" placeholder="Xe máy / Ô tô" />
-            </div>
-            <div>
-              <label>Trạng thái</label>
-              <select id="newAvailable">
-                <option value="true">Có sẵn</option>
-                <option value="false">Đã được dùng</option>
-              </select>
-            </div>
-          </div>
-          <button class="btn-dash" onclick="createSlot()">Tạo</button>
-        </div>
-
-        <!-- Update Slot Card -->
-        <div class="card">
-          <h2>Cập nhật slot</h2>
-          <div class="flex">
-            <div>
-              <label>ID slot</label>
-              <input id="updateSlotId" placeholder="ID" type="number" />
-            </div>
-            <div>
-              <label>Mã slot mới</label>
-              <input id="updateSlotCode" placeholder="VD: A1" />
-            </div>
-            <div>
-              <label>Loại phương tiện mới</label>
-              <input id="updateVehicleType" placeholder="Xe máy / Ô tô" />
-            </div>
-            <div>
-              <label>Trạng thái</label>
-              <select id="updateAvailable">
-                <option value="true">Có sẵn</option>
-                <option value="false">Đã được dùng</option>
-              </select>
-            </div>
-          </div>
-          <button class="btn-dash" onclick="updateSlot()">Cập nhật</button>
-        </div>
-      </div>
+      <span id="userInfo" style="display: none;">
+        Chào <strong id="userEmailDisplay"></strong> | <a href="#" onclick="logout()">Đăng xuất</a>
+      </span>
     </div>
 
-    <!-- Link to external script file -->
-    <script src="app.js"></script>
-  </body>
+    <!-- Main Content Panel (Hidden until Login) -->
+    <div id="mainContent" style="display: none;">
+      <!-- Slots List Card -->
+      <div class="card">
+        <h2>Danh sách slot</h2>
+        <button class="btn-dash" onclick="loadSlots()">Tải lại</button>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Mã slot</th>
+              <th>Loại phương tiện</th>
+              <th>Trạng thái</th>
+              <th>Hành động</th>
+            </tr>
+          </thead>
+          <tbody id="slotTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Create Slot Card -->
+      <div class="card">
+        <h2>Tạo slot mới</h2>
+        <div class="flex">
+          <div>
+            <label>Mã slot</label>
+            <input id="newSlotCode" placeholder="VD: A1" />
+          </div>
+          <div>
+            <label>Loại phương tiện</label>
+            <input id="newVehicleType" placeholder="Xe máy / Ô tô" />
+          </div>
+          <div>
+            <label>Trạng thái</label>
+            <select id="newAvailable">
+              <option value="true">Có sẵn</option>
+              <option value="false">Đã được dùng</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-dash" onclick="createSlot()">Tạo</button>
+      </div>
+
+      <!-- Update Slot Card -->
+      <div class="card">
+        <h2>Cập nhật slot</h2>
+        <div class="flex">
+          <div>
+            <label>ID slot</label>
+            <input id="updateSlotId" placeholder="ID" type="number" />
+          </div>
+          <div>
+            <label>Mã slot mới</label>
+            <input id="updateSlotCode" placeholder="VD: A1" />
+          </div>
+          <div>
+            <label>Loại phương tiện mới</label>
+            <input id="updateVehicleType" placeholder="Xe máy / Ô tô" />
+          </div>
+          <div>
+            <label>Trạng thái</label>
+            <select id="updateAvailable">
+              <option value="true">Có sẵn</option>
+              <option value="false">Đã được dùng</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-dash" onclick="updateSlot()">Cập nhật</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link to external script file -->
+  <script src="app.js"></script>
+</body>
+
 </html>

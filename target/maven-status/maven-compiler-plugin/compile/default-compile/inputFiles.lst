@@ -19,4 +19,5 @@ D:\Project\SWP391_G5_BE\src\main\java\Parking\exception\exceptions\Authenticatio
 D:\Project\SWP391_G5_BE\src\main\java\Parking\enums\UserRole.java
 D:\Project\SWP391_G5_BE\src\main\java\Parking\config\OpenApiConfig.java
 D:\Project\SWP391_G5_BE\src\main\java\Parking\dto\response\UserResponse.java
+D:\Project\SWP391_G5_BE\src\main\java\Parking\dto\request\ResetPasswordRequest.java
 D:\Project\SWP391_G5_BE\src\main\java\Parking\Main.java

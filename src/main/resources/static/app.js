@@ -37,6 +37,9 @@ function showRegister(show) {
   const tabRegister = document.getElementById("tabRegister");
   const loginCard = document.getElementById("loginCard");
   const registerCard = document.getElementById("registerCard");
+  const forgotPasswordCard = document.getElementById("forgotPasswordCard");
+
+  if (forgotPasswordCard) forgotPasswordCard.style.display = "none";
 
   if (show) {
     loginCard.style.display = "none";
@@ -48,6 +51,66 @@ function showRegister(show) {
     registerCard.style.display = "none";
     tabLogin.classList.add("active");
     tabRegister.classList.remove("active");
+  }
+}
+
+function showForgetPassword() {
+  const tabLogin = document.getElementById("tabLogin");
+  const tabRegister = document.getElementById("tabRegister");
+  const loginCard = document.getElementById("loginCard");
+  const registerCard = document.getElementById("registerCard");
+  const forgotPasswordCard = document.getElementById("forgotPasswordCard");
+
+  loginCard.style.display = "none";
+  registerCard.style.display = "none";
+  forgotPasswordCard.style.display = "block";
+
+  tabLogin.classList.remove("active");
+  tabRegister.classList.remove("active");
+}
+
+function backToLogin() {
+  showRegister(false);
+}
+
+async function handleResetPassword() {
+  const email = document.getElementById("resetEmail").value;
+  const newPassword = document.getElementById("resetPassword").value;
+  const confirmPassword = document.getElementById("resetConfirmPassword").value;
+
+  if (!email || !newPassword || !confirmPassword) {
+    alert("Vui lòng điền đầy đủ thông tin!");
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    alert("Mật khẩu mới và xác nhận mật khẩu không khớp!");
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    alert("Mật khẩu mới phải có tối thiểu 6 ký tự!");
+    return;
+  }
+
+  try {
+    const resp = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        emailOrPhone: email,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword
+      })
+    });
+    if (!resp.ok) {
+      const err = await resp.text();
+      throw new Error(err || "Lỗi đặt lại mật khẩu");
+    }
+    alert("Đặt lại mật khẩu thành công! Hãy đăng nhập bằng mật khẩu mới.");
+    backToLogin();
+  } catch (error) {
+    alert("Không thể đặt lại mật khẩu: " + error.message);
   }
 }
 

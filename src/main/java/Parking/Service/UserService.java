@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import Parking.exception.exceptions.AuthenticationException;
 import Parking.dto.request.ChangePasswordRequest;
+import Parking.dto.request.ResetPasswordRequest;
 
 @Service
 public class UserService implements UserDetailsService  {
@@ -169,6 +170,29 @@ public class UserService implements UserDetailsService  {
         }
         // mã hóa mật khẩu mới và lưu vào database
         user.setUserPassword(passwordEncoder.encode(changePasswordRequest.getNewPassword()));
+        User updatedUser = userRepository.save(user);
+        return convertToResponse(updatedUser);
+    }
+
+    // reset password
+    public UserResponse resetPassword(ResetPasswordRequest resetPasswordRequest) {
+        String identifier = resetPasswordRequest.getEmailOrPhone();
+        User user = userRepository.findByUserEmail(identifier);
+        if (user == null) {
+            user = userRepository.findByUserPhone(identifier);
+        }
+        if (user == null) {
+            throw new AuthenticationException("Không tìm thấy tài khoản với Email hoặc Số điện thoại đã nhập");
+        }
+        if (user.isDeleted()) {
+            throw new AuthenticationException("Tài khoản đã bị xóa hoặc vô hiệu hóa");
+        }
+        // kiểm tra mật khẩu mới và xác nhận mật khẩu có khớp nhau không
+        if (!resetPasswordRequest.getNewPassword().equals(resetPasswordRequest.getConfirmPassword())) {
+            throw new AuthenticationException("Mật khẩu mới và xác nhận mật khẩu không khớp");
+        }
+        // mã hóa mật khẩu mới và lưu vào database
+        user.setUserPassword(passwordEncoder.encode(resetPasswordRequest.getNewPassword()));
         User updatedUser = userRepository.save(user);
         return convertToResponse(updatedUser);
     }

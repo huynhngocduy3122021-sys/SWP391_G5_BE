@@ -19,6 +19,7 @@ import java.util.List;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import Parking.dto.request.ChangePasswordRequest;
+import Parking.dto.request.ResetPasswordRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
 
 @RestController
@@ -37,6 +38,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<UserResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         UserResponse userResponse = userService.login(loginRequest);
+        return ResponseEntity.ok(userResponse);
+    }
+    @PostMapping("/reset-password")
+    public ResponseEntity<UserResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest resetPasswordRequest) {
+        UserResponse userResponse = userService.resetPassword(resetPasswordRequest);
         return ResponseEntity.ok(userResponse);
     }
     @GetMapping("/users")
