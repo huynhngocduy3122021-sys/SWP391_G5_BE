@@ -40,11 +40,6 @@ public class AuthController {
         UserResponse userResponse = userService.login(loginRequest);
         return ResponseEntity.ok(userResponse);
     }
-    @PostMapping("/reset-password")
-    public ResponseEntity<UserResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest resetPasswordRequest) {
-        UserResponse userResponse = userService.resetPassword(resetPasswordRequest);
-        return ResponseEntity.ok(userResponse);
-    }
     @GetMapping("/users")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> users = userService.getAllUsers();
@@ -71,6 +66,10 @@ public class AuthController {
         userService.deleteUser(id);
         return ResponseEntity.ok("User deleted successfully");
     }
-    
+        @PostMapping("/reset-password")
+    public ResponseEntity<UserResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest resetPasswordRequest) {
+        UserResponse userResponse = userService.resetPassword(resetPasswordRequest);
+        return ResponseEntity.ok(userResponse);
+    }
     
 }
