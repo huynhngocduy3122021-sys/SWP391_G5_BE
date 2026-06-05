@@ -5,7 +5,6 @@ Parking\dto\response\UserResponse.class
 Parking\Model\Slot.class
 Parking\Service\SlotService.class
 Parking\dto\request\UpdateUserRequest.class
-Parking\Repository\UserRepository.class
 Parking\exception\exceptions\AuthenticationException.class
 Parking\dto\request\ResetPasswordRequest.class
 Parking\config\OpenApiConfig.class
@@ -13,6 +12,7 @@ Parking\Main.class
 Parking\enums\UserRole.class
 Parking\Repository\SlotRepository.class
 Parking\config\SecurityConfig.class
+Parking\dto\request\ChangePasswordRequest.class
 Parking\Model\User.class
 Parking\Controller\ParkingController.class
 Parking\dto\request\ChangePasswordRequest.class

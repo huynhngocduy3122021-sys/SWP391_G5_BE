@@ -8,14 +8,16 @@ function getAuthHeaders(headers = {}) {
   const token = getToken();
   return {
     ...headers,
-    "Authorization": token ? "Bearer " + token : ""
+    Authorization: token ? "Bearer " + token : "",
   };
 }
 
 // Kiểm tra phản hồi có bị lỗi Auth không
 async function handleResponse(response) {
   if (response.status === 401 || response.status === 403) {
-    alert("Phiên làm việc hết hạn hoặc không có quyền. Vui lòng đăng nhập lại!");
+    alert(
+      "Phiên làm việc hết hạn hoặc không có quyền. Vui lòng đăng nhập lại!",
+    );
     logout();
     throw new Error("Unauthorized");
   }
@@ -119,7 +121,7 @@ function togglePasswordVisibility(inputId, toggleBtn) {
   const input = document.getElementById(inputId);
   const type = input.getAttribute("type") === "password" ? "text" : "password";
   input.setAttribute("type", type);
-  
+
   const svg = toggleBtn.querySelector("svg");
   if (type === "text") {
     svg.innerHTML = `
@@ -146,7 +148,7 @@ async function register() {
     userEmail: document.getElementById("regEmail").value,
     userPassword: document.getElementById("regPassword").value,
     userPhone: document.getElementById("regPhone").value,
-    userAddress: document.getElementById("regAddress").value
+    userAddress: document.getElementById("regAddress").value,
   };
 
   if (!req.userFullName || !req.userEmail || !req.userPassword) {
@@ -158,7 +160,7 @@ async function register() {
     const resp = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req)
+      body: JSON.stringify(req),
     });
     if (!resp.ok) {
       const err = await resp.text();
@@ -175,7 +177,7 @@ async function register() {
 async function login() {
   const req = {
     userEmail: document.getElementById("loginEmail").value,
-    userPassword: document.getElementById("loginPassword").value
+    userPassword: document.getElementById("loginPassword").value,
   };
 
   if (!req.userEmail || !req.userPassword) {
@@ -187,7 +189,7 @@ async function login() {
     const resp = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req)
+      body: JSON.stringify(req),
     });
     if (!resp.ok) {
       const err = await resp.text();
@@ -196,7 +198,7 @@ async function login() {
     const data = await resp.json();
     localStorage.setItem("token", data.token);
     localStorage.setItem("email", data.userEmail);
-    
+
     alert("Đăng nhập thành công!");
     checkAuthStatus();
   } catch (error) {
@@ -220,7 +222,7 @@ function logout() {
 function checkAuthStatus() {
   const token = getToken();
   const email = localStorage.getItem("email");
-  
+
   const authWrapper = document.getElementById("authWrapper");
   const mainDashboard = document.getElementById("mainDashboard");
   const mainContent = document.getElementById("mainContent");
@@ -249,13 +251,13 @@ function checkAuthStatus() {
 async function loadSlots() {
   try {
     const resp = await fetch("/api/parking/slots", {
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
     });
     await handleResponse(resp);
     const slots = await resp.json();
     const tbody = document.getElementById("slotTableBody");
     tbody.innerHTML = "";
-    
+
     slots.forEach((slot) => {
       const row = document.createElement("tr");
       row.innerHTML = `
@@ -303,8 +305,7 @@ async function updateSlot() {
   const slot = {
     slotCode: document.getElementById("updateSlotCode").value,
     vehicleType: document.getElementById("updateVehicleType").value,
-    available:
-      document.getElementById("updateAvailable").value === "true",
+    available: document.getElementById("updateAvailable").value === "true",
   };
   if (!id) {
     alert("Vui lòng nhập ID slot cần cập nhật");
@@ -332,7 +333,7 @@ async function deleteSlot(id) {
   try {
     const resp = await fetch("/api/parking/slots/" + id, {
       method: "DELETE",
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
     });
     await handleResponse(resp);
     loadSlots();
