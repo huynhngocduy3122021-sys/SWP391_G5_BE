@@ -9,8 +9,11 @@ import Parking.Service.UserService;
 import org.springframework.web.bind.annotation.RequestBody;
 import Parking.dto.request.UserRequest;
 import Parking.dto.response.UserResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import Parking.dto.request.LoginRequest;
 import Parking.dto.request.UpdateUserRequest;
@@ -25,48 +28,60 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*")
-
+@SecurityRequirement(name = "api_key")
 public class AuthController {
     @Autowired
     private UserService userService;
 
     @PostMapping("/register")
+    @Operation(summary = "hàm đăng kí user", description = "Đăng kí tài khoảng hệ thông role mặc đi là USER")
+    
     public ResponseEntity<UserResponse> register(@Valid @RequestBody UserRequest registerRequest) {
         UserResponse userResponse = userService.register(registerRequest);
         return ResponseEntity.ok(userResponse);
     }
     @PostMapping("/login")
+    @Operation(summary = "Hàm dùng để login vào hệ thống")
     public ResponseEntity<UserResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         UserResponse userResponse = userService.login(loginRequest);
         return ResponseEntity.ok(userResponse);
     }
+    
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/users")
+    @Operation(summary = "Hàm dùng để lấy tất cả dữ liệu của những người dùng", description = "Chỉ có admin có quyền lấy dữ liệu người dùng")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> users = userService.getAllUsers();
         return ResponseEntity.ok(users);
     }
     @GetMapping("/users/{id}")
+    @Operation(summary = "Lấy dữ liệu người dùng theo Id")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
         UserResponse userResponse = userService.getUserById(id);
         return ResponseEntity.ok(userResponse);
     }
         @PutMapping("/users/{id}/change-password") // change password
+        @Operation(summary = "Thay đổi mật khẩu")
     public ResponseEntity<String> changePassword(@PathVariable Long id, @RequestBody ChangePasswordRequest changePasswordRequest) {
         userService.updatePassword(id, changePasswordRequest);
         return ResponseEntity.ok("Password changed successfully");
     }
 
     @PutMapping("/users/{id}") // update info user
+    @Operation(summary = "Cập nhật thông tin user")
     public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @RequestBody UpdateUserRequest userRequest) {
         UserResponse updatedUser = userService.updateUser(id, userRequest);
         return ResponseEntity.ok(updatedUser);
     }
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/users/{id}") // delete user
+    @Operation(summary = "Xóa user", description = "Chức năng chỉ có admin")
     public ResponseEntity<String> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return ResponseEntity.ok("User deleted successfully");
     }
         @PostMapping("/reset-password")
+        @Operation(summary = "Lấy lại mật khẩu user")
     public ResponseEntity<UserResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest resetPasswordRequest) {
         UserResponse userResponse = userService.resetPassword(resetPasswordRequest);
         return ResponseEntity.ok(userResponse);

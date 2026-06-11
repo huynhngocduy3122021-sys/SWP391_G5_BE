@@ -14,8 +14,9 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.context.annotation.Lazy;
-
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Autowired
@@ -45,7 +46,7 @@ public class SecurityConfig {
                             req -> req
                 
                 // Cho phép API đăng ký / đăng nhập
-                .requestMatchers("/", "/index.html", "/favicon.ico", "/style.css", "/app.js", "/api/auth/**", "/error").permitAll()
+                .requestMatchers("/", "/index.html", "/favicon.ico", "/style.css", "/app.js", "/api/auth/register","/api/auth/login","/api/auth/reset-password", "/error").permitAll()
 
                 // Cho phép Swagger chạy không cần token
                 .requestMatchers(

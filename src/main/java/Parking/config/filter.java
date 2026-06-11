@@ -35,7 +35,8 @@ public class filter extends OncePerRequestFilter {
                 "/favicon.ico",
                 "/style.css",
                 "/app.js",
-                "/api/auth/**",
+                "/api/auth/register",
+                "/api/auth/login",
                 "/error",
                 "/swagger-ui/**",
                 "/swagger-ui.html",
@@ -47,7 +48,8 @@ public class filter extends OncePerRequestFilter {
                 "/api/parking-cards/**",
                 "/api/parking-zones/**",
                 "/api/price-policies/**",
-                "/api/parking-session/**"          
+                "/api/parking-session/**",
+                "/api/auth/reset-password"       
     );
 
             public boolean isPublicAPI(String uri) {

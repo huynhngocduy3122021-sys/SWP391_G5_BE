@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import Parking.Model.ParkingZone;
 import Parking.Service.ParkingZoneService;
 import Parking.dto.request.CreateParkingZoneRequest;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -25,6 +26,7 @@ public class ParkingZoneController {
     private final ParkingZoneService parkingZoneService;
 
     @PostMapping
+    @Operation(summary = "Hàm tạo khu vực giữ xe")
     public ResponseEntity<ParkingZone> createParkingZone(
             @Valid @RequestBody CreateParkingZoneRequest request
     ) {
@@ -32,6 +34,7 @@ public class ParkingZoneController {
     }
 
     @GetMapping
+    @Operation(summary = "Hàm lấy dữ liệu khu vực giữ xe")
     public ResponseEntity<List<ParkingZone>> getAllParkingZones() {
         return ResponseEntity.ok(parkingZoneService.getAllParkingZones());
     }

@@ -23,7 +23,7 @@ public class PricePolicy {
     @Column(name = "price_policy_id")
     private Long pricePolicyId;
 
-    @Column(name = "policy_name", nullable = false)
+    @Column(name = "policy_name", nullable = false , columnDefinition = "NVARCHAR(255)")
     private String policyName;
 
     @Column(name = "base_price", nullable = false)

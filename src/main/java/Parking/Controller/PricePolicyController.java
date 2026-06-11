@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import Parking.Model.PricePolicy;
 import Parking.Service.PricePolicyService;
 import Parking.dto.request.CreatePricePolicyRequest;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -24,6 +25,7 @@ public class PricePolicyController {
     private final PricePolicyService pricePolicyService;
 
     @PostMapping
+    @Operation(summary = "Hàm tạo đơn giá của xe")
     public ResponseEntity<PricePolicy> createPricePolicy(
             @Valid @RequestBody CreatePricePolicyRequest request
     ) {
@@ -31,6 +33,7 @@ public class PricePolicyController {
     }
 
     @GetMapping
+    @Operation(summary = "Hàm lấy những giá giữ xe")
     public ResponseEntity<List<PricePolicy>> getAllPricePolicies() {
         return ResponseEntity.ok(pricePolicyService.getAllPricePolicies());
     }

@@ -157,7 +157,7 @@ public class ParkingSessionService {
 
         PricePolicy pricePolicy = pricePolicyRepository.findFirstByVehicleTypeAndActiveTrue(vehicleType)
                             .orElseThrow(() -> new ParkingSessionException("Price policy not found!"));
-        long totalMinutes = Duration.between(session.getCheckInTime(), checkOuDateTime).toMillis();
+        long totalMinutes = Duration.between(session.getCheckInTime(), checkOuDateTime).toMinutes();
 
         if(totalMinutes <= 0) {
             totalMinutes = 1;
