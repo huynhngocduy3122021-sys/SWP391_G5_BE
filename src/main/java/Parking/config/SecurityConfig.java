@@ -14,8 +14,9 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.context.annotation.Lazy;
-
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Autowired
@@ -54,7 +55,14 @@ public class SecurityConfig {
                         "/swagger-ui.html",
                         "/swagger-ui/index.html",
                         "/v3/api-docs/**",
-                        "/v3/api-docs"
+                        "/v3/api-docs",
+                        "/api/parking-sessions/**",
+                        "/api/vehicle-types/**",
+                        "/api/parking-cards/**",
+                        "/api/parking-zones/**",
+                        "/api/price-policies/**",
+                        "/api/parking-session/**" 
+                        
                 ).permitAll()
 
                 // Các API còn lại bắt buộc phải đăng nhập
