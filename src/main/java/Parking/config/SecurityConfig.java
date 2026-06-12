@@ -44,8 +44,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                             req -> req
                 
-                // Cho phép API đăng ký / đăng nhập
+                // Cho phép API đăng ký / đăng nhập và xem sơ đồ đỗ xe công cộng
                 .requestMatchers("/", "/index.html", "/favicon.ico", "/style.css", "/app.js", "/api/auth/**", "/error").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/parking/slots").permitAll()
 
                 // Cho phép Swagger chạy không cần token
                 .requestMatchers(
