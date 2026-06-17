@@ -60,7 +60,9 @@ public class SecurityConfig {
                         "/api/parking-cards/**",
                         "/api/parking-zones/**",
                         "/api/price-policies/**",
-                        "/api/parking-session/**" 
+                        "/api/parking-session/**",
+                        "/api/parking-branches/**",
+                        "/api/parking-floors/**"
                         
                 ).permitAll()
 

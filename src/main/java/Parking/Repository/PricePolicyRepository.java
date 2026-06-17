@@ -8,7 +8,10 @@ import Parking.Model.PricePolicy;
 import Parking.Model.VehicleType;
 
 public interface PricePolicyRepository extends JpaRepository<PricePolicy,Long> {
-    Optional<PricePolicy> findFirstByVehicleTypeAndActiveTrue(VehicleType vehicleType);
+   Optional<PricePolicy>
+    findFirstByVehicleTypeVehicleTypeIdAndActiveTrueOrderByPricePolicyIdDesc(
+            Long vehicleTypeId
+    );
 }
 
   

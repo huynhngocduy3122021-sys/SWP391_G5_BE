@@ -1,6 +1,7 @@
 package Parking.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -15,4 +16,8 @@ public class CreateParkingCardRequest {
             message = "Card code can only contain letters, numbers, '-' or '_'"
     )
     private String cardCode;
+
+    
+     @NotNull(message = "ParkingBranchID cannot null")
+    private Long parkingBranchId;
 }

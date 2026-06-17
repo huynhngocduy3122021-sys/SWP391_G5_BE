@@ -9,6 +9,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -18,11 +19,24 @@ import jakarta.persistence.OneToOne;
 import lombok.Getter;
 import lombok.Setter;
 import jakarta.persistence.Table;
+import jakarta.persistence.Index;
 
 @Entity
 @Getter
 @Setter
-@Table(name = "parking_session")
+@Table(
+    name = "parking_session",
+    indexes = {
+        @Index(
+            name = "idx_session_vehicle_status",
+            columnList = "vehicle_id, status"
+        ),
+        @Index(
+            name = "idx_session_card_status",
+            columnList = "parking_card_id, status"
+        )
+    }
+)
 public class ParkingSession {
     
         @Id
@@ -51,10 +65,11 @@ public class ParkingSession {
         @JoinColumn(name = "parking_card_id", nullable = false)
         private ParkingCard parkingCard;
 
-        @ManyToOne
-        @JoinColumn(name = "parking_zone_id", nullable = false)
-        private ParkingZone parkingZone;
+
 
         @OneToOne(mappedBy = "parkingSession", cascade = CascadeType.ALL)
         private Payment payment;
+        @ManyToOne(fetch = FetchType.LAZY, optional = false)
+        @JoinColumn(name = "parking_branch_id", nullable = false)
+        private ParkingBranch parkingBranch;
 }

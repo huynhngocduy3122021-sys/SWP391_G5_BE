@@ -1,5 +1,7 @@
 Parking\Controller\AuthController.class
 Parking\exception\exceptions\AuthenticationException.class
+Parking\dto\response\ParkingCardResponse$ParkingCardResponseBuilder.class
+Parking\dto\response\ParkingCardResponse.class
 Parking\config\OpenApiConfig.class
 Parking\Main.class
 Parking\Repository\SlotRepository.class
