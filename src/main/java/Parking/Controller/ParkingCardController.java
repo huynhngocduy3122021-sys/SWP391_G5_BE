@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import Parking.Model.ParkingCard;
 import Parking.Service.ParkingCardService;
 import Parking.dto.request.CreateParkingCardRequest;
+import Parking.dto.response.ParkingCardResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,7 @@ public class ParkingCardController {
 
     @PostMapping
     @Operation(summary = "Tạo thẻ giữ xe")
-    public ResponseEntity<ParkingCard> createParkingCard(
+    public ResponseEntity<ParkingCardResponse> createParkingCard(
             @Valid @RequestBody CreateParkingCardRequest request
     ) {
         return ResponseEntity.ok(parkingCardService.createParkingCard(request));
@@ -34,7 +35,7 @@ public class ParkingCardController {
 
     @GetMapping
     @Operation(summary = "Lấy dữ liệu của thẻ")
-    public ResponseEntity<List<ParkingCard>> getAllParkingCards() {
+    public ResponseEntity<List<ParkingCardResponse>> getAllParkingCards() {
         return ResponseEntity.ok(parkingCardService.getAllParkingCards());
     }
 }

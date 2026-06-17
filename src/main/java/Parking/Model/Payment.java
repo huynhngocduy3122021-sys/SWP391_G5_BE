@@ -15,13 +15,22 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
 
 @Entity
 @Getter
 @Setter
-@Table(name = "payments")
+@Table(
+    name = "payments",
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_payment_parking_session",
+            columnNames = "parking_session_id"
+        )
+    }
+)
 public class Payment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

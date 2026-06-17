@@ -20,4 +20,5 @@ public class GuestCheckOutRequest {
      private String cardCode;
 
     private PaymentMethod paymentMethod;
+    private String licensePlate;
 }

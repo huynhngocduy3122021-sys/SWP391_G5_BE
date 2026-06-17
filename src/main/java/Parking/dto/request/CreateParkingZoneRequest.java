@@ -12,14 +12,16 @@ import lombok.Setter;
 
 public class CreateParkingZoneRequest {
     @NotBlank(message = "Zone name is required")
-    @Size(max = 100, message = "Zone name must not exceed 100 characters")
+    @Size(max = 100)
     private String zoneName;
 
-    @NotNull(message = "Max capacity is required")
-    @Positive(message = "Max capacity must be greater than 0")
-    private Integer maxCapacity;
+    @NotNull(message = "Capacity is required")
+    @Positive(message = "Capacity must be greater than 0")
+    private Integer capacity;
+
+    @NotNull(message = "Parking floor id is required")
+    private Long parkingFloorId;
 
     @NotNull(message = "Vehicle type id is required")
-    @Positive(message = "Vehicle type id must be greater than 0")
     private Long vehicleTypeId;
 }

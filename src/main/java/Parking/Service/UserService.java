@@ -63,7 +63,7 @@ public class UserService implements UserDetailsService  {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            loginRequest.getUserEmail(),
+                            loginRequest.getIdentifier(),
                             loginRequest.getUserPassword()
                     )
             );
@@ -92,8 +92,15 @@ public class UserService implements UserDetailsService  {
     }
 
     @Override
-    public User loadUserByUsername(String email) {
-        return userRepository.findByUserEmail(email);
+    public User loadUserByUsername(String identifier) {
+        User user = userRepository.findByUserEmail(identifier);
+        if (user == null) {
+            user = userRepository.findByUserPhone(identifier);
+        }
+        if (user == null) {
+            throw new org.springframework.security.core.userdetails.UsernameNotFoundException("User not found with identifier: " + identifier);
+        }
+        return user;
     }
 
     private UserResponse convertToResponse(User user) {
