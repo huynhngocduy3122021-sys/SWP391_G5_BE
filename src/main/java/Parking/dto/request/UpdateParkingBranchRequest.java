@@ -9,11 +9,11 @@ import lombok.Setter;
 @Setter
 public class UpdateParkingBranchRequest {
 
-    @NotBlank(message = "Branch name is required")
+    
     @Size(max = 255)
     private String branchName;
 
-    @NotBlank(message = "Address is required")
+    
     @Size(max = 500)
     private String address;
 

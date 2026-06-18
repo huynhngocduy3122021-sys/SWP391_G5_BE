@@ -77,19 +77,35 @@ public class ParkingFloorService {
     @Transactional
     public ParkingFloorResponse updateParkingFloor(Long id, UpdateParkingFloorRequest request) {
         ParkingFloor parkingFloor = findFloor(id);
-
-        ParkingBranch parkingBranch = findBranch(request.getParkingBranchId());
+        
+        ParkingBranch parkingBranch = parkingFloor.getParkingBranch();
+        if(parkingBranch == null) {
+            throw new ParkingSessionException("Parking floor does not belong to any branch");
+        }
+        if(!parkingBranch.isActive()) {
+            throw new ParkingSessionException("Parking branch is inactive");
+        }
 
         boolean duplicateFloor = parkingFloorRepository.existsByParkingBranchParkingBranchIdAndFloorNumberAndParkingFloorIdNot(parkingBranch.getParkingBranchId(),request.getFloorNumber(),id);
 
         if (duplicateFloor) {
             throw new ParkingSessionException("Floor number already exists in this branch");
         }
+        if(request.getFloorName() != null && !request.getFloorName().isBlank()) {
+            parkingFloor.setFloorName(request.getFloorName().trim());
+        }
 
-        parkingFloor.setFloorName(request.getFloorName().trim());
-        parkingFloor.setFloorNumber(request.getFloorNumber());
-        parkingFloor.setDescription(normalizeOptional(request.getDescription()));
-        parkingFloor.setParkingBranch(parkingBranch);
+        if(request.getFloorNumber() != null) {
+            parkingFloor.setFloorNumber(request.getFloorNumber());
+        }
+        if(request.getDescription() != null && !request.getDescription().isBlank()) {
+            parkingFloor.setDescription(normalizeOptional(request.getDescription()));
+        }
+        
+        if(request.getParkingBranchId() != null) {
+            parkingFloor.setParkingBranch(parkingBranch);
+        }
+        
 
         return covertToParkingFloor(parkingFloorRepository.save(parkingFloor));
     }
