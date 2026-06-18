@@ -53,4 +53,7 @@ public class Vehicle {
     @ManyToOne
     @JoinColumn(name = "vehicle_type_id", nullable = false)
     private VehicleType vehicleType;
+
+    @Column(name = "deleted", nullable = false)
+    private boolean deleted = false;
 }

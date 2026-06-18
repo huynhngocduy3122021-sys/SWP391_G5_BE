@@ -11,17 +11,17 @@ import lombok.Setter;
 @Setter
 public class UpdateParkingFloorRequest {
 
-    @NotBlank(message = "Floor name is required")
+    
     @Size(max = 100)
     private String floorName;
 
-    @NotNull(message = "Floor number is required")
-    @Positive(message = "Floor number must be greater than 0")
+    
+    
     private Integer floorNumber;
 
     @Size(max = 255)
     private String description;
 
-    @NotNull(message = "Parking branch id is required")
+    
     private Long parkingBranchId;
 }
