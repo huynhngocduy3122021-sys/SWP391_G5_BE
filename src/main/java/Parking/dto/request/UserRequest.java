@@ -20,8 +20,8 @@ public class UserRequest {
     private String userPassword;
     @NotBlank(message = "Phone number is required")
     private String userPhone;
-    @NotBlank(message = "Address is required")  
-    private String userAddress;
+    // @NotBlank(message = "Address is required")  
+    // private String userAddress;
   
 
    
