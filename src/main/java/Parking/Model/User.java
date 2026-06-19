@@ -39,8 +39,8 @@ public class User implements UserDetails {
     @Pattern(regexp = "(03|05|07|08|09|012|016|018|019)[0-9]{8}$", message = "Phone invalid!")
     @NotEmpty(message = "Phone cannot be empty!" )
     private String userPhone;
-    @Column(name = "user_address", columnDefinition = "nvarchar(255)", nullable = false)
-    @NotEmpty(message = "Address cannot be empty!")
+    @Column(name = "user_address", columnDefinition = "nvarchar(255)")
+    // @NotEmpty(message = "Address cannot be empty!")
     private String userAddress;
 
     @Enumerated(EnumType.STRING)
