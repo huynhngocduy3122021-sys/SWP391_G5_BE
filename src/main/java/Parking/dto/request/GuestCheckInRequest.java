@@ -23,9 +23,7 @@ public class GuestCheckInRequest {
     @Positive(message = "Vehicle type id must be greater than 0")
     private Long vehicleTypeId;
 
-    @NotNull(message = "Parking zone id is required")
-    @Positive(message = "Parking zone id must be greater than 0")
-    private Long parkingZoneId;
+    
 
     @NotBlank(message = "Card code is required")
     @Size(min = 3, max = 50, message = "Card code must be between 3 and 50 characters")
@@ -34,4 +32,8 @@ public class GuestCheckInRequest {
             message = "Card code can only contain letters, numbers, '-' or '_'"
     )
     private String cardCode;
+
+    private String vehicleColor;
+
+    private String vehicleBrand;
 }
