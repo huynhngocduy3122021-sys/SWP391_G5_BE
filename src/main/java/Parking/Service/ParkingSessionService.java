@@ -341,7 +341,7 @@ public class ParkingSessionService {
 
         vehicle.setVehicleColor(normalizeOptionalText(request.getVehicleColor()));
 
-        vehicle.setVehicleBrand(normalizeOptionalText(request.getVehicleBranch()));
+        vehicle.setVehicleBrand(normalizeOptionalText(request.getVehicleBrand()));
 
         vehicle.setVehicleSource(VehicleSource.GUEST);
 
