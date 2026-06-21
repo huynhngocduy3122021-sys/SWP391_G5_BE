@@ -35,5 +35,5 @@ public class GuestCheckInRequest {
 
     private String vehicleColor;
 
-    private String vehicleBranch;
+    private String vehicleBrand;
 }

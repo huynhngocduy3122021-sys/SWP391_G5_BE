@@ -2,6 +2,8 @@ package Parking.Model;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import Parking.enums.ParkingSessionStatus;
 import jakarta.persistence.CascadeType;
@@ -15,6 +17,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import lombok.Getter;
 import lombok.Setter;
@@ -72,4 +75,7 @@ public class ParkingSession {
         @ManyToOne(fetch = FetchType.LAZY, optional = false)
         @JoinColumn(name = "parking_branch_id", nullable = false)
         private ParkingBranch parkingBranch;
+
+        @OneToMany( mappedBy = "parkingSession",fetch = FetchType.LAZY)
+        private List<VehicleImage> vehicleImages = new ArrayList<>();
 }
