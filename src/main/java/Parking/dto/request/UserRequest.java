@@ -21,7 +21,7 @@ public class UserRequest {
     @NotBlank(message = "Phone number is required")
     private String userPhone;
     // @NotBlank(message = "Address is required")  
-    // private String userAddress;
+    private String userAddress;
   
 
    
