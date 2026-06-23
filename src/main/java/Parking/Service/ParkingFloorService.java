@@ -86,7 +86,21 @@ public class ParkingFloorService {
             throw new ParkingSessionException("Parking branch is inactive");
         }
 
-        boolean duplicateFloor = parkingFloorRepository.existsByParkingBranchParkingBranchIdAndFloorNumberAndParkingFloorIdNot(parkingBranch.getParkingBranchId(),request.getFloorNumber(),id);
+        if (request.getParkingBranchId() != null && !request.getParkingBranchId().equals(parkingBranch.getParkingBranchId())) {
+            ParkingBranch newBranch = findBranch(request.getParkingBranchId());
+            if (!newBranch.isActive()) {
+                throw new ParkingSessionException("New parking branch is inactive");
+            }
+            parkingFloor.setParkingBranch(newBranch);
+            parkingBranch = newBranch;
+        }
+
+        Integer floorNumber = request.getFloorNumber() != null ? request.getFloorNumber() : parkingFloor.getFloorNumber();
+        boolean duplicateFloor = parkingFloorRepository.existsByParkingBranchParkingBranchIdAndFloorNumberAndParkingFloorIdNot(
+                parkingBranch.getParkingBranchId(),
+                floorNumber,
+                id
+        );
 
         if (duplicateFloor) {
             throw new ParkingSessionException("Floor number already exists in this branch");
@@ -98,12 +112,8 @@ public class ParkingFloorService {
         if(request.getFloorNumber() != null) {
             parkingFloor.setFloorNumber(request.getFloorNumber());
         }
-        if(request.getDescription() != null && !request.getDescription().isBlank()) {
+        if(request.getDescription() != null) {
             parkingFloor.setDescription(normalizeOptional(request.getDescription()));
-        }
-        
-        if(request.getParkingBranchId() != null) {
-            parkingFloor.setParkingBranch(parkingBranch);
         }
         
 

@@ -14,7 +14,7 @@ import lombok.Setter;
 @Builder
 public class ParkingSessionResponse {
     
-        private Long parkingSessionId;
+    private Long parkingSessionId;
 
     private Long parkingBranchId;
 

@@ -10,6 +10,7 @@ import java.util.List;
 import Parking.Service.ParkingSessionService;
 import Parking.dto.request.GuestCheckInRequest;
 import Parking.dto.request.GuestCheckOutRequest;
+import Parking.dto.response.GuestCheckOutResponse;
 import Parking.dto.response.ParkingSessionResponse;
 import io.swagger.v3.oas.annotations.Operation;
 
@@ -38,7 +39,19 @@ public class ParkingSessionController {
     }
     @PostMapping("/guest/check-out")
     @Operation(summary = "hàm check out  bãi xe")
-    public ResponseEntity<ParkingSessionResponse> guestCheckOut(@Valid @RequestBody GuestCheckOutRequest request) {
-        return ResponseEntity.ok(parkingSessionService.guestCheckOut(request));
+    public ResponseEntity<GuestCheckOutResponse> guestCheckOut(
+            @Valid @RequestBody GuestCheckOutRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest
+    ) {
+        String clientIp = getClientIp(httpRequest);
+        return ResponseEntity.ok(parkingSessionService.guestCheckOut(request, clientIp));
+    }
+
+    private String getClientIp(jakarta.servlet.http.HttpServletRequest request) {
+        String xfHeader = request.getHeader("X-Forwarded-For");
+        if (xfHeader == null || xfHeader.isEmpty()) {
+            return request.getRemoteAddr();
+        }
+        return xfHeader.split(",")[0].trim();
     }
 }
