@@ -78,4 +78,6 @@ public class ParkingSession {
 
         @OneToMany( mappedBy = "parkingSession",fetch = FetchType.LAZY)
         private List<VehicleImage> vehicleImages = new ArrayList<>();
+
+
 }

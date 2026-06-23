@@ -19,8 +19,8 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/parking-floors")
+@CrossOrigin("*")
 @RequiredArgsConstructor
-
 public class ParkingFloorController {
 
     private final ParkingFloorService parkingFloorService;

@@ -57,25 +57,22 @@ public class ParkingBranchService {
     public ParkingBranchResponse updateParkingBranch(Long id,UpdateParkingBranchRequest request) {
         ParkingBranch parkingBranch = findBranch(id);
 
-        String newName = request.getBranchName().trim();
-
-        if (!parkingBranch.getBranchName().equalsIgnoreCase(newName)&& parkingBranchRepository.existsByBranchNameIgnoreCase(newName)) {
-                    throw new ParkingSessionException("Parking branch name already exists");
-        }
         if(request.getBranchName() != null && !request.getBranchName().isBlank()) {
+            String newName = request.getBranchName().trim();
+            if (!parkingBranch.getBranchName().equalsIgnoreCase(newName) && parkingBranchRepository.existsByBranchNameIgnoreCase(newName)) {
+                throw new ParkingSessionException("Parking branch name already exists");
+            }
             parkingBranch.setBranchName(newName);
         }
         if(request.getAddress() != null && !request.getAddress().isBlank()) {
             parkingBranch.setAddress(request.getAddress().trim());
         }
-        if(request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
+        if(request.getPhoneNumber() != null) {
             parkingBranch.setPhoneNumber(normalizeOptional(request.getPhoneNumber()));
         }
-        
-       if(request.getDescription() != null && request.getDescription().isBlank()) {
-        parkingBranch.setDescription(normalizeOptional(request.getDescription()));
-       }
-        
+        if(request.getDescription() != null) {
+            parkingBranch.setDescription(normalizeOptional(request.getDescription()));
+        }
 
         return convertBranchResponse(parkingBranchRepository.save(parkingBranch));
     }

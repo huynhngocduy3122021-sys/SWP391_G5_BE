@@ -1,0 +1,332 @@
+package Parking.Service;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.UUID;
+import java.util.Map;
+import java.util.HashMap;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import Parking.Model.ParkingCard;
+import Parking.Model.ParkingSession;
+import Parking.Model.Payment;
+import Parking.Model.PricePolicy;
+import Parking.Repository.ParkingCardRepository;
+import Parking.Repository.ParkingSessionRepository;
+import Parking.Repository.PaymentRepository;
+import Parking.Repository.PricePolicyRepository;
+import Parking.dto.response.GuestCheckOutResponse;
+import Parking.dto.response.VnpayReturnResponse;
+import Parking.enums.ParkingCardStatus;
+import Parking.enums.ParkingSessionStatus;
+import Parking.enums.PaymentMethod;
+import Parking.enums.PaymentStatus;
+import Parking.exception.exceptions.ParkingSessionException;
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class PaymentService {
+
+    private final PaymentRepository paymentRepository;
+    private final PricePolicyRepository pricePolicyRepository;
+    private final VnPayService vnPayService;
+    private final ParkingSessionRepository parkingSessionRepository;
+    private final ParkingCardRepository parkingCardRepository;
+
+    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+
+    @Transactional
+    public GuestCheckOutResponse processCheckOutPayment(ParkingSession parkingSession, PaymentMethod paymentMethod, String clientIp) {
+        // b1: kiểm tra chưa thanh toán
+        boolean paymentExists = paymentRepository.existsByParkingSessionParkingSessionId(parkingSession.getParkingSessionId());
+
+        if (paymentExists) {
+            Payment existingPayment = paymentRepository.findByParkingSessionParkingSessionId(parkingSession.getParkingSessionId())
+                    .orElse(null);
+            if (existingPayment != null && existingPayment.getPaymentStatus() == PaymentStatus.PAID) {
+                throw new ParkingSessionException("Parking session has already been paid");
+            }
+            if (existingPayment != null && existingPayment.getPaymentStatus() == PaymentStatus.PENDING) {
+                paymentRepository.delete(existingPayment);
+                paymentRepository.flush();
+            }
+        }
+
+        // b2: chính sách tính giá
+        Long vehicleTypeId = parkingSession.getVehicle().getVehicleType().getVehicleTypeId();
+
+        PricePolicy pricePolicy = pricePolicyRepository.findFirstByVehicleTypeVehicleTypeIdAndActiveTrueOrderByPricePolicyIdDesc(vehicleTypeId)
+                    .orElseThrow(() -> new ParkingSessionException("Active price policy not found"));
+
+        LocalDateTime checkOutTime = LocalDateTime.now();
+        // b3: tính phí
+        BigDecimal totalAmount = caculateParkingFee(parkingSession.getCheckInTime(), checkOutTime, pricePolicy);
+
+        // b4: tạo payment
+        Payment payment = new Payment();
+        payment.setAmount(totalAmount);
+        payment.setPaymentMethod(paymentMethod);
+        payment.setParkingSession(parkingSession);
+        
+        // tạo transactionRef
+        String txnRef = "TXN_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
+        payment.setTransactionRef(txnRef);
+
+        GuestCheckOutResponse.GuestCheckOutResponseBuilder responseBuilder = GuestCheckOutResponse.builder()
+                .parkingSessionId(parkingSession.getParkingSessionId())
+                .amount(totalAmount)
+                .paymentMethod(paymentMethod);
+
+        if (paymentMethod == PaymentMethod.CASH) {
+            payment.setPaymentStatus(PaymentStatus.PAID);
+            payment.setPaidAt(checkOutTime);
+
+            parkingSession.setCheckOutTime(checkOutTime);
+            parkingSession.setTotalAmount(totalAmount);
+            parkingSession.setStatus(ParkingSessionStatus.COMPLETED);
+            parkingSession.setPayment(payment);
+
+            // trả thẻ về AVAILABLE
+            ParkingCard parkingCard = parkingSession.getParkingCard();
+            parkingCard.setStatus(ParkingCardStatus.AVAILABLE);
+
+            parkingSessionRepository.save(parkingSession);
+            parkingCardRepository.save(parkingCard);
+
+            payment = paymentRepository.save(payment);
+
+            responseBuilder.paymentId(payment.getPaymentId())
+                    .paymentStatus(PaymentStatus.PAID)
+                    .sessionStatus(ParkingSessionStatus.COMPLETED)
+                    .paymentUrl(null)
+                    .message("Thanh toán tiền mặt thành công. Phiên gửi xe đã hoàn thành.");
+        } else if (paymentMethod == PaymentMethod.VNPAY) {
+            payment.setPaymentStatus(PaymentStatus.PENDING);
+            LocalDateTime expiresAt = LocalDateTime.now(VIETNAM_ZONE).plusMinutes(15);
+            payment.setPaymentExpiresAt(expiresAt);
+
+            parkingSession.setCheckOutTime(checkOutTime);
+            parkingSession.setTotalAmount(totalAmount);
+            parkingSession.setPayment(payment);
+
+            payment = paymentRepository.save(payment);
+            parkingSessionRepository.save(parkingSession);
+
+            String payUrl = vnPayService.createPaymentUrl(payment, clientIp);
+
+            responseBuilder.paymentId(payment.getPaymentId())
+                    .paymentStatus(PaymentStatus.PENDING)
+                    .sessionStatus(ParkingSessionStatus.ACTIVE)
+                    .paymentUrl(payUrl)
+                    .message("Vui lòng thực hiện thanh toán qua cổng VNPay để hoàn tất checkout.");
+        }
+
+        return responseBuilder.build();
+    }
+
+    public BigDecimal caculateParkingFee(LocalDateTime checkInTime, LocalDateTime checkOutTime, PricePolicy pricePolicy) {
+        if (checkInTime == null) {
+            throw new ParkingSessionException("Check-in time is missing");
+        }
+
+        if (pricePolicy.getBasePrice() == null || pricePolicy.getExtraHourPrice() == null || pricePolicy.getBaseDurationMinutes() == null) {
+            throw new ParkingSessionException("Price policy is invalid");
+        }
+
+        if (pricePolicy.getBaseDurationMinutes() <= 0) {
+            throw new ParkingSessionException("Base duration must be greater than zero");
+        }
+
+        if (pricePolicy.getBasePrice().compareTo(BigDecimal.ZERO) < 0 || pricePolicy.getExtraHourPrice().compareTo(BigDecimal.ZERO) < 0) {
+            throw new ParkingSessionException("Parking price cannot be negative");
+        }
+
+        long totalMinutes = Duration.between(checkInTime, checkOutTime).toMinutes();
+        totalMinutes = Math.max(totalMinutes, 0); // tránh trượng hợp bị null
+
+        BigDecimal fee; 
+        if (totalMinutes <= pricePolicy.getBaseDurationMinutes()) {
+            fee = pricePolicy.getBasePrice().setScale(2, RoundingMode.HALF_UP);
+        } else {
+            long extraMinutes = totalMinutes - pricePolicy.getBaseDurationMinutes();
+            long extraHours = (long) Math.ceil(extraMinutes / 60.0); // ceil là làm tròn số lên
+            BigDecimal extraAmount = pricePolicy.getExtraHourPrice().multiply(BigDecimal.valueOf(extraHours));
+            fee = pricePolicy.getBasePrice().add(extraAmount).setScale(2, RoundingMode.HALF_UP);
+        }
+
+        // Đảm bảo mức phí tối thiểu cho một phiên gửi xe là 10,000 VND
+        if (fee.compareTo(BigDecimal.valueOf(10000)) < 0) {
+            return BigDecimal.valueOf(10000);
+        }
+        return fee;
+    }
+
+    @Transactional
+    public VnpayReturnResponse handleVnPayCallback(Map<String, String> params) {
+        boolean isValidSig = vnPayService.verifySignature(params);
+        if (!isValidSig) {
+            return VnpayReturnResponse.builder()
+                    .validSignature(false)
+                    .success(false)
+                    .message("Chữ ký không hợp lệ")
+                    .build();
+        }
+
+        if (!vnPayService.isCorrectTmnCode(params)) {
+            return VnpayReturnResponse.builder()
+                    .validSignature(true)
+                    .success(false)
+                    .message("Mã TMN không khớp")
+                    .build();
+        }
+
+        String txnRef = params.get("vnp_TxnRef");
+        String responseCode = params.get("vnp_ResponseCode");
+        String vnpTxnNo = params.get("vnp_TransactionNo");
+        String bankCode = params.get("vnp_BankCode");
+
+        Payment payment = paymentRepository.findByTransactionRefForUpdate(txnRef)
+                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy thông tin thanh toán: " + txnRef));
+
+        if (payment.getPaymentStatus() == PaymentStatus.PAID) {
+            return VnpayReturnResponse.builder()
+                    .validSignature(true)
+                    .success(true)
+                    .transactionRef(txnRef)
+                    .vnpTransactionNo(payment.getVnpTransactionNo())
+                    .responseCode(payment.getResponseCode())
+                    .message("Thanh toán đã được xác nhận thành công trước đó")
+                    .build();
+        }
+
+        boolean isSuccess = "00".equals(responseCode);
+        payment.setVnpTransactionNo(vnpTxnNo);
+        payment.setBankCode(bankCode);
+        payment.setResponseCode(responseCode);
+
+        ParkingSession session = payment.getParkingSession();
+
+        if (isSuccess) {
+            payment.setPaymentStatus(PaymentStatus.PAID);
+            payment.setPaidAt(LocalDateTime.now());
+
+            if (session != null) {
+                session.setStatus(ParkingSessionStatus.COMPLETED);
+                
+                ParkingCard card = session.getParkingCard();
+                if (card != null) {
+                    card.setStatus(ParkingCardStatus.AVAILABLE);
+                    parkingCardRepository.save(card);
+                }
+                parkingSessionRepository.save(session);
+            }
+            paymentRepository.save(payment);
+
+            return VnpayReturnResponse.builder()
+                    .validSignature(true)
+                    .success(true)
+                    .transactionRef(txnRef)
+                    .vnpTransactionNo(vnpTxnNo)
+                    .responseCode(responseCode)
+                    .message("Thanh toán thành công. Phiên gửi xe đã kết thúc.")
+                    .build();
+        } else {
+            payment.setPaymentStatus(PaymentStatus.FAILED);
+            paymentRepository.save(payment);
+
+            return VnpayReturnResponse.builder()
+                    .validSignature(true)
+                    .success(false)
+                    .transactionRef(txnRef)
+                    .vnpTransactionNo(vnpTxnNo)
+                    .responseCode(responseCode)
+                    .message("Thanh toán thất bại.")
+                    .build();
+        }
+    }
+
+    @Transactional
+    public Map<String, String> handleVnPayIpn(Map<String, String> params) {
+        Map<String, String> response = new HashMap<>();
+        try {
+            if (!vnPayService.verifySignature(params)) {
+                response.put("RspCode", "97");
+                response.put("Message", "Invalid signature");
+                return response;
+            }
+
+            if (!vnPayService.isCorrectTmnCode(params)) {
+                response.put("RspCode", "99");
+                response.put("Message", "Incorrect Merchant TMN Code");
+                return response;
+            }
+
+            String txnRef = params.get("vnp_TxnRef");
+            String responseCode = params.get("vnp_ResponseCode");
+            String vnpTxnNo = params.get("vnp_TransactionNo");
+            String bankCode = params.get("vnp_BankCode");
+            String vnpAmountStr = params.get("vnp_Amount");
+
+            Payment payment = paymentRepository.findByTransactionRefForUpdate(txnRef).orElse(null);
+            if (payment == null) {
+                response.put("RspCode", "01");
+                response.put("Message", "Order not found");
+                return response;
+            }
+
+            BigDecimal expectedAmount = payment.getAmount();
+            BigDecimal receivedAmount = vnPayService.convertVnPayAmount(vnpAmountStr);
+            if (expectedAmount.compareTo(receivedAmount) != 0) {
+                response.put("RspCode", "04");
+                response.put("Message", "Invalid amount");
+                return response;
+            }
+
+            if (payment.getPaymentStatus() == PaymentStatus.PAID || payment.getPaymentStatus() == PaymentStatus.FAILED) {
+                response.put("RspCode", "02");
+                response.put("Message", "Order already confirmed");
+                return response;
+            }
+
+            boolean isSuccess = "00".equals(responseCode);
+            payment.setVnpTransactionNo(vnpTxnNo);
+            payment.setBankCode(bankCode);
+            payment.setResponseCode(responseCode);
+            
+            ParkingSession session = payment.getParkingSession();
+
+            if (isSuccess) {
+                payment.setPaymentStatus(PaymentStatus.PAID);
+                payment.setPaidAt(LocalDateTime.now());
+
+                if (session != null) {
+                    session.setStatus(ParkingSessionStatus.COMPLETED);
+                    ParkingCard card = session.getParkingCard();
+                    if (card != null) {
+                        card.setStatus(ParkingCardStatus.AVAILABLE);
+                        parkingCardRepository.save(card);
+                    }
+                    parkingSessionRepository.save(session);
+                }
+            } else {
+                payment.setPaymentStatus(PaymentStatus.FAILED);
+            }
+            paymentRepository.save(payment);
+
+            response.put("RspCode", "00");
+            response.put("Message", "Confirm Success");
+
+        } catch (Exception e) {
+            response.put("RspCode", "99");
+            response.put("Message", "Unknown error: " + e.getMessage());
+        }
+
+        return response;
+    }
+}
