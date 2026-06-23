@@ -45,6 +45,7 @@ public class PaymentService {
     public GuestCheckOutResponse processCheckOutPayment(ParkingSession parkingSession, PaymentMethod paymentMethod, String clientIp) {
         // b1: kiểm tra chưa thanh toán
         boolean paymentExists = paymentRepository.existsByParkingSessionParkingSessionId(parkingSession.getParkingSessionId());
+        Payment payment;
 
         if (paymentExists) {
             Payment existingPayment = paymentRepository.findByParkingSessionParkingSessionId(parkingSession.getParkingSessionId())
@@ -52,10 +53,12 @@ public class PaymentService {
             if (existingPayment != null && existingPayment.getPaymentStatus() == PaymentStatus.PAID) {
                 throw new ParkingSessionException("Parking session has already been paid");
             }
-            if (existingPayment != null && existingPayment.getPaymentStatus() == PaymentStatus.PENDING) {
-                paymentRepository.delete(existingPayment);
-                paymentRepository.flush();
-            }
+            // Tái sử dụng bản ghi cũ chưa thanh toán thành công
+            payment = existingPayment;
+        } else {
+            // Tạo bản ghi mới nếu chưa tồn tại
+            payment = new Payment();
+            payment.setParkingSession(parkingSession);
         }
 
         // b2: chính sách tính giá
@@ -68,15 +71,20 @@ public class PaymentService {
         // b3: tính phí
         BigDecimal totalAmount = caculateParkingFee(parkingSession.getCheckInTime(), checkOutTime, pricePolicy);
 
-        // b4: tạo payment
-        Payment payment = new Payment();
+        // b4: cập nhật thông tin payment
         payment.setAmount(totalAmount);
         payment.setPaymentMethod(paymentMethod);
-        payment.setParkingSession(parkingSession);
         
-        // tạo transactionRef
+        // Tạo transactionRef mới cho mỗi lượt checkout
         String txnRef = "TXN_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
         payment.setTransactionRef(txnRef);
+
+        // Reset các thông tin phản hồi từ cổng thanh toán của lượt trước (nếu có)
+        payment.setBankCode(null);
+        payment.setResponseCode(null);
+        payment.setVnpTransactionNo(null);
+        payment.setPaidAt(null);
+        payment.setPaymentExpiresAt(null);
 
         GuestCheckOutResponse.GuestCheckOutResponseBuilder responseBuilder = GuestCheckOutResponse.builder()
                 .parkingSessionId(parkingSession.getParkingSessionId())
@@ -96,10 +104,10 @@ public class PaymentService {
             ParkingCard parkingCard = parkingSession.getParkingCard();
             parkingCard.setStatus(ParkingCardStatus.AVAILABLE);
 
+            // Lưu payment trước để tránh lỗi nhân đôi câu lệnh INSERT do hiệu ứng cascade
+            payment = paymentRepository.save(payment);
             parkingSessionRepository.save(parkingSession);
             parkingCardRepository.save(parkingCard);
-
-            payment = paymentRepository.save(payment);
 
             responseBuilder.paymentId(payment.getPaymentId())
                     .paymentStatus(PaymentStatus.PAID)

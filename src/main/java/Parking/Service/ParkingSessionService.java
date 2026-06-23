@@ -173,6 +173,7 @@ public class ParkingSessionService {
             }
 
             // b3: chuyen giao cho PaymentService de tinh tien va thanh toan
+            System.out.println(parkingSession + " " + request.getPaymentMethod() + " " + clientIp);
             return paymentService.processCheckOutPayment(parkingSession, request.getPaymentMethod(), clientIp);
         }
 
