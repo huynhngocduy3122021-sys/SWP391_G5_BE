@@ -41,7 +41,10 @@ import Parking.Model.Payment;
 import Parking.Model.PricePolicy;
 import Parking.Model.Vehicle;
 import Parking.Model.VehicleType;
+import Parking.Model.VehicleImage;
+import Parking.Model.VehicleImageType;
 import java.util.List;
+import java.util.ArrayList;
 
 
 @Service
@@ -177,6 +180,38 @@ public class ParkingSessionService {
             return paymentService.processCheckOutPayment(parkingSession, request.getPaymentMethod(), clientIp);
         }
 
+        public ParkingSessionResponse getActiveSessionByCard(String cardCode) {
+            String normalizedCardCode = normalizeCardCode(cardCode);
+
+            // Tìm session ACTIVE tương ứng với cardCode
+            ParkingSession parkingSession =
+                    parkingSessionRepository.findFirstByParkingCardCardCodeIgnoreCaseAndStatus(normalizedCardCode, ParkingSessionStatus.ACTIVE)
+                            .orElseThrow(() -> new ParkingSessionException("Active parking session not found"));
+
+            ParkingSessionResponse response = convertToResponse(parkingSession);
+
+            // Tính toán tạm tính phí gửi xe dựa trên chính sách giá hiện hành đến thời điểm hiện tại
+            try {
+                Long vehicleTypeId = parkingSession.getVehicle().getVehicleType().getVehicleTypeId();
+                PricePolicy pricePolicy = pricePolicyRepository
+                        .findFirstByVehicleTypeVehicleTypeIdAndActiveTrueOrderByPricePolicyIdDesc(vehicleTypeId)
+                        .orElse(null);
+
+                if (pricePolicy != null) {
+                    BigDecimal tempFee = paymentService.caculateParkingFee(
+                            parkingSession.getCheckInTime(),
+                            LocalDateTime.now(),
+                            pricePolicy
+                    );
+                    response.setTotalAmount(tempFee);
+                }
+            } catch (Exception e) {
+                // Nếu tính toán lỗi (chưa cấu hình giá,...), giữ nguyên mức phí mặc định
+            }
+
+            return response;
+        }
+
 
     public List<ParkingSessionResponse> getAllParkingSession() {
         List<ParkingSession> parkingSessions = parkingSessionRepository.findAll();
@@ -197,6 +232,23 @@ public class ParkingSessionService {
 
         Payment payment = parkingSession.getPayment();
 
+        List<Long> vehicleImageIds = new ArrayList<>();
+        List<String> imageUrls = new ArrayList<>();
+        if (parkingSession.getVehicleImages() != null) {
+            List<VehicleImage> checkInImages = parkingSession.getVehicleImages().stream()
+                    .filter(img -> img.getImageType() == VehicleImageType.CHECK_IN)
+                    .toList();
+
+            if (checkInImages.isEmpty()) {
+                checkInImages = parkingSession.getVehicleImages();
+            }
+
+            for (VehicleImage img : checkInImages) {
+                vehicleImageIds.add(img.getVehicleImageId());
+                imageUrls.add(img.getImageUrl());
+            }
+        }
+
         return ParkingSessionResponse.builder()
             .parkingSessionId(parkingSession.getParkingSessionId())
             .parkingBranchId(parkingBranch.getParkingBranchId())
@@ -215,6 +267,8 @@ public class ParkingSessionService {
             .sessionStatus( parkingSession.getStatus())
             .paymentMethod(payment == null? null: payment.getPaymentMethod())
             .paymentStatus(payment == null ? null: payment.getPaymentStatus())
+            .vehicleImageIds(vehicleImageIds)
+            .imageUrls(imageUrls)
             .build();
     }
 
