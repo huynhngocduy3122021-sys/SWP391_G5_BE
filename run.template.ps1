@@ -1,7 +1,7 @@
 # PowerShell Script để thiết lập biến môi trường và chạy ứng dụng Spring Boot
 # Chạy script bằng cách mở PowerShell tại thư mục dự án và gõ: .\run.ps1
 
-# Cấu hình Cloudinary (Lấy từ thông tin bạn cung cấp)
+# Cấu hình Cloudinary (Thay bằng thông tin tài khoản Cloudinary của team/bạn)
 $env:CLOUDINARY_CLOUD_NAME="du2om5fxt"        
 $env:CLOUDINARY_API_KEY="537718225398428" 
 $env:CLOUDINARY_API_SECRET="OrTOmLWLm88RSpT4_JnJIDGgGXk"
@@ -11,9 +11,9 @@ $env:VNPAY_ENABLED="true"
 $env:VNPAY_TMN_CODE="K086N71M"        # Thay bằng TMN_CODE thực tế của bạn
 $env:VNPAY_HASH_SECRET="CIHEVP5OH4WMTSDZYHF0QBGA1Y1C1OBU"  # Thay bằng HASH_SECRET thực tế của bạn
 
-# URL Ngrok (Thay thế bằng URL ngrok mới nếu bạn không dùng static domain)
-$env:VNPAY_RETURN_URL="https://bullpen-viewer-overfill.ngrok-free.dev/api/payments/vnpay-return"
-$env:VNPAY_IPN_URL="https://bullpen-viewer-overfill.ngrok-free.dev/api/payments/vnpay-ipn"
+# URL Ngrok (Thay thế bằng URL ngrok của bạn)
+$env:VNPAY_RETURN_URL="http://localhost:5173/staff/exit"
+$env:VNPAY_IPN_URL="https://[YOUR_NGROK_SUBDOMAIN].ngrok-free.dev/api/payments/vnpay-ipn"
 
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host " Đã thiết lập các biến môi trường thành công! " -ForegroundColor Green

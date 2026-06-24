@@ -1,0 +1,16 @@
+# Maven build target
+target/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# VS Code
+.vscode/
+
+# Custom developer local scripts
+run.ps1
+**/application-local.properties
