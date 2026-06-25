@@ -30,11 +30,14 @@ public interface ParkingSessionRepository extends JpaRepository<ParkingSession,L
             ParkingSessionStatus status
     );
 
+    // khá phiên gửi xe để tránh 2 request cùng lúc
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<ParkingSession>
     findFirstByParkingCardCardCodeIgnoreCaseAndStatus(
             String cardCode,
             ParkingSessionStatus status
     );
+
+   
     
 }

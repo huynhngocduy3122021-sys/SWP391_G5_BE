@@ -63,7 +63,8 @@ public class SecurityConfig {
                         "/api/price-policies/**",
                         "/api/parking-session/**",
                         "/api/parking-branches/**",
-                        "/api/parking-floors/**"
+                        "/api/parking-floors/**",
+                        "/api/payments/**"
                         
                 ).permitAll()
 

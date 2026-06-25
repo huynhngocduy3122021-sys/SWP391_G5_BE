@@ -23,6 +23,7 @@ import Parking.Repository.VehicleRepository;
 import Parking.Repository.VehicleTypeRepository;
 import Parking.dto.request.GuestCheckInRequest;
 import Parking.dto.request.GuestCheckOutRequest;
+import Parking.dto.response.GuestCheckOutResponse;
 import Parking.dto.response.ParkingSessionResponse;
 import Parking.dto.response.UserResponse;
 import Parking.enums.ParkingCardStatus;
@@ -62,6 +63,8 @@ public class ParkingSessionService {
     private final PricePolicyRepository pricePolicyRepository;
 
     private final PaymentRepository paymentRepository;
+
+    private final PaymentService paymentService;
 
     public ParkingSessionResponse guestCheckIn(GuestCheckInRequest request) { // hàm tạo guest check in
         
@@ -152,74 +155,26 @@ public class ParkingSessionService {
             parkingCardRepository.save(parkingCard);
 
             return convertToResponse(parkingSession);
-
-        }
-    public ParkingSessionResponse guestCheckOut(GuestCheckOutRequest request) { // hàm check out
-       
-        String cardCode = normalizeCardCode(request.getCardCode());
-
-        String exitLicensePlate = normalizeLicensePlate(request.getLicensePlate());
-        // b1 : tim va khoa session active
-        ParkingSession parkingSession =
-                parkingSessionRepository.findFirstByParkingCardCardCodeIgnoreCaseAndStatus(cardCode,ParkingSessionStatus.ACTIVE)
-                    .orElseThrow(() -> new ParkingSessionException("Active parking session not found"));
-        //b2 doi chieu ban so
-             String storedLicensePlate = normalizeLicensePlate(parkingSession.getVehicle().getLicensePlate());
-
-        if (!storedLicensePlate.equals(exitLicensePlate)) {
-            throw new ParkingSessionException("Exit license plate does not match entry license plate");
-        }
-        //b3: kiem tra chua thanh toan
-        boolean paymentExists = paymentRepository.existsByParkingSessionParkingSessionId(parkingSession.getParkingSessionId());
-
-        if (paymentExists) {
-            throw new ParkingSessionException("Parking session has already been paid");
         }
 
-        //b4 : chinh sach tinh gia
-        Long vehicleTypeId =
-                parkingSession
-                    .getVehicle()
-                    .getVehicleType()
-                    .getVehicleTypeId();
+        public GuestCheckOutResponse guestCheckOut(GuestCheckOutRequest request, String clientIp) { // hàm check out
+            String cardCode = normalizeCardCode(request.getCardCode());
+            String exitLicensePlate = normalizeLicensePlate(request.getLicensePlate());
 
-        PricePolicy pricePolicy = pricePolicyRepository.findFirstByVehicleTypeVehicleTypeIdAndActiveTrueOrderByPricePolicyIdDesc(vehicleTypeId)
-                    .orElseThrow(() -> new ParkingSessionException("Active price policy not found" ));
+            // b1 : tim va khoa session active
+            ParkingSession parkingSession =
+                    parkingSessionRepository.findFirstByParkingCardCardCodeIgnoreCaseAndStatus(cardCode,ParkingSessionStatus.ACTIVE)
+                        .orElseThrow(() -> new ParkingSessionException("Active parking session not found"));
+            //b2 doi chieu ban so
+            String storedLicensePlate = normalizeLicensePlate(parkingSession.getVehicle().getLicensePlate());
 
-        LocalDateTime checkOutTime = LocalDateTime.now();
-        // b5: tinh phi
-         BigDecimal totalAmount = caculateParkingFee(parkingSession.getCheckInTime(),checkOutTime,pricePolicy);
+            if (!storedLicensePlate.equals(exitLicensePlate)) {
+                throw new ParkingSessionException("Exit license plate does not match entry license plate");
+            }
 
-         // b6 : hoan tat session
-
-         parkingSession.setCheckOutTime(checkOutTime);
-
-        parkingSession.setTotalAmount(totalAmount);
-
-        parkingSession.setStatus( ParkingSessionStatus.COMPLETED );
-        // b7 tao payment
-        Payment payment = new Payment();
-
-        payment.setAmount(totalAmount);
-        payment.setPaymentMethod(request.getPaymentMethod());
-        payment.setPaymentStatus(PaymentStatus.PAID);
-        payment.setPaidAt(checkOutTime);
-        payment.setParkingSession( parkingSession );
-        // dong bo 2 chieu
-         parkingSession.setPayment(payment);
-
-         // b8 : tra the ve AVAILABLE
-        ParkingCard parkingCard = parkingSession.getParkingCard();
-
-        parkingCard.setStatus(ParkingCardStatus.AVAILABLE);
-
-        // parking sesion có cascade ALL vs payment , nên save sesion sẽ lưu luôn payment
-
-        parkingSessionRepository.save(parkingSession);
-
-        parkingCardRepository.save( parkingCard);
-        return convertToResponse(parkingSession);
-    }
+            // b3: chuyen giao cho PaymentService de tinh tien va thanh toan
+            return paymentService.processCheckOutPayment(parkingSession, request.getPaymentMethod(), clientIp);
+        }
 
 
     public List<ParkingSessionResponse> getAllParkingSession() {
@@ -228,57 +183,6 @@ public class ParkingSessionService {
                     .map(this::convertToResponse) // chuyển đổi từng ParkingSession thành ParkingSessionReponse
                     .collect(Collectors.toList()); // thu thập kết quả vào một List<ParkingSessionReponse> và trả về
     }
-    // hàm tính chi phí gửi xe
-    private BigDecimal caculateParkingFee( LocalDateTime checkInTime,LocalDateTime checkOutTime,PricePolicy pricePolicy
-    ) {
-        if (checkInTime == null) {
-            throw new ParkingSessionException("Check-in time is missing");
-        }
-
-        if (pricePolicy.getBasePrice() == null|| pricePolicy.getExtraHourPrice() == null|| pricePolicy.getBaseDurationMinutes() == null) {
-
-            throw new ParkingSessionException("Price policy is invalid");
-        }
-
-        if (pricePolicy.getBaseDurationMinutes() <= 0) {
-            throw new ParkingSessionException("Base duration must be greater than zero");
-        }
-
-        if (pricePolicy.getBasePrice().compareTo(BigDecimal.ZERO) < 0|| pricePolicy.getExtraHourPrice().compareTo(BigDecimal.ZERO) < 0) {
-                        throw new ParkingSessionException("Parking price cannot be negative");
-        }
-
-        long totalMinutes = Duration.between(checkInTime,checkOutTime ).toMinutes();
-
-        totalMinutes = Math.max(totalMinutes, 0);
-
-        /*
-         * Nếu thời gian gửi nhỏ hơn hoặc bằng
-         * baseDurationMinutes thì chỉ thu basePrice.
-         */
-        if (totalMinutes <= pricePolicy.getBaseDurationMinutes()) {
-
-            return pricePolicy.getBasePrice().setScale(2,RoundingMode.HALF_UP);
-        }
-
-        /*
-         * Phần thời gian vượt quá gói cơ bản.
-         */
-        long extraMinutes = totalMinutes - pricePolicy.getBaseDurationMinutes();
-
-        /*
-         * Làm tròn lên mỗi giờ.
-         *
-         * 1 phút  -> 1 giờ
-         * 60 phút -> 1 giờ
-         * 61 phút -> 2 giờ
-         */
-        long extraHours = (extraMinutes + 59) / 60;
-
-        BigDecimal extraAmount = pricePolicy.getExtraHourPrice().multiply(BigDecimal.valueOf(extraHours));
-
-        return pricePolicy.getBasePrice().add(extraAmount).setScale(2, RoundingMode.HALF_UP);
-        }
     
     
     private ParkingSessionResponse convertToResponse(ParkingSession parkingSession) {

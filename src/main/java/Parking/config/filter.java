@@ -51,7 +51,8 @@ public class filter extends OncePerRequestFilter {
                 "/api/parking-session/**",
                 "/api/auth/reset-password",
                 "/api/parking-branches/**",
-                "/api/parking-floors/**"     
+                "/api/parking-floors/**",
+                "/api/payments/**"     
     );
 
             public boolean isPublicAPI(String uri) {
@@ -85,18 +86,28 @@ public class filter extends OncePerRequestFilter {
             String token = getToken(request);
             if(token == null) {
                 resolver.resolveException(request , response , null , new AuthenticationException("Empty token!"));
+                return;
             }
             // co token
             // => verify lai cai token do
             User member = null;
             try {
                 member = tokenService.extractToken(token);
+                if (member == null) {
+                    resolver.resolveException(request , response , null , new AuthenticationException("User not found!"));
+                    return;
+                }
             } catch (ExpiredJwtException expiredJwtException) {
                 //1. token het hang
                 resolver.resolveException(request , response , null , new AuthenticationException("Expired token!"));
+                return;
             } catch (MalformedJwtException malformedJwtException) {
                 //2. sai token
                 resolver.resolveException(request, response, null, new AuthenticationException("Invalid token!"));
+                return;
+            } catch (Exception exception) {
+                resolver.resolveException(request, response, null, new AuthenticationException("Authentication failed: " + exception.getMessage()));
+                return;
             }
             // luu thong tin vua request
             // luu vao session
