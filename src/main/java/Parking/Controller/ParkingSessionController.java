@@ -46,6 +46,15 @@ public class ParkingSessionController {
         List<ParkingSessionResponse> listParkingSession = parkingSessionService.getAllParkingSession();
         return ResponseEntity.ok(listParkingSession);
     }
+    @PostMapping("/booking/check-in")
+    @Operation(summary = "Check-in cho xe đã đặt chỗ trước bằng mã booking và mã thẻ từ")
+    public ResponseEntity<ParkingSessionResponse> bookingCheckIn(
+            @RequestParam String bookingCode,
+            @RequestParam String cardCode
+    ) {
+        return ResponseEntity.ok(parkingSessionService.bookingCheckIn(bookingCode, cardCode));
+    }
+
     @PostMapping("/guest/check-out")
     @Operation(summary = "hàm check out  bãi xe")
     public ResponseEntity<GuestCheckOutResponse> guestCheckOut(
