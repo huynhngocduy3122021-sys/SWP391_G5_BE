@@ -13,7 +13,7 @@ $env:VNPAY_HASH_SECRET="CIHEVP5OH4WMTSDZYHF0QBGA1Y1C1OBU"  # Thay bằng HASH_SE
 
 # URL Ngrok (Thay thế bằng URL ngrok mới nếu bạn không dùng static domain)
 $env:VNPAY_RETURN_URL="https://bullpen-viewer-overfill.ngrok-free.dev/api/payments/vnpay-return"
-$env:VNPAY_IPN_URL="https://bullpen-viewer-overfill.ngrok-free.dev/api/payments/vnpay-ipn"
+$env:VNPAY_IPN_URL="https://skimmed-reseal-oxidize.ngrok-free.dev/api/payments/vnpay-ipn"
 
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host " Đã thiết lập các biến môi trường thành công! " -ForegroundColor Green
