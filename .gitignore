@@ -1,1 +1,9 @@
-﻿target/
+target/
+run.ps1
+.idea/
+.vscode/
+*.iml
+*.log
+!hs_err_pid*.log
+hs_err_pid*.log
+.DS_Store

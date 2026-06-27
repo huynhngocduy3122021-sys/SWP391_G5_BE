@@ -53,11 +53,24 @@ public class UserService implements UserDetailsService  {
         User newUser = modelMapper.map(registerRequest, User.class);
         User savedUser = userRepository.save(newUser); // Lưu người dùng vào database
         
-
         return convertToResponse(savedUser);
-        
-        
     } 
+
+    public UserResponse adminCreateUser(Parking.dto.request.AdminCreateUserRequest request) {
+        if (userRepository.existsByUserEmail(request.getUserEmail())) {
+            throw new AuthenticationException("Email already exists");
+        }
+        if (userRepository.existsByUserPhone(request.getUserPhone())) {
+            throw new AuthenticationException("Phone number already exists");
+        }
+        
+        User newUser = modelMapper.map(request, User.class);
+        newUser.setUserPassword(passwordEncoder.encode(request.getUserPassword()));
+        newUser.setUserRole(request.getUserRole());
+        
+        User savedUser = userRepository.save(newUser);
+        return convertToResponse(savedUser);
+    }
 
         public UserResponse login(LoginRequest loginRequest) {
         try {
