@@ -21,6 +21,8 @@ import Parking.Repository.PaymentRepository;
 import Parking.Repository.PricePolicyRepository;
 import Parking.Repository.VehicleRepository;
 import Parking.Repository.VehicleTypeRepository;
+import Parking.Repository.BookingRepository;
+import Parking.Model.Booking;
 import Parking.dto.request.GuestCheckInRequest;
 import Parking.dto.request.GuestCheckOutRequest;
 import Parking.dto.response.GuestCheckOutResponse;
@@ -28,6 +30,7 @@ import Parking.dto.response.ParkingSessionResponse;
 import Parking.dto.response.UserResponse;
 import Parking.enums.ParkingCardStatus;
 import Parking.enums.ParkingSessionStatus;
+import Parking.enums.BookingStatus;
 import Parking.enums.PaymentStatus;
 import Parking.enums.VehicleSource;
 import jakarta.transaction.Transactional;
@@ -62,6 +65,8 @@ public class ParkingSessionService {
     private final VehicleRepository vehicleRepository;
 
     private final VehicleTypeRepository vehicleTypeRepository;
+
+    private final BookingRepository bookingRepository;
 
     private final PricePolicyRepository pricePolicyRepository;
 
@@ -152,6 +157,21 @@ public class ParkingSessionService {
             parkingSession.setStatus(ParkingSessionStatus.ACTIVE);
 
             parkingSession =parkingSessionRepository.save(parkingSession);
+
+            // b9.5 : check and link active booking
+            List<Booking> bookings = bookingRepository.findByVehicleLicensePlateIgnoreCaseAndStatus(licesePlate, BookingStatus.CONFIRMED);
+            LocalDateTime now = LocalDateTime.now();
+            for (Booking b : bookings) {
+                if (!now.isBefore(b.getExpectedArrivalTime().minusMinutes(15)) && !now.isAfter(b.getHoldUntil())) {
+                    b.setStatus(BookingStatus.COMPLETED);
+                    b.setParkingSession(parkingSession);
+                    b.setCompletedAt(now);
+                    b.setUpdatedAt(now);
+                    bookingRepository.save(b);
+                    break;
+                }
+            }
+
             //b10 : trang thay the
             parkingCard.setStatus(ParkingCardStatus.IN_USE);
 
@@ -255,8 +275,8 @@ public class ParkingSessionService {
             .parkingBranchName(parkingBranch.getBranchName())
             .vehicleId(vehicle.getVehiclesId())
             .licensePlate(vehicle.getLicensePlate())
-            .vehicleColor(vehicle.getVehicleColor())
-            .vehicleBrand(vehicle.getVehicleBrand())
+            .vehicleColor(vehicle.getVehicleColor() != null ? vehicle.getVehicleColor() : "Không rõ")
+            .vehicleBrand(vehicle.getVehicleBrand() != null ? vehicle.getVehicleBrand() : "Không rõ")
             .vehicleTypeId(vehicleType.getVehicleTypeId())
             .vehicleTypeName( vehicleType.getTypeName())
             .parkingCardId(parkingCard.getParkingCardId())
@@ -309,6 +329,78 @@ public class ParkingSessionService {
         vehicle.setVehicleType(vehicleType);
 
         return vehicleRepository.save(vehicle);
+    }
+
+    public ParkingSessionResponse bookingCheckIn(String bookingCode, String cardCode) {
+        cardCode = normalizeCardCode(cardCode);
+
+        // 1. Tìm và khóa thẻ
+        ParkingCard parkingCard = parkingCardRepository.findByCardCodeIgnoreCase(cardCode)
+                .orElseThrow(() -> new ParkingSessionException("Thẻ gửi xe không tồn tại"));
+        if (parkingCard.getStatus() != ParkingCardStatus.AVAILABLE) {
+            throw new ParkingSessionException("Thẻ gửi xe hiện không khả dụng");
+        }
+
+        // 2. Tìm booking
+        Booking booking = bookingRepository.findByBookingCodeIgnoreCase(bookingCode.trim())
+                .orElseThrow(() -> new ParkingSessionException("Mã đặt chỗ không tồn tại"));
+
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new ParkingSessionException("Đặt chỗ hiện có trạng thái: " + booking.getStatus() + ", không thể check-in");
+        }
+
+        // Kiểm tra thời gian hẹn
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isBefore(booking.getExpectedArrivalTime().minusMinutes(60))) {
+            throw new ParkingSessionException("Quá sớm! Thời gian check-in hợp lệ bắt đầu từ: " + booking.getExpectedArrivalTime().minusMinutes(15));
+        }
+        if (now.isAfter(booking.getHoldUntil())) {
+            throw new ParkingSessionException("Đặt chỗ đã hết hạn giữ chỗ lúc: " + booking.getHoldUntil());
+        }
+
+        ParkingBranch parkingBranch = booking.getParkingBranch();
+        if (!parkingBranch.isActive()) {
+            throw new ParkingSessionException("Chi nhánh bãi xe hiện đang tạm đóng");
+        }
+
+        // Kiểm tra xem thẻ có khớp chi nhánh không
+        if (parkingCard.getParkingBranch() == null || !parkingCard.getParkingBranch().getParkingBranchId().equals(parkingBranch.getParkingBranchId())) {
+            throw new ParkingSessionException("Thẻ gửi xe không thuộc chi nhánh này");
+        }
+
+        // Kiểm tra xem thẻ/xe có session hoạt động nào không
+        boolean cardHasActiveSession = parkingSessionRepository.existsByParkingCardParkingCardIdAndStatus(parkingCard.getParkingCardId(), ParkingSessionStatus.ACTIVE);
+        if (cardHasActiveSession) {
+            throw new ParkingSessionException("Thẻ gửi xe đã được sử dụng");
+        }
+
+        Vehicle vehicle = booking.getVehicle();
+        boolean vehicleHasActiveSession = parkingSessionRepository.existsByVehicleVehiclesIdAndStatus(vehicle.getVehiclesId(), ParkingSessionStatus.ACTIVE);
+        if (vehicleHasActiveSession) {
+            throw new ParkingSessionException("Phương tiện này đã có một phiên gửi xe đang hoạt động");
+        }
+
+        // 3. Tạo parking session
+        ParkingSession parkingSession = new ParkingSession();
+        parkingSession.setParkingBranch(parkingBranch);
+        parkingSession.setVehicle(vehicle);
+        parkingSession.setParkingCard(parkingCard);
+        parkingSession.setCheckInTime(now);
+        parkingSession.setStatus(ParkingSessionStatus.ACTIVE);
+        parkingSession = parkingSessionRepository.save(parkingSession);
+
+        // 4. Cập nhật booking sang COMPLETED
+        booking.setStatus(BookingStatus.COMPLETED);
+        booking.setParkingSession(parkingSession);
+        booking.setCompletedAt(now);
+        booking.setUpdatedAt(now);
+        bookingRepository.save(booking);
+
+        // 5. Cập nhật trạng thái thẻ sang IN_USE
+        parkingCard.setStatus(ParkingCardStatus.IN_USE);
+        parkingCardRepository.save(parkingCard);
+
+        return convertToResponse(parkingSession);
     }
 }
 

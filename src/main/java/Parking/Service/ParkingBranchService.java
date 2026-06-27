@@ -8,6 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import Parking.Model.ParkingBranch;
 import Parking.Repository.ParkingBranchRepository;
+import Parking.Repository.ParkingZoneRepository;
+import Parking.Repository.ParkingSessionRepository;
+import Parking.enums.ParkingSessionStatus;
 import Parking.dto.request.CreateParkingBranchRequest;
 import Parking.dto.request.UpdateParkingBranchRequest;
 import Parking.dto.response.ParkingBranchResponse;
@@ -19,6 +22,8 @@ import lombok.RequiredArgsConstructor;
 public class ParkingBranchService {
 
     private final ParkingBranchRepository parkingBranchRepository;
+    private final ParkingZoneRepository parkingZoneRepository;
+    private final ParkingSessionRepository parkingSessionRepository;
 
     @Transactional
     // ham tao branch
@@ -90,13 +95,24 @@ public class ParkingBranchService {
     }
 
     private ParkingBranchResponse convertBranchResponse(ParkingBranch parkingBranch) {
+        Long branchId = parkingBranch.getParkingBranchId();
+        Long totalCapacityLong = parkingZoneRepository.calculateTotalCapacityByBranch(branchId);
+        int totalCapacity = totalCapacityLong != null ? totalCapacityLong.intValue() : 0;
+
+        long activeSessionsLong = parkingSessionRepository.countByParkingBranchParkingBranchIdAndStatus(branchId, ParkingSessionStatus.ACTIVE);
+        int activeSessions = (int) activeSessionsLong;
+
+        int availableCapacity = Math.max(0, totalCapacity - activeSessions);
+
         return ParkingBranchResponse.builder()
-                .parkingBranchId(parkingBranch.getParkingBranchId())
+                .parkingBranchId(branchId)
                 .branchName(parkingBranch.getBranchName())
                 .address(parkingBranch.getAddress())
                 .phoneNumber(parkingBranch.getPhoneNumber())
                 .description(parkingBranch.getDescription())
                 .active(parkingBranch.isActive())
+                .totalCapacity(totalCapacity)
+                .availableCapacity(availableCapacity)
                 .build();
     }
 

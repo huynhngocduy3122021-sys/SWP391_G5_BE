@@ -5,6 +5,7 @@ D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Service\ParkingFloorService.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\UserRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\ChangePasswordRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Util\VnPayUtil.java
+D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Model\Booking.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Controller\ParkingCardController.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\CreateVehicleRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Model\ParkingFloor.java
@@ -41,6 +42,7 @@ D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\response\UserResponse.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Repository\VehicleImageRepository.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Repository\ParkingSessionRepository.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Model\Slot.java
+D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Service\BookingService.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\UpdateUserRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\CreateParkingFloorRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\CreateParkingBranchRequest.java
@@ -56,10 +58,12 @@ D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\response\ParkingSessionRespo
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\response\VnpayReturnResponse.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Model\ParkingSession.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\GuestCheckInRequest.java
+D:\Ki7\SWP391\Index\Index\src\main\java\Parking\enums\BookingStatus.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\response\ParkingCardResponse.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Service\TokenService.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\ResetPasswordRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\config\ModelMapperConfig.java
+D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Controller\BookingController.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\UpdateParkingBranchRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Repository\SlotRepository.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Service\ParkingCardService.java
@@ -77,7 +81,11 @@ D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\response\VehicleResponse.jav
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Controller\ParkingController.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\UpdateParkingZoneRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Model\VehicleImageType.java
+D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\CreateBookingRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Service\ParkingZoneService.java
+D:\Ki7\SWP391\Index\Index\src\main\java\Parking\exception\exceptions\BookingException.java
+D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Repository\BookingRepository.java
+D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\response\BookingResponse.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Service\SlotService.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Service\UserService.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\config\filter.java

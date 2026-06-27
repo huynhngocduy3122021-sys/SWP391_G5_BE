@@ -5,10 +5,16 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import Parking.exception.exceptions.AuthenticationException;
+import Parking.exception.exceptions.BookingException;
 
 
 @RestControllerAdvice
 public class APIExceptionHandler {
+    @ExceptionHandler(BookingException.class)
+    public ResponseEntity<String> handleBookingException(BookingException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<String> handleAuthenticationException(AuthenticationException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getMessage());
