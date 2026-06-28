@@ -102,6 +102,10 @@ public class filter extends OncePerRequestFilter {
                     resolver.resolveException(request , response , null , new AuthenticationException("User not found!"));
                     return;
                 }
+                if (!member.isAccountNonLocked()) {
+                    resolver.resolveException(request , response , null , new AuthenticationException("Tài khoản của bạn đã bị đình chỉ do vi phạm quy định đặt giữ chỗ quá 3 lần."));
+                    return;
+                }
             } catch (ExpiredJwtException expiredJwtException) {
                 //1. token het hang
                 resolver.resolveException(request , response , null , new AuthenticationException("Expired token!"));

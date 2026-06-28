@@ -29,6 +29,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     boolean existsByUserUserIdAndStatusIn(Long userId, List<BookingStatus> statuses);
 
+    long countByUserUserIdAndStatusIn(Long userId, List<BookingStatus> statuses);
+
     boolean existsByVehicleVehiclesIdAndStatusIn(Long vehicleId, List<BookingStatus> statuses);
 
     List<Booking> findByVehicleLicensePlateIgnoreCaseAndStatus(String licensePlate, BookingStatus status);

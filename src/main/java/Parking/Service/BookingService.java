@@ -18,6 +18,7 @@ import Parking.Model.VehicleType;
 import Parking.enums.BookingStatus;
 import Parking.enums.ParkingSessionStatus;
 import Parking.Repository.BookingRepository;
+import Parking.Repository.UserRepository;
 import Parking.Repository.ParkingBranchRepository;
 import Parking.Repository.ParkingSessionRepository;
 import Parking.Repository.VehicleRepository;
@@ -32,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 public class BookingService {
 
     private final BookingRepository bookingRepository;
+    private final UserRepository userRepository;
     private final ParkingBranchRepository parkingBranchRepository;
     private final VehicleTypeRepository vehicleTypeRepository;
     private final VehicleRepository vehicleRepository;
@@ -102,11 +104,11 @@ public class BookingService {
             vehicleRepository.save(vehicle);
         }
 
-        // 6. Kiểm tra giới hạn số lượng booking active của user/xe (Rule 2.2)
-        boolean userHasActive = bookingRepository.existsByUserUserIdAndStatusIn(user.getUserId(), 
+        // 6. Kiểm tra giới hạn số lượng booking active của user (tối đa 3 booking hoạt động)
+        long activeBookingsCount = bookingRepository.countByUserUserIdAndStatusIn(user.getUserId(), 
                 List.of(BookingStatus.CONFIRMED, BookingStatus.PENDING));
-        if (userHasActive) {
-            throw new BookingException("Mỗi tài khoản người dùng chỉ được có tối đa 1 đặt chỗ đang hoạt động.");
+        if (activeBookingsCount >= 3) {
+            throw new BookingException("Mỗi tài khoản người dùng chỉ được có tối đa 3 đặt chỗ đang hoạt động. Vui lòng hạn chế đặt chỗ quá nhiều.");
         }
 
         boolean vehicleHasActive = bookingRepository.existsByVehicleVehiclesIdAndStatusIn(vehicle.getVehiclesId(), 
@@ -211,6 +213,16 @@ public class BookingService {
             booking.setExpiredAt(now);
             booking.setUpdatedAt(now);
             bookingRepository.save(booking);
+
+            // Tăng số lần vi phạm của user đặt chỗ quá hạn
+            User user = booking.getUser();
+            if (user != null) {
+                user.setViolationCount(user.getViolationCount() + 1);
+                if (user.getViolationCount() >= 3) {
+                    user.setLocked(true);
+                }
+                userRepository.save(user);
+            }
         }
     }
 
@@ -245,7 +257,6 @@ public class BookingService {
                 .expectedArrivalTime(booking.getExpectedArrivalTime())
                 .holdUntil(booking.getHoldUntil())
                 .status(booking.getStatus().name())
-                .depositAmount(booking.getDepositAmount())
                 .createdAt(booking.getCreatedAt())
                 .updatedAt(booking.getUpdatedAt())
                 .cancelledAt(booking.getCancelledAt())

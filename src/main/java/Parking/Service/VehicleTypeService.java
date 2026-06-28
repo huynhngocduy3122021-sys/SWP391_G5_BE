@@ -23,4 +23,21 @@ public class VehicleTypeService {
     public List<VehicleType> getAllVehicleTypes() {
         return vehicleTypeRepository.findAll();
     }
+
+    public VehicleType getVehicleTypeById(Long id) {
+        return vehicleTypeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Vehicle type not found with ID: " + id));
+    }
+
+    public VehicleType updateVehicleType(Long id, Parking.dto.request.UpdateVehicleTypeRequest request) {
+        VehicleType vehicleType = getVehicleTypeById(id);
+        vehicleType.setTypeName(request.getTypeName());
+        vehicleType.setDescription(request.getDescription());
+        return vehicleTypeRepository.save(vehicleType);
+    }
+
+    public void deleteVehicleType(Long id) {
+        VehicleType vehicleType = getVehicleTypeById(id);
+        vehicleTypeRepository.delete(vehicleType);
+    }
 }

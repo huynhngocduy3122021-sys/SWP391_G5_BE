@@ -49,6 +49,12 @@ public class User implements UserDetails {
     @Column
     private boolean deleted = false;
 
+    @Column(name = "violation_count", nullable = false)
+    private int violationCount = 0;
+
+    @Column(name = "is_locked", nullable = false)
+    private boolean locked = false;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + userRole.name()));
@@ -71,7 +77,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() { // hàm này dùng để biết là tài khoảng bị khoá chưa
-        return !deleted;
+        return !deleted && !locked && violationCount < 3;
     }
 
     @Override

@@ -60,6 +60,15 @@ public class UserService implements UserDetailsService  {
     } 
 
         public UserResponse login(LoginRequest loginRequest) {
+        // Kiểm tra trực tiếp xem tài khoản có bị đình chỉ do vi phạm không
+        User preCheckUser = userRepository.findByUserEmail(loginRequest.getIdentifier());
+        if (preCheckUser == null) {
+            preCheckUser = userRepository.findByUserPhone(loginRequest.getIdentifier());
+        }
+        if (preCheckUser != null && (preCheckUser.getViolationCount() >= 3 || preCheckUser.isLocked())) {
+            throw new AuthenticationException("Tài khoản của bạn đã bị đình chỉ do vi phạm quy định đặt giữ chỗ quá 3 lần.");
+        }
+
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -78,7 +87,7 @@ public class UserService implements UserDetailsService  {
             return userResponse;
 
         } catch (LockedException e) {
-            throw new AuthenticationException("Tài khoản đã bị khóa");
+            throw new AuthenticationException("Tài khoản của bạn đã bị đình chỉ do vi phạm quy định đặt giữ chỗ quá 3 lần.");
 
         } catch (DisabledException e) {
             throw new AuthenticationException("Tài khoản đã bị vô hiệu hóa");
@@ -112,6 +121,8 @@ public class UserService implements UserDetailsService  {
         response.setUserAddress(user.getUserAddress());
         response.setUserRole(user.getUserRole().name());
         response.setDeleted(user.isDeleted());
+        response.setViolationCount(user.getViolationCount());
+        response.setLocked(user.isLocked());
         return response;
     }
     // get all user
