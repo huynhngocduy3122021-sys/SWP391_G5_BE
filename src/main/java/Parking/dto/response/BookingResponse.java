@@ -1,6 +1,5 @@
 package Parking.dto.response;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import lombok.Builder;
@@ -25,7 +24,6 @@ public class BookingResponse {
     private LocalDateTime expectedArrivalTime;
     private LocalDateTime holdUntil;
     private String status;
-    private BigDecimal depositAmount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime cancelledAt;

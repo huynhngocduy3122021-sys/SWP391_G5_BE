@@ -6,6 +6,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import Parking.Model.PricePolicy;
 import Parking.Service.PricePolicyService;
 import Parking.dto.request.CreatePricePolicyRequest;
+import Parking.dto.request.UpdatePricePolicyRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -36,5 +40,27 @@ public class PricePolicyController {
     @Operation(summary = "Hàm lấy những giá giữ xe")
     public ResponseEntity<List<PricePolicy>> getAllPricePolicies() {
         return ResponseEntity.ok(pricePolicyService.getAllPricePolicies());
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Hàm lấy chi tiết một đơn giá theo ID")
+    public ResponseEntity<PricePolicy> getPricePolicyById(@PathVariable Long id) {
+        return ResponseEntity.ok(pricePolicyService.getPricePolicyById(id));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Hàm cập nhật đơn giá theo ID")
+    public ResponseEntity<PricePolicy> updatePricePolicy(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdatePricePolicyRequest request
+    ) {
+        return ResponseEntity.ok(pricePolicyService.updatePricePolicy(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Hàm xóa đơn giá theo ID")
+    public ResponseEntity<Void> deletePricePolicy(@PathVariable Long id) {
+        pricePolicyService.deletePricePolicy(id);
+        return ResponseEntity.noContent().build();
     }
 }

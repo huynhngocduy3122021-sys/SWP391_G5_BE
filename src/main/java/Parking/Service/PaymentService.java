@@ -100,9 +100,11 @@ public class PaymentService {
             parkingSession.setStatus(ParkingSessionStatus.COMPLETED);
             parkingSession.setPayment(payment);
 
-            // trả thẻ về AVAILABLE
+            // trả thẻ về AVAILABLE nếu không phải thẻ bị báo mất (LOST)
             ParkingCard parkingCard = parkingSession.getParkingCard();
-            parkingCard.setStatus(ParkingCardStatus.AVAILABLE);
+            if (parkingCard.getStatus() != ParkingCardStatus.LOST) {
+                parkingCard.setStatus(ParkingCardStatus.AVAILABLE);
+            }
 
             // Lưu payment trước để tránh lỗi nhân đôi câu lệnh INSERT do hiệu ứng cascade
             payment = paymentRepository.save(payment);
@@ -228,7 +230,7 @@ public class PaymentService {
                 session.setStatus(ParkingSessionStatus.COMPLETED);
                 
                 ParkingCard card = session.getParkingCard();
-                if (card != null) {
+                if (card != null && card.getStatus() != ParkingCardStatus.LOST) {
                     card.setStatus(ParkingCardStatus.AVAILABLE);
                     parkingCardRepository.save(card);
                 }
@@ -316,7 +318,7 @@ public class PaymentService {
                 if (session != null) {
                     session.setStatus(ParkingSessionStatus.COMPLETED);
                     ParkingCard card = session.getParkingCard();
-                    if (card != null) {
+                    if (card != null && card.getStatus() != ParkingCardStatus.LOST) {
                         card.setStatus(ParkingCardStatus.AVAILABLE);
                         parkingCardRepository.save(card);
                     }

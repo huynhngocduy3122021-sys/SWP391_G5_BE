@@ -1,6 +1,5 @@
 package Parking.Model;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import Parking.enums.BookingStatus;
@@ -62,9 +61,6 @@ public class Booking {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private BookingStatus status = BookingStatus.CONFIRMED;
-
-    @Column(name = "deposit_amount", nullable = true)
-    private BigDecimal depositAmount;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

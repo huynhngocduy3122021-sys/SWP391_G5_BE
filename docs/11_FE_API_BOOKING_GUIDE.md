@@ -48,7 +48,6 @@ Khách hàng chọn chi nhánh, loại xe, biển số xe và thời gian hẹn 
     "expectedArrivalTime": "2026-06-27T15:30:00",
     "holdUntil": "2026-06-27T16:00:00",
     "status": "CONFIRMED",
-    "depositAmount": null,
     "createdAt": "2026-06-27T13:30:00",
     "updatedAt": "2026-06-27T13:30:00",
     "cancelledAt": null,
