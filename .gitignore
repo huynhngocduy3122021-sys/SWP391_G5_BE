@@ -18,3 +18,4 @@ hs_err_pid*.log
 # Custom developer local scripts
 run.ps1
 **/application-local.properties
+run.template.ps1

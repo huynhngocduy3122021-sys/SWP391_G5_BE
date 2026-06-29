@@ -49,10 +49,10 @@ public class User implements UserDetails {
     @Column
     private boolean deleted = false;
 
-    @Column(name = "violation_count", nullable = false)
+    @Column(name = "violation_count", nullable = false, columnDefinition = "int default 0")
     private int violationCount = 0;
 
-    @Column(name = "is_locked", nullable = false)
+    @Column(name = "is_locked", nullable = false, columnDefinition = "bit default 0")
     private boolean locked = false;
 
     @Override
