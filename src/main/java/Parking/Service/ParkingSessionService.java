@@ -358,7 +358,7 @@ public class ParkingSessionService {
 
         // Kiểm tra thời gian hẹn
         LocalDateTime now = LocalDateTime.now();
-        if (now.isBefore(booking.getExpectedArrivalTime().minusMinutes(60))) {
+        if (now.isBefore(booking.getExpectedArrivalTime().minusMinutes(120))) {
             throw new ParkingSessionException("Quá sớm! Thời gian check-in hợp lệ bắt đầu từ: " + booking.getExpectedArrivalTime().minusMinutes(15));
         }
         if (now.isAfter(booking.getHoldUntil())) {

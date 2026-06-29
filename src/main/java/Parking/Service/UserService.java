@@ -23,11 +23,18 @@ import java.util.stream.Collectors;
 import Parking.exception.exceptions.AuthenticationException;
 import Parking.dto.request.ChangePasswordRequest;
 import Parking.dto.request.ResetPasswordRequest;
+import Parking.Repository.ParkingBranchRepository;
+import Parking.Model.ParkingBranch;
+import Parking.dto.request.StaffCreateRequest;
+import Parking.dto.request.ManagerCreateRequest;
+import Parking.enums.UserRole;
 
 @Service
 public class UserService implements UserDetailsService  {
     @Autowired
     private  UserRepository userRepository; // gọi repository để thao tác với database
+    @Autowired
+    private ParkingBranchRepository parkingBranchRepository;
     @Autowired
     private  PasswordEncoder passwordEncoder;
     @Autowired
@@ -70,6 +77,52 @@ public class UserService implements UserDetailsService  {
         
         User savedUser = userRepository.save(newUser);
         return convertToResponse(savedUser);
+    }
+
+    public UserResponse createStaff(StaffCreateRequest request) {
+        if (userRepository.existsByUserEmail(request.getUserEmail())) {
+            throw new AuthenticationException("Email already exists");
+        }
+        if (userRepository.existsByUserPhone(request.getUserPhone())) {
+            throw new AuthenticationException("Phone number already exists");
+        }
+        
+        ParkingBranch branch = parkingBranchRepository.findById(request.getParkingBranchId())
+                .orElseThrow(() -> new AuthenticationException("Parking branch not found"));
+
+        User newStaff = new User();
+        newStaff.setUserFullName(request.getUserFullName());
+        newStaff.setUserEmail(request.getUserEmail());
+        newStaff.setUserPhone(request.getUserPhone());
+        newStaff.setUserPassword(passwordEncoder.encode(request.getUserPassword()));
+        newStaff.setUserRole(UserRole.STAFF);
+        newStaff.setParkingBranch(branch);
+        
+        User savedStaff = userRepository.save(newStaff);
+        return convertToResponse(savedStaff);
+    }
+
+    public UserResponse createManager(ManagerCreateRequest request) {
+        if (userRepository.existsByUserEmail(request.getUserEmail())) {
+            throw new AuthenticationException("Email already exists");
+        }
+        if (userRepository.existsByUserPhone(request.getUserPhone())) {
+            throw new AuthenticationException("Phone number already exists");
+        }
+        
+        ParkingBranch branch = parkingBranchRepository.findById(request.getParkingBranchId())
+                .orElseThrow(() -> new AuthenticationException("Parking branch not found"));
+
+        User newManager = new User();
+        newManager.setUserFullName(request.getUserFullName());
+        newManager.setUserEmail(request.getUserEmail());
+        newManager.setUserPhone(request.getUserPhone());
+        newManager.setUserPassword(passwordEncoder.encode(request.getUserPassword()));
+        newManager.setUserRole(UserRole.MANAGER);
+        newManager.setParkingBranch(branch);
+        
+        User savedManager = userRepository.save(newManager);
+        return convertToResponse(savedManager);
     }
 
         public UserResponse login(LoginRequest loginRequest) {
@@ -136,6 +189,10 @@ public class UserService implements UserDetailsService  {
         response.setDeleted(user.isDeleted());
         response.setViolationCount(user.getViolationCount());
         response.setLocked(user.isLocked());
+        if (user.getParkingBranch() != null) {
+            response.setParkingBranchId(user.getParkingBranch().getParkingBranchId());
+            response.setParkingBranchName(user.getParkingBranch().getBranchName());
+        }
         return response;
     }
     // get all user
