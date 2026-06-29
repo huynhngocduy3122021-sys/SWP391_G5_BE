@@ -20,11 +20,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 @RestController
 @RequestMapping("/api/incidents")
 @RequiredArgsConstructor
 @CrossOrigin("*")
 @Tag(name = "Incident Report Controller", description = "Quản lý báo cáo và xử lý sự cố nâng cao")
+@SecurityRequirement(name = "api_key")
 public class IncidentReportController {
 
     private final IncidentReportService incidentReportService;
