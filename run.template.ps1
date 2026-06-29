@@ -1,7 +1,7 @@
 # PowerShell Script để thiết lập biến môi trường và chạy ứng dụng Spring Boot
 # Chạy script bằng cách mở PowerShell tại thư mục dự án và gõ: .\run.ps1
 
-# Cấu hình Cloudinary (Lấy từ thông tin bạn cung cấp)
+# Cấu hình Cloudinary (Thay bằng thông tin tài khoản Cloudinary của team/bạn)
 $env:CLOUDINARY_CLOUD_NAME="du2om5fxt"        
 $env:CLOUDINARY_API_KEY="537718225398428" 
 $env:CLOUDINARY_API_SECRET="OrTOmLWLm88RSpT4_JnJIDGgGXk"

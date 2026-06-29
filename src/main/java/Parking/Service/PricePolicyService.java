@@ -34,4 +34,29 @@ public class PricePolicyService {
     public List<PricePolicy> getAllPricePolicies() {
         return pricePolicyRepository.findAll();
     }
+
+    public PricePolicy getPricePolicyById(Long id) {
+        return pricePolicyRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Price policy not found with ID: " + id));
+    }
+
+    public PricePolicy updatePricePolicy(Long id, Parking.dto.request.UpdatePricePolicyRequest request) {
+        PricePolicy pricePolicy = getPricePolicyById(id);
+        VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
+                .orElseThrow(() -> new RuntimeException("Vehicle type not found with ID: " + request.getVehicleTypeId()));
+
+        pricePolicy.setPolicyName(request.getPolicyName());
+        pricePolicy.setBasePrice(request.getBasePrice());
+        pricePolicy.setBaseDurationMinutes(request.getBaseDurationMinutes());
+        pricePolicy.setExtraHourPrice(request.getExtraHourPrice());
+        pricePolicy.setActive(request.isActive());
+        pricePolicy.setVehicleType(vehicleType);
+
+        return pricePolicyRepository.save(pricePolicy);
+    }
+
+    public void deletePricePolicy(Long id) {
+        PricePolicy pricePolicy = getPricePolicyById(id);
+        pricePolicyRepository.delete(pricePolicy);
+    }
 }

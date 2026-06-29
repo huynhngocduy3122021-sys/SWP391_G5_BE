@@ -2,13 +2,7 @@ package Parking.Repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-
-import Parking.Model.ParkingBranch;
-import Parking.Model.ParkingCard;
 import Parking.Model.ParkingSession;
-import Parking.Model.Vehicle;
 import java.util.Optional;
 import Parking.enums.ParkingSessionStatus;
 import jakarta.persistence.LockModeType;
@@ -30,6 +24,11 @@ public interface ParkingSessionRepository extends JpaRepository<ParkingSession,L
             ParkingSessionStatus status
     );
 
+    long countByParkingBranchParkingBranchIdAndStatus(
+            Long parkingBranchId,
+            ParkingSessionStatus status
+    );
+
     // khá phiên gửi xe để tránh 2 request cùng lúc
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<ParkingSession>
@@ -38,6 +37,10 @@ public interface ParkingSessionRepository extends JpaRepository<ParkingSession,L
             ParkingSessionStatus status
     );
 
+    Optional<ParkingSession> findFirstByVehicleLicensePlateIgnoreCaseAndStatus(
+            String licensePlate,
+            ParkingSessionStatus status
+    );
    
     
 }

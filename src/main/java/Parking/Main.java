@@ -10,8 +10,11 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 // Đánh dấu đây là class chạy chính (Entry Point) của ứng dụng Spring Boot
 @SpringBootApplication
+@EnableScheduling
 public class Main {
 
     public static void main(String[] args) {

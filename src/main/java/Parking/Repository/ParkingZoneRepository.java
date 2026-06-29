@@ -28,4 +28,16 @@ public interface ParkingZoneRepository extends JpaRepository<ParkingZone,Long> {
             @Param("branchId") Long branchId,
             @Param("vehicleTypeId") Long vehicleTypeId
     );
+
+    @Query("""
+        SELECT COALESCE(SUM(zone.capacity), 0)
+        FROM ParkingZone zone
+        WHERE zone.parkingFloor.parkingBranch.parkingBranchId = :branchId
+          AND zone.active = true
+          AND zone.parkingFloor.active = true
+          AND zone.parkingFloor.parkingBranch.active = true
+    """)
+    Long calculateTotalCapacityByBranch(
+            @Param("branchId") Long branchId
+    );
 }

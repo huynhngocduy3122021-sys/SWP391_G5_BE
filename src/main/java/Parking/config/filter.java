@@ -65,6 +65,11 @@ public class filter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
          HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String uri = request.getServletPath();
       
 
@@ -95,6 +100,10 @@ public class filter extends OncePerRequestFilter {
                 member = tokenService.extractToken(token);
                 if (member == null) {
                     resolver.resolveException(request , response , null , new AuthenticationException("User not found!"));
+                    return;
+                }
+                if (!member.isAccountNonLocked()) {
+                    resolver.resolveException(request , response , null , new AuthenticationException("Tài khoản của bạn đã bị đình chỉ do vi phạm quy định đặt giữ chỗ quá 3 lần."));
                     return;
                 }
             } catch (ExpiredJwtException expiredJwtException) {
@@ -129,7 +138,7 @@ public class filter extends OncePerRequestFilter {
 
     public String getToken(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
-        if (authHeader == null) return null;
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) return null;
         return authHeader.substring(7);
     }
 }

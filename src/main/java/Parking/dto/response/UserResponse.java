@@ -13,6 +13,8 @@ public class UserResponse {
     private String userAddress;
     private String userRole;
     private boolean deleted;
+    private int violationCount;
+    private boolean locked;
     private String token;
 
 

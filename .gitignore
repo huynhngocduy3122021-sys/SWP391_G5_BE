@@ -1,9 +1,20 @@
+# Maven build target
 target/
-run.ps1
+
+# IntelliJ IDEA
 .idea/
-.vscode/
 *.iml
+*.ipr
+*.iws
+out/
 *.log
 !hs_err_pid*.log
 hs_err_pid*.log
 .DS_Store
+
+# VS Code
+.vscode/
+
+# Custom developer local scripts
+run.ps1
+**/application-local.properties

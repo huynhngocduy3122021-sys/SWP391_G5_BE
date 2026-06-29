@@ -15,4 +15,6 @@ public class ParkingBranchResponse {
     private String phoneNumber;
     private String description;
     private boolean active;
+    private Integer totalCapacity;
+    private Integer availableCapacity;
 }
