@@ -42,6 +42,14 @@ public class AuthController {
         UserResponse userResponse = userService.register(registerRequest);
         return ResponseEntity.ok(userResponse);
     }
+    
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/admin-create")
+    @Operation(summary = "Hàm dùng cho admin tạo user với role tuỳ chọn", description = "Admin có thể tạo STAFF, MANAGER, USER")
+    public ResponseEntity<UserResponse> adminCreateUser(@Valid @RequestBody Parking.dto.request.AdminCreateUserRequest request) {
+        UserResponse userResponse = userService.adminCreateUser(request);
+        return ResponseEntity.ok(userResponse);
+    }
     @PostMapping("/login")
     @Operation(summary = "Hàm dùng để login vào hệ thống")
     public ResponseEntity<UserResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
