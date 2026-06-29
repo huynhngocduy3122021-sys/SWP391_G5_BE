@@ -40,6 +40,14 @@ public class ParkingSessionController {
         return ResponseEntity.ok(parkingSessionService.getActiveSessionByCard(cardCode));
     }
 
+    @GetMapping("/active-session/license-plate")
+    @Operation(summary = "Lấy phiên gửi xe đang hoạt động bằng biển số xe (để phục vụ báo mất thẻ)")
+    public ResponseEntity<ParkingSessionResponse> getActiveSessionByLicensePlate(
+            @RequestParam String licensePlate
+    ) {
+        return ResponseEntity.ok(parkingSessionService.getActiveSessionByLicensePlate(licensePlate));
+    }
+
     @GetMapping()
     @Operation(summary = "Hàm lấy dữ liệu parkingSession")
     public ResponseEntity<List<ParkingSessionResponse>> getAllParkingSession(){

@@ -232,6 +232,13 @@ public class ParkingSessionService {
             return response;
         }
 
+        public ParkingSessionResponse getActiveSessionByLicensePlate(String licensePlate) {
+            String normalizedPlate = normalizeLicensePlate(licensePlate);
+            ParkingSession parkingSession = parkingSessionRepository
+                    .findFirstByVehicleLicensePlateIgnoreCaseAndStatus(normalizedPlate, ParkingSessionStatus.ACTIVE)
+                    .orElseThrow(() -> new ParkingSessionException("Active parking session not found for this license plate"));
+            return convertToResponse(parkingSession);
+        }
 
     public List<ParkingSessionResponse> getAllParkingSession() {
         List<ParkingSession> parkingSessions = parkingSessionRepository.findAll();
