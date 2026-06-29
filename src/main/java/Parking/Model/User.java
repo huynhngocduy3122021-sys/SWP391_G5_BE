@@ -55,6 +55,10 @@ public class User implements UserDetails {
     @Column(name = "is_locked", nullable = false)
     private boolean locked = false;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parking_branch_id")
+    private ParkingBranch parkingBranch;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + userRole.name()));

@@ -16,6 +16,7 @@ public class UserResponse {
     private int violationCount;
     private boolean locked;
     private String token;
-
+    private Long parkingBranchId;
+    private String parkingBranchName;
 
 }
