@@ -17,6 +17,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import Parking.dto.request.LoginRequest;
 import Parking.dto.request.UpdateUserRequest;
+import Parking.dto.request.StaffCreateRequest;
+import Parking.dto.request.ManagerCreateRequest;
 
 import java.util.List;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,6 +46,22 @@ public class AuthController {
     @Operation(summary = "Hàm dùng để login vào hệ thống")
     public ResponseEntity<UserResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         UserResponse userResponse = userService.login(loginRequest);
+        return ResponseEntity.ok(userResponse);
+    }
+    
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/staff")
+    @Operation(summary = "Tạo tài khoản STAFF", description = "Chỉ Admin mới có quyền tạo tài khoản STAFF và gán chi nhánh")
+    public ResponseEntity<UserResponse> createStaff(@Valid @RequestBody StaffCreateRequest request) {
+        UserResponse userResponse = userService.createStaff(request);
+        return ResponseEntity.ok(userResponse);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/manager")
+    @Operation(summary = "Tạo tài khoản MANAGER", description = "Chỉ Admin mới có quyền tạo tài khoản MANAGER và gán chi nhánh")
+    public ResponseEntity<UserResponse> createManager(@Valid @RequestBody ManagerCreateRequest request) {
+        UserResponse userResponse = userService.createManager(request);
         return ResponseEntity.ok(userResponse);
     }
     

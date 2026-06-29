@@ -44,6 +44,7 @@ D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\response\ParkingFloorRespons
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\enums\IncidentLogAction.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Model\VehicleType.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\config\OpenApiConfig.java
+D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\ManagerCreateRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Controller\VehicleTypeController.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\exception\exceptions\ParkingSessionException.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\response\UserResponse.java
@@ -89,6 +90,7 @@ D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\GuestCheckOutRequest
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Model\ParkingCard.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Repository\ParkingBranchRepository.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\enums\ParkingSessionStatus.java
+D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\request\StaffCreateRequest.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\enums\UserRole.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\dto\response\VehicleResponse.java
 D:\Ki7\SWP391\Index\Index\src\main\java\Parking\Controller\ParkingController.java

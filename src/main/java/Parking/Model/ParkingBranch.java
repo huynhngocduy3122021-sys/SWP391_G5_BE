@@ -60,5 +60,8 @@ public class ParkingBranch {
 
     @OneToMany( mappedBy = "parkingBranch", fetch = FetchType.LAZY)
     private List<ParkingCard> parkingCards = new ArrayList<>();
+
+    @OneToMany(mappedBy = "parkingBranch", fetch = FetchType.LAZY)
+    private List<User> staffList = new ArrayList<>();
 }
 
