@@ -37,6 +37,10 @@ public interface ParkingSessionRepository extends JpaRepository<ParkingSession,L
             ParkingSessionStatus status
     );
 
+    Optional<ParkingSession> findFirstByVehicleLicensePlateIgnoreCaseAndStatus(
+            String licensePlate,
+            ParkingSessionStatus status
+    );
    
     
 }
