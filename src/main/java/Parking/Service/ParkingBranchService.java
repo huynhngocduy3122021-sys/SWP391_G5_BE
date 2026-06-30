@@ -1,5 +1,6 @@
 package Parking.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import Parking.Model.ParkingBranch;
+import Parking.Repository.BookingRepository;
 import Parking.Repository.ParkingBranchRepository;
 import Parking.Repository.ParkingZoneRepository;
 import Parking.Repository.ParkingSessionRepository;
@@ -24,6 +26,7 @@ public class ParkingBranchService {
     private final ParkingBranchRepository parkingBranchRepository;
     private final ParkingZoneRepository parkingZoneRepository;
     private final ParkingSessionRepository parkingSessionRepository;
+    private final BookingRepository bookingRepository;
 
     @Transactional
     // ham tao branch
@@ -102,7 +105,10 @@ public class ParkingBranchService {
         long activeSessionsLong = parkingSessionRepository.countByParkingBranchParkingBranchIdAndStatus(branchId, ParkingSessionStatus.ACTIVE);
         int activeSessions = (int) activeSessionsLong;
 
-        int availableCapacity = Math.max(0, totalCapacity - activeSessions);
+        long activeBookingsLong = bookingRepository.countActiveBookingsByBranch(branchId, LocalDateTime.now());
+        int activeBookings = (int) activeBookingsLong;
+
+        int availableCapacity = Math.max(0, totalCapacity - activeSessions - activeBookings);
 
         return ParkingBranchResponse.builder()
                 .parkingBranchId(branchId)

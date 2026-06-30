@@ -27,6 +27,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("now") LocalDateTime now
     );
 
+    @Query("""
+        SELECT COUNT(b) FROM Booking b
+        WHERE b.parkingBranch.parkingBranchId = :branchId
+          AND b.status = 'CONFIRMED'
+          AND b.holdUntil > :now
+    """)
+    long countActiveBookingsByBranch(
+            @Param("branchId") Long branchId,
+            @Param("now") LocalDateTime now
+    );
+
     boolean existsByUserUserIdAndStatusIn(Long userId, List<BookingStatus> statuses);
 
     long countByUserUserIdAndStatusIn(Long userId, List<BookingStatus> statuses);

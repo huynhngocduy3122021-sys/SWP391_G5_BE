@@ -251,6 +251,8 @@ public class BookingService {
                 .parkingBranchName(booking.getParkingBranch().getBranchName())
                 .vehicleId(booking.getVehicle().getVehiclesId())
                 .licensePlate(booking.getVehicle().getLicensePlate())
+                .vehicleColor(booking.getVehicle().getVehicleColor())
+                .vehicleBrand(booking.getVehicle().getVehicleBrand())
                 .vehicleTypeId(booking.getVehicleType().getVehicleTypeId())
                 .vehicleTypeName(booking.getVehicleType().getTypeName())
                 .parkingSessionId(booking.getParkingSession() != null ? booking.getParkingSession().getParkingSessionId() : null)
