@@ -73,6 +73,7 @@ public class ParkingSessionService {
     private final PaymentRepository paymentRepository;
 
     private final PaymentService paymentService;
+    private final BranchScopeService branchScopeService;
 
     public ParkingSessionResponse guestCheckIn(GuestCheckInRequest request) { // hàm tạo guest check in
         
@@ -96,6 +97,15 @@ public class ParkingSessionService {
         }
 
         Long barnchId = parkingCard.getParkingBranch().getParkingBranchId();
+        
+        try {
+            branchScopeService.assertSameBranch(barnchId);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("không có quyền")) {
+                throw new ParkingSessionException("Thẻ gửi xe này không thuộc về chi nhánh của bạn");
+            }
+            throw e;
+        }
 
         ParkingBranch parkingBranch = parkingBranchRepository.findByParkingBranchId(barnchId)
                                     .orElseThrow(() -> new ParkingSessionException("Parking branch not found"));
@@ -188,6 +198,15 @@ public class ParkingSessionService {
             ParkingSession parkingSession =
                     parkingSessionRepository.findFirstByParkingCardCardCodeIgnoreCaseAndStatus(cardCode,ParkingSessionStatus.ACTIVE)
                         .orElseThrow(() -> new ParkingSessionException("Active parking session not found"));
+            
+            try {
+                branchScopeService.assertSameBranch(parkingSession.getParkingBranch().getParkingBranchId());
+            } catch (RuntimeException e) {
+                if (e.getMessage().contains("không có quyền")) {
+                    throw new ParkingSessionException("Phiên gửi xe này không thuộc về chi nhánh của bạn");
+                }
+                throw e;
+            }
             //b2 doi chieu ban so
             String storedLicensePlate = normalizeLicensePlate(parkingSession.getVehicle().getLicensePlate());
 
@@ -241,7 +260,8 @@ public class ParkingSessionService {
         }
 
     public List<ParkingSessionResponse> getAllParkingSession() {
-        List<ParkingSession> parkingSessions = parkingSessionRepository.findAll();
+        Long branchId = branchScopeService.resolveReadableBranchId(null);
+        List<ParkingSession> parkingSessions = parkingSessionRepository.findAllByBranchId(branchId);
         return parkingSessions.stream()
                     .map(this::convertToResponse) // chuyển đổi từng ParkingSession thành ParkingSessionReponse
                     .collect(Collectors.toList()); // thu thập kết quả vào một List<ParkingSessionReponse> và trả về
@@ -366,6 +386,15 @@ public class ParkingSessionService {
         }
 
         ParkingBranch parkingBranch = booking.getParkingBranch();
+        
+        try {
+            branchScopeService.assertSameBranch(parkingBranch.getParkingBranchId());
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("không có quyền")) {
+                throw new ParkingSessionException("Chi nhánh của bạn không khớp với chi nhánh của phiếu đặt chỗ này");
+            }
+            throw e;
+        }
         if (!parkingBranch.isActive()) {
             throw new ParkingSessionException("Chi nhánh bãi xe hiện đang tạm đóng");
         }

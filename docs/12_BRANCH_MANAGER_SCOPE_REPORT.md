@@ -1,23 +1,24 @@
-# Bao cao phan quyen du lieu theo ParkingBranch cho Manager/Staff
+# Bao cao va de xuat enforce du lieu theo ParkingBranch cho Manager/Staff
 
-Ngay lap: 2026-06-30
+Ngay cap nhat: 2026-07-01
 
 ## 1. Muc tieu
 
-Tai lieu nay ghi lai hien trang logic he thong khi dang nhap bang tai khoan `MANAGER` hoac `STAFF` duoc gan voi mot `ParkingBranch` cu the.
+Tai lieu nay danh gia cach backend hien tai phan quyen du lieu theo `ParkingBranch` cho cac tai khoan `MANAGER` va `STAFF`, dong thoi de xuat huong implement toi uu.
 
-Muc tieu mong muon:
+Nguyen tac can dat:
 
-- `ADMIN` xem va quan ly du lieu toan he thong.
-- `MANAGER` chi xem va quan ly du lieu cua chi nhanh minh phu trach.
-- `STAFF` chi thao tac trong chi nhanh minh duoc gan.
-- Backend phai tu enforce theo user dang dang nhap, khong chi dua vao frontend gui `parkingBranchId`.
+- `ADMIN` duoc xem va quan ly du lieu toan he thong.
+- `MANAGER` chi xem va thao tac du lieu cua chi nhanh duoc gan.
+- `STAFF` chi thao tac nghiep vu trong chi nhanh duoc gan.
+- `USER` chi xem du lieu ca nhan, tru cac API public duoc thiet ke rieng.
+- Backend phai tu enforce theo current user, khong tin vao `parkingBranchId` frontend gui len.
 
-## 2. Hien trang trong code
+## 2. Danh gia nhanh
 
-### 2.1. User co gan ParkingBranch
+### 2.1. Cach lam hien tai da co nen tang dung
 
-Model `User` da co lien ket:
+Model `User` da co lien ket toi chi nhanh:
 
 ```java
 @ManyToOne(fetch = FetchType.LAZY)
@@ -25,7 +26,7 @@ Model `User` da co lien ket:
 private ParkingBranch parkingBranch;
 ```
 
-Khi admin tao staff/manager, `UserService` da gan chi nhanh:
+Khi admin tao staff/manager, `UserService` da gan branch:
 
 ```java
 newStaff.setUserRole(UserRole.STAFF);
@@ -35,18 +36,18 @@ newManager.setUserRole(UserRole.MANAGER);
 newManager.setParkingBranch(branch);
 ```
 
-Khi login, `UserResponse` co tra:
+Response login/user cung da tra:
 
 ```java
 private Long parkingBranchId;
 private String parkingBranchName;
 ```
 
-Ket luan: du lieu goc de xac dinh manager/staff thuoc chi nhanh nao da co.
+Ket luan: he thong da co du lieu goc de biet manager/staff thuoc branch nao.
 
-### 2.2. Backend chua enforce scope theo ParkingBranch o nhieu API
+### 2.2. Diem chua toi uu
 
-Nhieu service hien dang lay du lieu toan bo he thong:
+Mot so API/service van doc du lieu toan he thong:
 
 ```java
 parkingBranchRepository.findAll()
@@ -54,11 +55,9 @@ parkingSessionRepository.findAll()
 bookingRepository.findAll()
 ```
 
-Dieu nay co nghia la neu frontend goi cac API list, manager cua branch A van co the nhin thay du lieu branch B, neu endpoint do khong co logic loc theo current user's branch.
+Neu controller/service khong loc bang branch cua current user, manager branch A co the xem du lieu branch B.
 
-### 2.3. SecurityConfig dang mo qua rong
-
-Trong `SecurityConfig`, nhieu API quan ly dang de `permitAll`:
+Trong `SecurityConfig`, nhieu API quan ly dang `permitAll`:
 
 ```java
 "/api/parking-sessions/**",
@@ -69,16 +68,13 @@ Trong `SecurityConfig`, nhieu API quan ly dang de `permitAll`:
 "/api/payments/**"
 ```
 
-He qua:
+Day la rui ro lon nhat vi:
 
-- Cac API nay khong bat buoc login.
-- Backend khong co current user de biet user la `ADMIN`, `MANAGER`, hay `STAFF`.
-- Manager branch A/B khong duoc tach scope an toan o backend.
-- Nguoi khong dang nhap van co the goi mot so API quan ly neu khong bi chan o controller/service.
+- API khong bat buoc login.
+- Service khong co current user dang tin cay de scope du lieu.
+- Role `ADMIN`, `MANAGER`, `STAFF`, `USER` khong duoc chan tu dau vao.
 
-### 2.4. IncidentReport co y dinh loc nhung chua implement day du
-
-Trong `IncidentReportService.getAllIncidents()` co comment ve viec staff/manager chi xem chi nhanh cua ho:
+Trong `IncidentReportService.getAllIncidents()` da co comment ve scope branch, nhung chua implement:
 
 ```java
 if (user.getUserRole() == UserRole.STAFF || user.getUserRole() == UserRole.MANAGER) {
@@ -86,100 +82,81 @@ if (user.getUserRole() == UserRole.STAFF || user.getUserRole() == UserRole.MANAG
 }
 ```
 
-Nhung hien tai code van goi:
+Sau do code van goi:
 
 ```java
 incidentReportRepository.findByFilters(branchId, ...)
 ```
 
-`branchId` van la gia tri tu request, chua bi override bang `user.getParkingBranch().getParkingBranchId()`.
+`branchId` van la gia tri frontend gui len, chua bi enforce theo `user.getParkingBranch().getParkingBranchId()`.
 
 ## 3. Ket luan hien tai
 
-Hien tai he thong **co luu manager/staff thuoc branch nao**, nhung **chua dam bao backend chi tra du lieu branch do**.
+Cach lam hien tai **chua toi uu va chua an toan** o lop backend.
 
-Neu frontend sau login tu lay `parkingBranchId` roi truyen vao API filter thi co the hien thi dung o UI, nhung ve bao mat va logic backend thi chua du.
+Frontend co the lay `parkingBranchId` sau login roi gui vao API filter de hien thi dung UI, nhung do chi la loc phia client/API consumer. Backend van phai tu dam bao:
 
-Backend can tu enforce:
+- Manager/staff khong xem duoc branch khac.
+- Manager/staff khong tao/sua/xoa/tac dong len du lieu branch khac.
+- Neu frontend co tinh gui `branchId` khac, backend phai tu choi bang loi 403/business exception.
 
-- Manager/staff khong duoc xem branch khac.
-- Manager/staff khong duoc sua/xoa/tac dong len branch khac.
-- Neu frontend co tinh gui `branchId` khac, backend van phai bo qua hoac tu choi.
+## 4. Huong thiet ke toi uu
 
-## 4. Ranh gioi quyen de xuat
+### 4.1. Tao helper lay current user dung chung
 
-### ADMIN
+Khong nen moi service tu viet lai `SecurityContextHolder`. Nen tao mot service/helper dung chung, vi cac service hien tai nhu `BookingService`, `IncidentReportService` dang co logic rieng.
 
-- Xem tat ca parking branch.
-- Xem tat ca parking session.
-- Xem tat ca booking.
-- Xem tat ca incident.
-- Tao/sua/xoa branch, floor, zone, card, price policy.
-- Tao manager/staff va gan branch.
+De xuat tao:
 
-### MANAGER
-
-- Chi xem branch duoc gan.
-- Chi xem session, booking, card, floor, zone, incident cua branch duoc gan.
-- Co the quan ly staff va incident trong branch neu nghiep vu yeu cau.
-- Khong duoc truy cap du lieu branch khac.
-
-### STAFF
-
-- Chi thao tac check-in/check-out, booking check-in, incident trong branch duoc gan.
-- Khong duoc xem dashboard/tong hop cua branch khac.
-- Khong duoc thay doi cau hinh branch neu khong duoc cap quyen rieng.
-
-### USER
-
-- Chi xem du lieu cua chinh minh.
-- Tao booking theo branch user chon.
-- Xem `my-bookings`.
-- Tao incident/lost card cua chinh minh.
-
-## 5. Huong thiet ke nen ap dung
-
-### 5.1. Tao helper lay current user
-
-Nen tao mot service/helper dung chung, vi hien tai moi service tu viet rieng logic lay user.
+```text
+src/main/java/Parking/Service/CurrentUserService.java
+```
 
 Vi du:
 
 ```java
-public User getCurrentUser() {
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    if (authentication == null || !authentication.isAuthenticated()
-            || "anonymousUser".equals(authentication.getPrincipal())) {
-        throw new ParkingSessionException("Yeu cau dang nhap");
+@Service
+public class CurrentUserService {
+
+    public User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new ParkingSessionException("Yeu cau dang nhap");
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof User user)) {
+            throw new ParkingSessionException("Thong tin dang nhap khong hop le");
+        }
+
+        return user;
     }
-    return (User) authentication.getPrincipal();
 }
 ```
 
-Co the dat trong:
+### 4.2. Tao helper enforce branch scope dung chung
 
-- `CurrentUserService`
-- `SecurityUtils`
-- hoac base helper rieng cho service layer
+Nen gom rule branch vao mot helper rieng thay vi copy/paste trong tung service.
 
-### 5.2. Tao ham resolve branch scope
+De xuat tao:
 
-Nen co mot ham chuan de quyet dinh branch nao duoc phep truy cap:
+```text
+src/main/java/Parking/Service/BranchScopeService.java
+```
+
+Core API nen co:
 
 ```java
-private Long resolveBranchScope(Long requestedBranchId) {
+public Long resolveReadableBranchId(Long requestedBranchId) {
     User user = currentUserService.getCurrentUser();
 
     if (user.getUserRole() == UserRole.ADMIN) {
-        return requestedBranchId;
+        return requestedBranchId; // null = xem tat ca
     }
 
     if (user.getUserRole() == UserRole.MANAGER || user.getUserRole() == UserRole.STAFF) {
-        if (user.getParkingBranch() == null) {
-            throw new ParkingSessionException("Tai khoan chua duoc gan chi nhanh");
-        }
-
-        Long userBranchId = user.getParkingBranch().getParkingBranchId();
+        Long userBranchId = requireUserBranchId(user);
 
         if (requestedBranchId != null && !requestedBranchId.equals(userBranchId)) {
             throw new ParkingSessionException("Ban khong co quyen truy cap chi nhanh nay");
@@ -190,39 +167,101 @@ private Long resolveBranchScope(Long requestedBranchId) {
 
     throw new ParkingSessionException("Ban khong co quyen truy cap chuc nang nay");
 }
+
+public void assertSameBranch(Long targetBranchId) {
+    User user = currentUserService.getCurrentUser();
+
+    if (user.getUserRole() == UserRole.ADMIN) {
+        return;
+    }
+
+    if (user.getUserRole() == UserRole.MANAGER || user.getUserRole() == UserRole.STAFF) {
+        Long userBranchId = requireUserBranchId(user);
+        if (!userBranchId.equals(targetBranchId)) {
+            throw new ParkingSessionException("Ban khong co quyen thao tac tren chi nhanh nay");
+        }
+        return;
+    }
+
+    throw new ParkingSessionException("Ban khong co quyen thao tac chuc nang nay");
+}
+
+private Long requireUserBranchId(User user) {
+    if (user.getParkingBranch() == null) {
+        throw new ParkingSessionException("Tai khoan chua duoc gan chi nhanh");
+    }
+    return user.getParkingBranch().getParkingBranchId();
+}
 ```
 
-Y nghia:
+Nen tach 2 ham vi:
 
-- `ADMIN`: duoc dung `branchId` tu request, hoac null de lay tat ca.
-- `MANAGER/STAFF`: luon bi ep ve branch cua tai khoan.
-- Neu manager/staff gui branch khac: bao loi.
+- `resolveReadableBranchId(...)`: dung cho list/filter, co the nhan `branchId = null`.
+- `assertSameBranch(...)`: dung cho get/update/delete/action tren mot entity da co branch.
 
-## 6. Checklist can sua
+## 5. Ranh gioi quyen de xuat
 
-### 6.1. SecurityConfig
+### ADMIN
 
-Can go bo `permitAll` cho cac API quan ly.
+- Xem tat ca branch, session, booking, incident, payment.
+- Tao/sua/xoa branch, floor, zone, card, price policy.
+- Tao manager/staff va gan branch.
 
-Chi nen public:
+### MANAGER
 
-- `/api/auth/login`
-- `/api/auth/register` neu cho user tu dang ky
+- Chi xem branch duoc gan.
+- Chi xem session, booking, card, floor, zone, incident cua branch duoc gan.
+- Co the quan ly staff/incident trong branch neu nghiep vu yeu cau.
+- Khong duoc truy cap hoac thay doi du lieu branch khac.
+
+### STAFF
+
+- Chi thao tac check-in/check-out, booking check-in, incident trong branch duoc gan.
+- Khong duoc xem dashboard/tong hop cua branch khac.
+- Khong duoc thay doi cau hinh branch/floor/zone/card neu khong duoc cap quyen rieng.
+
+### USER
+
+- Chi xem du lieu cua chinh minh.
+- Tao booking theo branch user chon.
+- Xem `my-bookings`.
+- Tao incident/lost card cua chinh minh.
+
+## 6. Checklist implement theo thu tu uu tien
+
+### 6.1. Khoa security endpoint truoc
+
+Trong `SecurityConfig`, chi nen public:
+
+- `/api/auth/**`
 - Swagger neu can test
-- API public thuc su, neu co
-- VNPay return/ipn neu can callback public
+- API public that su, vi du `GET /api/parking/slots`
+- VNPay callback/return/ipn neu can public
 
-Khong nen public:
+Khong nen `permitAll` cac API quan ly:
 
 - `/api/parking-sessions/**`
 - `/api/parking-branches/**`
 - `/api/parking-floors/**`
 - `/api/parking-zones/**`
 - `/api/parking-cards/**`
-- `/api/bookings/**` ngoai tru cac endpoint user co token
+- `/api/bookings/**`
 - `/api/incident-reports/**`
+- `/api/payments/**`, tru callback cong thanh toan
 
-### 6.2. ParkingBranchService
+Sau do them `@PreAuthorize` tai controller cho rule ro rang:
+
+```java
+@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+@PreAuthorize("hasRole('USER')")
+```
+
+Luu y: can kiem tra `User.getAuthorities()` dang tra role theo format nao. Neu authority hien la `ADMIN` thay vi `ROLE_ADMIN`, dung `hasAuthority('ADMIN')` thay cho `hasRole('ADMIN')`.
+
+### 6.2. Branch scope cho API doc du lieu
+
+#### ParkingBranchService
 
 Hien tai:
 
@@ -237,70 +276,66 @@ Nen doi:
 - `MANAGER/STAFF`: chi return branch cua current user.
 - `getParkingBranchById(id)`: manager/staff chi duoc xem neu `id == currentUser.parkingBranchId`.
 
-### 6.3. ParkingSessionService
+#### ParkingSessionService
 
-Hien tai:
-
-```java
-getAllParkingSession() -> parkingSessionRepository.findAll()
-```
+Hien tai `getAllParkingSession()` can duoc scope theo branch.
 
 Can them repository:
 
 ```java
-List<ParkingSession> findByParkingBranchParkingBranchId(Long branchId);
+List<ParkingSession> findByParkingBranchParkingBranchId(Long parkingBranchId);
+Optional<ParkingSession> findByParkingSessionIdAndParkingBranchParkingBranchId(Long sessionId, Long parkingBranchId);
 ```
 
-Sau do:
+Rule:
 
-- `ADMIN`: lay all hoac theo filter.
-- `MANAGER/STAFF`: chi lay session cua branch duoc gan.
+- `ADMIN`: xem all hoac filter theo branch.
+- `MANAGER/STAFF`: chi xem session branch duoc gan.
+- Check-in/check-out phai dam bao session/card/branch cung thuoc branch cua staff.
 
-Voi `guestCheckIn`, can dam bao card thuoc branch cua staff dang thao tac. Neu endpoint nay cho staff dung, backend nen check:
+#### BookingService
 
-```java
-parkingCard.getParkingBranch().getParkingBranchId()
-    .equals(currentUser.getParkingBranch().getParkingBranchId())
-```
-
-### 6.4. BookingService
-
-Hien tai:
-
-```java
-getAllBookings() -> bookingRepository.findAll()
-getBookingByCode(code) -> findByBookingCodeIgnoreCase(code)
-```
+Hien tai co cac method dem booking theo branch, nhung thieu list/get theo branch cho man hinh quan ly.
 
 Can them repository:
 
 ```java
-List<Booking> findByParkingBranchParkingBranchIdOrderByCreatedAtDesc(Long branchId);
+List<Booking> findByParkingBranchParkingBranchIdOrderByCreatedAtDesc(Long parkingBranchId);
+Optional<Booking> findByBookingCodeIgnoreCaseAndParkingBranchParkingBranchId(String bookingCode, Long parkingBranchId);
 ```
 
-De xuat:
+Rule:
 
 - `ADMIN`: xem all booking.
 - `MANAGER/STAFF`: xem booking cua branch minh.
-- `getBookingByCode`: neu manager/staff quet QR booking cua branch khac thi tu choi.
+- Khi staff quet booking code, booking code thuoc branch khac phai bi tu choi.
 
-### 6.5. IncidentReportService
+#### IncidentReportService
 
-Can implement comment dang con dang do:
+Can implement ngay trong `getAllIncidents()`:
 
 ```java
-if (user.getUserRole() == UserRole.STAFF || user.getUserRole() == UserRole.MANAGER) {
-    branchId = user.getParkingBranch().getParkingBranchId();
-}
+Long scopedBranchId = branchScopeService.resolveReadableBranchId(branchId);
+
+return incidentReportRepository.findByFilters(
+        scopedBranchId, status, type, priority, startDate, endDate, assignedStaffId, pageable)
+        .map(this::convertToResponse);
 ```
 
-Va voi `getReportById(id)`:
+Voi `getReportById(id)`:
 
 - `USER`: chi xem incident minh tao.
-- `STAFF/MANAGER`: chi xem incident thuoc branch minh.
+- `MANAGER/STAFF`: chi xem incident thuoc branch minh.
 - `ADMIN`: xem tat ca.
 
-### 6.6. ParkingCard/Floor/Zone
+Voi `assignIncident`, `resolveIncident`, `cancelIncident`:
+
+- Phai check `report.getParkingBranch().getParkingBranchId()` bang branch cua manager/staff.
+- Khi assign staff, staff duoc assign cung phai thuoc cung branch voi incident.
+
+### 6.3. Branch scope cho API ghi du lieu
+
+#### ParkingCard/Floor/Zone
 
 Cac service nay dang nhan `parkingBranchId` tu request/path.
 
@@ -308,9 +343,9 @@ Can bo sung:
 
 - Manager/staff khong duoc create/update card/floor/zone cho branch khac.
 - Khi list theo branch, manager/staff khong duoc truyen branch khac.
-- Khi update object da ton tai, phai check object do thuoc branch cua current user.
+- Khi update/delete object da ton tai, phai check object do thuoc branch cua current user.
 
-### 6.7. Payment/Checkout
+#### Payment/Checkout
 
 `PaymentService` xu ly payment dua tren `ParkingSession`.
 
@@ -318,7 +353,7 @@ Can dam bao truoc khi staff checkout:
 
 - Session thuoc branch cua staff.
 - Card thuoc branch cua staff.
-- Payment callback VNPay co the public, nhung khong nen expose API truy van payment noi bo neu chua auth.
+- Payment callback VNPay co the public, nhung API truy van payment noi bo phai co auth va branch scope.
 
 ## 7. Repository methods nen bo sung
 
@@ -338,6 +373,14 @@ Optional<Booking> findByBookingCodeIgnoreCaseAndParkingBranchParkingBranchId(Str
 
 ### ParkingCardRepository
 
+Hien da co:
+
+```java
+Optional<ParkingCard> findByCardCodeAndParkingBranchParkingBranchId(String cardCode, Long parkingBranchId);
+```
+
+Nen bo sung them:
+
 ```java
 List<ParkingCard> findByParkingBranchParkingBranchId(Long parkingBranchId);
 Optional<ParkingCard> findByParkingCardIdAndParkingBranchParkingBranchId(Long cardId, Long parkingBranchId);
@@ -345,16 +388,28 @@ Optional<ParkingCard> findByParkingCardIdAndParkingBranchParkingBranchId(Long ca
 
 ### IncidentReportRepository
 
-Da co filter theo `branchId`, chi can service override branch id dung role.
+Hien da co filter theo `branchId`. Khong can them query moi cho list, chi can service truyen `scopedBranchId`.
+
+Neu muon toi uu get/detail co the them:
+
+```java
+Optional<IncidentReport> findByIncidentIdAndParkingBranchParkingBranchId(Long incidentId, Long parkingBranchId);
+```
 
 ## 8. Test case can co
 
-### Dang nhap va scope
+### Security
 
-1. Admin login nhan token, xem duoc tat ca branch.
+1. Goi `/api/parking-sessions/**` khong token phai bi 401.
+2. Goi API quan ly bang role `USER` phai bi 403 neu khong duoc phep.
+3. Goi API manager branch A voi `branchId = B` phai bi tu choi.
+
+### Branch
+
+1. Admin xem duoc tat ca branch.
 2. Manager branch A login, response co `parkingBranchId = A`.
-3. Manager branch A goi API list branch, chi nhan branch A.
-4. Manager branch A goi API branch B, bi tu choi.
+3. Manager branch A list branch chi nhan branch A.
+4. Manager branch A get branch B bi tu choi.
 
 ### Parking session
 
@@ -375,42 +430,17 @@ Da co filter theo `branchId`, chi can service override branch id dung role.
 1. User chi xem incident cua minh.
 2. Staff branch A chi xem incident branch A.
 3. Manager branch A chi assign/resolve/cancel incident branch A.
-4. Admin xem va thao tac duoc tat ca incident.
+4. Manager branch A khong assign staff branch B vao incident branch A.
+5. Admin xem va thao tac duoc tat ca incident.
 
-### Security
+## 9. Thu tu lam khuyen nghi
 
-1. Goi API `/api/parking-sessions` khong token phai bi 401.
-2. Goi API quan ly bang role USER phai bi 403 neu khong duoc phep.
-3. Goi API manager branch A voi `branchId = B` phai bi 403 hoac business exception.
-
-## 9. Uu tien phat trien
-
-### Uu tien 1: Khoa security endpoint
-
-Go bo `permitAll` cho cac API quan ly va them `@PreAuthorize` vao controller.
-
-### Uu tien 2: Branch scope cho list/get
-
-Sua cac API doc du lieu:
-
-- `ParkingBranchService`
-- `ParkingSessionService`
-- `BookingService`
-- `IncidentReportService`
-
-### Uu tien 3: Branch scope cho write action
-
-Sua cac API tao/sua/xoa:
-
-- parking card
-- parking floor
-- parking zone
-- incident assign/resolve/cancel
-- check-in/check-out
-
-### Uu tien 4: Test
-
-Them integration test hoac service test cho role `ADMIN`, `MANAGER`, `STAFF`, `USER`.
+1. Sua `SecurityConfig`: bo `permitAll` khoi cac API quan ly.
+2. Tao `CurrentUserService` va `BranchScopeService`.
+3. Sua API doc du lieu: branch, session, booking, incident.
+4. Sua API ghi du lieu: card, floor, zone, check-in/check-out, incident actions.
+5. Them repository methods con thieu.
+6. Them test cho role va branch scope.
 
 ## 10. Ghi chu ve booking va capacity
 
@@ -420,22 +450,22 @@ He thong da co logic booking giu cho theo capacity:
 activeSessions + activeBookings >= totalCapacity
 ```
 
-Va `ParkingBranchService` da nen tinh `availableCapacity` theo:
+Va `ParkingBranchService` nen tinh:
 
 ```java
 availableCapacity = totalCapacity - activeSessions - activeBookings
 ```
 
-Tuy nhien can dam bao API hien thi trang chu/dashboard khi manager dang nhap chi tinh capacity cua branch manager do, khong tinh tong tat ca branch.
+Khi manager/staff dang nhap, API dashboard/capacity chi nen tinh tren branch cua tai khoan do. `ADMIN` moi duoc xem tong hop nhieu branch.
 
 ## 11. Ket luan
 
-Hien tai he thong moi dung o muc "user co thong tin branch", chua dat muc "backend enforce branch isolation".
+Huong hien tai dung ve data model, nhung chua du ve security va branch isolation.
 
-Huong phat trien tiep theo la dua toan bo API quan ly ve nguyen tac:
+Cach toi uu la dua tat ca API quan ly ve mot cong thuc chung:
 
 ```text
-Du lieu tra ve = quyen role + parkingBranch cua current user
+Du lieu duoc doc/ghi = role cua current user + parkingBranch cua current user
 ```
 
-Khi lam duoc viec nay, manager cua moi `ParkingBranch` se dang nhap vao dung pham vi chi nhanh cua minh, thay vi vo tinh xem du lieu tong cua tat ca chi nhanh.
+Khi `SecurityConfig`, `CurrentUserService`, va `BranchScopeService` duoc ap dung dong bo, manager/staff se chi lam viec trong dung chi nhanh duoc gan, ke ca khi frontend gui sai hoac co tinh gui `parkingBranchId` cua chi nhanh khac.

@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 import Parking.Model.ParkingZone;
 public interface ParkingZoneRepository extends JpaRepository<ParkingZone,Long> {
     
-     boolean existsByParkingFloorParkingFloorId(Long parkingFloorId);
+    boolean existsByParkingFloorParkingFloorId(Long parkingFloorId);
 
     boolean existsByParkingFloorParkingFloorIdAndParkingZoneIdNot(Long parkingFloorId,Long parkingZoneId);
 

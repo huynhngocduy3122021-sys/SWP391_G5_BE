@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.web.multipart.MultipartFile;
 
 import Parking.Model.VehicleImageType;
@@ -24,6 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 
 @RestController
+@SecurityRequirement(name = "api_key")
 @RequestMapping("/api/parking-session")
 @CrossOrigin("*")
 @Tag(name = "quản lí phương tiện")

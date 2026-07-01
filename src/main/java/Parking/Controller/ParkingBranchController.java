@@ -1,4 +1,5 @@
 package Parking.Controller;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import java.util.List;
 
@@ -15,6 +16,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
+@SecurityRequirement(name = "api_key")
 @RequestMapping("/api/parking-branches")
 @CrossOrigin("*")
 @RequiredArgsConstructor

@@ -27,6 +27,7 @@ public class IncidentReportService {
     private final ParkingCardRepository parkingCardRepository;
     private final IncidentImageRepository incidentImageRepository;
     private final IncidentLogRepository incidentLogRepository;
+    private final BranchScopeService branchScopeService;
 
     // Lấy User hiện tại đăng nhập từ Security Context
     public User getCurrentUser() {
@@ -213,6 +214,9 @@ public class IncidentReportService {
             throw new ParkingSessionException("Không thể phân công công việc cho sự cố đã đóng hoặc đã hủy");
         }
 
+        // Kiểm tra quyền chi nhánh: Admin được thao tác toàn bộ, Manager/Staff chỉ thao tác nhánh của mình
+        branchScopeService.assertSameBranch(report.getParkingBranch().getParkingBranchId());
+
         User staff = userRepository.findById(request.getAssignedStaffId())
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy nhân viên được phân công"));
 
@@ -252,6 +256,9 @@ public class IncidentReportService {
             (report.getAssignedStaff() == null || !report.getAssignedStaff().getUserId().equals(staff.getUserId()))) {
             throw new ParkingSessionException("Bạn không phải nhân viên được giao trách nhiệm giải quyết sự cố này!");
         }
+
+        // Kiểm tra quyền chi nhánh: Admin được thao tác toàn bộ, Manager/Staff chỉ thao tác nhánh của mình
+        branchScopeService.assertSameBranch(report.getParkingBranch().getParkingBranchId());
 
         if (report.getStatus() == IncidentStatus.RESOLVED) {
             throw new ParkingSessionException("Sự cố đã được đánh dấu hoàn thành từ trước");
@@ -297,6 +304,9 @@ public class IncidentReportService {
         if (report.getStatus() == IncidentStatus.RESOLVED) {
             throw new ParkingSessionException("Không thể hủy sự cố đã được khắc phục hoàn tất!");
         }
+
+        // Kiểm tra quyền chi nhánh: Admin được thao tác toàn bộ, Manager/Staff chỉ thao tác nhánh của mình
+        branchScopeService.assertSameBranch(report.getParkingBranch().getParkingBranchId());
 
         IncidentStatus oldStatus = report.getStatus();
         report.setStatus(IncidentStatus.CANCELLED);
@@ -346,15 +356,10 @@ public class IncidentReportService {
             Long assignedStaffId,
             Pageable pageable
     ) {
-        User user = getCurrentUser();
-        // Kiểm soát bảo mật chi nhánh cho nhân viên
-        if (user.getUserRole() == UserRole.STAFF || user.getUserRole() == UserRole.MANAGER) {
-            // Staff/Manager chỉ được lọc sự cố của chi nhánh của họ nếu họ không chỉ định, hoặc ghi đè chi nhánh
-            // (Trong dự án thực tế ta có thể lấy branchId gán cho nhân viên từ DB, tạm thời lọc theo quyền phân quyền API)
-        }
+        Long scopedBranchId = branchScopeService.resolveReadableBranchId(branchId);
         
         return incidentReportRepository.findByFilters(
-                branchId, status, type, priority, startDate, endDate, assignedStaffId, pageable)
+                scopedBranchId, status, type, priority, startDate, endDate, assignedStaffId, pageable)
                 .map(this::convertToResponse);
     }
 
@@ -365,8 +370,13 @@ public class IncidentReportService {
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy báo cáo sự cố"));
 
         // Phân quyền chi tiết
-        if (user.getUserRole() == UserRole.USER && !report.getReporter().getUserId().equals(user.getUserId())) {
-            throw new ParkingSessionException("Bạn không có quyền xem thông tin sự cố của người khác!");
+        if (user.getUserRole() == UserRole.USER) {
+            if (!report.getReporter().getUserId().equals(user.getUserId())) {
+                throw new ParkingSessionException("Bạn không có quyền xem thông tin sự cố của người khác!");
+            }
+        } else {
+            // Kiểm tra quyền chi nhánh: Admin xem toàn bộ, Manager/Staff chỉ xem nhánh của mình
+            branchScopeService.assertSameBranch(report.getParkingBranch().getParkingBranchId());
         }
 
         return convertToResponse(report);

@@ -55,17 +55,7 @@ public class SecurityConfig {
                         "/swagger-ui.html",
                         "/swagger-ui/index.html",
                         "/v3/api-docs/**",
-                        "/v3/api-docs",
-                        "/api/parking-sessions/**",
-                        "/api/vehicle-types/**",
-                        "/api/parking-cards/**",
-                        "/api/parking-zones/**",
-                        "/api/price-policies/**",
-                        "/api/parking-session/**",
-                        "/api/parking-branches/**",
-                        "/api/parking-floors/**",
-                        "/api/payments/**"
-                        
+                        "/v3/api-docs"
                 ).permitAll()
 
                 // Các API còn lại bắt buộc phải đăng nhập

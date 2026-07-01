@@ -14,6 +14,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByUserUserIdOrderByCreatedAtDesc(Long userId);
 
+    @Query("SELECT b FROM Booking b WHERE :branchId IS NULL OR b.parkingBranch.parkingBranchId = :branchId")
+    List<Booking> findAllByBranchId(@Param("branchId") Long branchId);
+
     @Query("""
         SELECT COUNT(b) FROM Booking b
         WHERE b.parkingBranch.parkingBranchId = :branchId

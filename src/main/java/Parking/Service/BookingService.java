@@ -38,6 +38,7 @@ public class BookingService {
     private final VehicleTypeRepository vehicleTypeRepository;
     private final VehicleRepository vehicleRepository;
     private final ParkingSessionRepository parkingSessionRepository;
+    private final BranchScopeService branchScopeService;
 
     @Transactional
     public BookingResponse createBooking(CreateBookingRequest request) {
@@ -171,7 +172,8 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<BookingResponse> getAllBookings() {
-        return bookingRepository.findAll()
+        Long branchId = branchScopeService.resolveReadableBranchId(null);
+        return bookingRepository.findAllByBranchId(branchId)
                 .stream()
                 .map(this::convertToResponse)
                 .toList();
@@ -183,11 +185,17 @@ public class BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BookingException("Đặt chỗ không tồn tại"));
 
-        // Kiểm tra quyền hủy (Chỉ chủ sở hữu hoặc ADMIN/STAFF mới được hủy)
+        // Kiểm tra quyền hủy (Chỉ chủ sở hữu hoặc ADMIN/STAFF/MANAGER mới được hủy)
         boolean isOwner = booking.getUser().getUserId().equals(user.getUserId());
-        boolean isPrivileged = "ADMIN".equalsIgnoreCase(user.getUserRole().name()) || "STAFF".equalsIgnoreCase(user.getUserRole().name());
-        if (!isOwner && !isPrivileged) {
-            throw new BookingException("Bạn không có quyền hủy đặt chỗ này.");
+        boolean isPrivileged = "ADMIN".equalsIgnoreCase(user.getUserRole().name()) 
+                || "MANAGER".equalsIgnoreCase(user.getUserRole().name())
+                || "STAFF".equalsIgnoreCase(user.getUserRole().name());
+
+        if (!isOwner) {
+            if (!isPrivileged) {
+                throw new BookingException("Bạn không có quyền hủy đặt chỗ này.");
+            }
+            branchScopeService.assertSameBranch(booking.getParkingBranch().getParkingBranchId());
         }
 
         if (booking.getStatus() != BookingStatus.CONFIRMED && booking.getStatus() != BookingStatus.PENDING) {
@@ -230,6 +238,13 @@ public class BookingService {
     public BookingResponse getBookingByCode(String code) {
         Booking booking = bookingRepository.findByBookingCodeIgnoreCase(code.trim())
                 .orElseThrow(() -> new BookingException("Mã đặt chỗ không tồn tại"));
+
+        User user = getCurrentUser();
+        boolean isOwner = booking.getUser().getUserId().equals(user.getUserId());
+        if (!isOwner) {
+            branchScopeService.assertSameBranch(booking.getParkingBranch().getParkingBranchId());
+        }
+
         return convertToResponse(booking);
     }
 
