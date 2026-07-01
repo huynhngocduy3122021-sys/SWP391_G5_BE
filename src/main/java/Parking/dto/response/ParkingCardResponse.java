@@ -1,6 +1,7 @@
 package Parking.dto.response;
 
 import Parking.enums.ParkingCardStatus;
+import Parking.enums.ParkingCardType;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,6 +16,8 @@ public class ParkingCardResponse {
     private String cardCode;
 
     private ParkingCardStatus status;
+
+    private ParkingCardType type;
 
     private Long parkingBranchId;
 

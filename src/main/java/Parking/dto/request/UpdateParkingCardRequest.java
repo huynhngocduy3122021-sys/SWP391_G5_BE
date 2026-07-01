@@ -1,6 +1,7 @@
 package Parking.dto.request;
 
 import Parking.enums.ParkingCardStatus;
+import Parking.enums.ParkingCardType;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -20,4 +21,6 @@ public class UpdateParkingCardRequest {
     private Long parkingBranchId;
 
     private ParkingCardStatus status;
+
+    private ParkingCardType type;
 }
