@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import Parking.Model.VehicleType;
 import Parking.Service.VehicleTypeService;
@@ -20,6 +21,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import java.util.List;
 @RestController
+@SecurityRequirement(name = "api_key")
 @RequestMapping("/api/vehicle-types")
 @RequiredArgsConstructor
 @CrossOrigin("*")

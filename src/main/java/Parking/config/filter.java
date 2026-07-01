@@ -43,16 +43,8 @@ public class filter extends OncePerRequestFilter {
                 "/swagger-ui/index.html",
                 "/v3/api-docs/**",
                 "/v3/api-docs",
-                "/api/parking-sessions/**",
-                "/api/vehicle-types/**",
-                "/api/parking-cards/**",
-                "/api/parking-zones/**",
-                "/api/price-policies/**",
-                "/api/parking-session/**",
                 "/api/auth/reset-password",
-                "/api/parking-branches/**",
-                "/api/parking-floors/**",
-                "/api/payments/**"     
+                "/api/parking/slots"
     );
 
             public boolean isPublicAPI(String uri) {

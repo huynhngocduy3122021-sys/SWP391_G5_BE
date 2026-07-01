@@ -18,6 +18,8 @@ public class BookingResponse {
     private String parkingBranchName;
     private Long vehicleId;
     private String licensePlate;
+    private String vehicleColor;
+    private String vehicleBrand;
     private Long vehicleTypeId;
     private String vehicleTypeName;
     private Long parkingSessionId;

@@ -12,6 +12,7 @@ import java.util.List;
 
 // Khai báo đây là một RestController để định nghĩa các API trả về dữ liệu kiểu JSON/XML
 @RestController
+@SecurityRequirement(name = "api_key")
 // Định nghĩa đường dẫn gốc cho các endpoint API của Controller này
 @RequestMapping("/api/parking")
 // Cho phép gọi API chéo nguồn (CORS) từ bất kỳ tên miền/cổng nào khác (để frontend gọi được API)

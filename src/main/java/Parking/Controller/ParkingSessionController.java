@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.List;
 import Parking.Service.ParkingSessionService;
 import Parking.dto.request.GuestCheckInRequest;
@@ -20,6 +21,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
+@SecurityRequirement(name = "api_key")
 @RequestMapping("/api/parking-sessions")
 @RequiredArgsConstructor
 @CrossOrigin("*")

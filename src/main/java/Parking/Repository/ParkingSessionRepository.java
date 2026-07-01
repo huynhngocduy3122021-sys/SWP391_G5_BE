@@ -4,6 +4,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import Parking.Model.ParkingSession;
 import java.util.Optional;
+import java.util.List;
+import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Query;
 import Parking.enums.ParkingSessionStatus;
 import jakarta.persistence.LockModeType;
 
@@ -41,6 +44,7 @@ public interface ParkingSessionRepository extends JpaRepository<ParkingSession,L
             String licensePlate,
             ParkingSessionStatus status
     );
-   
+    @Query("SELECT p FROM ParkingSession p WHERE :branchId IS NULL OR p.parkingBranch.parkingBranchId = :branchId")
+    List<ParkingSession> findAllByBranchId(@Param("branchId") Long branchId);
     
 }
