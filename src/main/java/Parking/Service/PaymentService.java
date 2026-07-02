@@ -20,9 +20,11 @@ import Parking.Repository.ParkingCardRepository;
 import Parking.Repository.ParkingSessionRepository;
 import Parking.Repository.PaymentRepository;
 import Parking.Repository.PricePolicyRepository;
+import Parking.Repository.MonthlyTicketRepository;
 import Parking.dto.response.GuestCheckOutResponse;
 import Parking.dto.response.VnpayReturnResponse;
 import Parking.enums.ParkingCardStatus;
+import Parking.enums.ParkingCardType;
 import Parking.enums.ParkingSessionStatus;
 import Parking.enums.PaymentMethod;
 import Parking.enums.PaymentStatus;
@@ -38,6 +40,7 @@ public class PaymentService {
     private final VnPayService vnPayService;
     private final ParkingSessionRepository parkingSessionRepository;
     private final ParkingCardRepository parkingCardRepository;
+    private final MonthlyTicketRepository monthlyTicketRepository;
 
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
@@ -69,7 +72,20 @@ public class PaymentService {
 
         LocalDateTime checkOutTime = LocalDateTime.now();
         // b3: tính phí
-        BigDecimal totalAmount = caculateParkingFee(parkingSession.getCheckInTime(), checkOutTime, pricePolicy);
+        BigDecimal totalAmount;
+        boolean isMonthlyTicketActive = false;
+        if (parkingSession.getParkingCard().getType() == ParkingCardType.MONTHLY) {
+            isMonthlyTicketActive = monthlyTicketRepository.existsActiveTicketByCard(
+                    parkingSession.getParkingCard().getParkingCardId(),
+                    checkOutTime
+            );
+        }
+
+        if (isMonthlyTicketActive) {
+            totalAmount = BigDecimal.ZERO;
+        } else {
+            totalAmount = caculateParkingFee(parkingSession.getCheckInTime(), checkOutTime, pricePolicy);
+        }
 
         // b4: cập nhật thông tin payment
         payment.setAmount(totalAmount);
@@ -91,7 +107,34 @@ public class PaymentService {
                 .amount(totalAmount)
                 .paymentMethod(paymentMethod);
 
-        if (paymentMethod == PaymentMethod.CASH) {
+        if (totalAmount.compareTo(BigDecimal.ZERO) == 0) {
+            payment.setPaymentMethod(PaymentMethod.CASH); // force CASH for free checkout
+            payment.setPaymentStatus(PaymentStatus.PAID);
+            payment.setPaidAt(checkOutTime);
+
+            parkingSession.setCheckOutTime(checkOutTime);
+            parkingSession.setTotalAmount(totalAmount);
+            parkingSession.setStatus(ParkingSessionStatus.COMPLETED);
+            parkingSession.setPayment(payment);
+
+            // trả thẻ về AVAILABLE nếu không phải thẻ bị báo mất (LOST)
+            ParkingCard parkingCard = parkingSession.getParkingCard();
+            if (parkingCard.getStatus() != ParkingCardStatus.LOST) {
+                parkingCard.setStatus(ParkingCardStatus.AVAILABLE);
+            }
+
+            // Lưu payment trước để tránh lỗi nhân đôi câu lệnh INSERT do hiệu ứng cascade
+            payment = paymentRepository.save(payment);
+            parkingSessionRepository.save(parkingSession);
+            parkingCardRepository.save(parkingCard);
+
+            responseBuilder.paymentId(payment.getPaymentId())
+                    .paymentMethod(PaymentMethod.CASH)
+                    .paymentStatus(PaymentStatus.PAID)
+                    .sessionStatus(ParkingSessionStatus.COMPLETED)
+                    .paymentUrl(null)
+                    .message("Vé tháng hợp lệ. Miễn phí gửi xe.");
+        } else if (paymentMethod == PaymentMethod.CASH) {
             payment.setPaymentStatus(PaymentStatus.PAID);
             payment.setPaidAt(checkOutTime);
 

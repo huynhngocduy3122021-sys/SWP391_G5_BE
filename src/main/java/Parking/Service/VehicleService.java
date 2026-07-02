@@ -14,6 +14,7 @@ import Parking.Repository.VehicleTypeRepository;
 import Parking.dto.request.CreateVehicleRequest;
 import Parking.dto.request.UpdateVehicleRequest;
 import Parking.dto.response.VehicleResponse;
+import Parking.enums.VehicleSource;
 import Parking.exception.exceptions.ParkingSessionException;
 import lombok.RequiredArgsConstructor;
 
@@ -114,7 +115,7 @@ public class VehicleService {
                 .licensePlate(vehicle.getLicensePlate())
                 .vehicleColor(vehicle.getVehicleColor())
                 .vehicleBrand(vehicle.getVehicleBrand())
-                .vehicleSource(vehicle.getVehicleSource())
+                .vehicleSource(owner != null ? VehicleSource.REGISTER : vehicle.getVehicleSource())
                 .userId(owner != null ? owner.getUserId() : null)
                 .userFullName(owner != null ? owner.getUserFullName() : null)
                 .vehicleTypeId(type != null ? type.getVehicleTypeId() : null)

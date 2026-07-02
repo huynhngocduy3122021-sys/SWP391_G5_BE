@@ -40,6 +40,7 @@ public class ParkingCard {
     @Column(name = "card_code", nullable = false,unique = true)
     private String cardCode;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private ParkingCardStatus status = ParkingCardStatus.AVAILABLE;
 

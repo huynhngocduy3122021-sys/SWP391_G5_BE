@@ -46,5 +46,7 @@ public interface ParkingSessionRepository extends JpaRepository<ParkingSession,L
     );
     @Query("SELECT p FROM ParkingSession p WHERE :branchId IS NULL OR p.parkingBranch.parkingBranchId = :branchId")
     List<ParkingSession> findAllByBranchId(@Param("branchId") Long branchId);
-    
+
+    @Query("SELECT p FROM ParkingSession p WHERE p.vehicle.user.userId = :userId")
+    List<ParkingSession> findAllByUserId(@Param("userId") Long userId);
 }
