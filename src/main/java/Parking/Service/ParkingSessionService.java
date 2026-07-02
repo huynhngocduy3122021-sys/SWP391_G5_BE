@@ -22,7 +22,10 @@ import Parking.Repository.PricePolicyRepository;
 import Parking.Repository.VehicleRepository;
 import Parking.Repository.VehicleTypeRepository;
 import Parking.Repository.BookingRepository;
+import Parking.Repository.MonthlyTicketRepository;
 import Parking.Model.Booking;
+import Parking.Model.MonthlyTicket;
+import Parking.enums.ParkingCardType;
 import Parking.dto.request.GuestCheckInRequest;
 import Parking.dto.request.GuestCheckOutRequest;
 import Parking.dto.response.GuestCheckOutResponse;
@@ -36,6 +39,8 @@ import Parking.enums.VehicleSource;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import Parking.exception.exceptions.ParkingSessionException;
+import Parking.Model.User;
+import Parking.enums.UserRole;
 import Parking.Model.ParkingBranch;
 import Parking.Model.ParkingCard;
 import Parking.Model.ParkingSession;
@@ -74,6 +79,8 @@ public class ParkingSessionService {
 
     private final PaymentService paymentService;
     private final BranchScopeService branchScopeService;
+    private final MonthlyTicketRepository monthlyTicketRepository;
+    private final CurrentUserService currentUserService;
 
     public ParkingSessionResponse guestCheckIn(GuestCheckInRequest request) { // hàm tạo guest check in
         
@@ -129,6 +136,19 @@ public class ParkingSessionService {
             if(!vehicle.getVehicleType().getVehicleTypeId().equals(vehicleType.getVehicleTypeId())) {
                 throw new ParkingSessionException("Vehicle type does not match existing vehicle information");
             }
+
+            // b4.5 : Validate monthly card / monthly ticket properties if it is a monthly card
+            if (parkingCard.getType() == ParkingCardType.MONTHLY) {
+                LocalDateTime now = LocalDateTime.now();
+                MonthlyTicket activeTicket = monthlyTicketRepository.findActiveTicketByCard(parkingCard.getParkingCardId(), now)
+                        .orElseThrow(() -> new ParkingSessionException("Thẻ tháng không có vé tháng hoạt động hoặc đã hết hạn"));
+
+                // Validate that the license plate matches the vehicle in the monthly ticket
+                if (!activeTicket.getVehicle().getLicensePlate().equalsIgnoreCase(licesePlate)) {
+                    throw new ParkingSessionException("Biển số xe không khớp với thông tin đăng ký trên vé tháng");
+                }
+            }
+
             // b5 kiem tra xe trong bai chua
               boolean vehicleHasActiveSession = parkingSessionRepository.existsByVehicleVehiclesIdAndStatus(vehicle.getVehiclesId(),ParkingSessionStatus.ACTIVE);
 
@@ -260,11 +280,17 @@ public class ParkingSessionService {
         }
 
     public List<ParkingSessionResponse> getAllParkingSession() {
-        Long branchId = branchScopeService.resolveReadableBranchId(null);
-        List<ParkingSession> parkingSessions = parkingSessionRepository.findAllByBranchId(branchId);
+        User currentUser = currentUserService.getCurrentUser();
+        List<ParkingSession> parkingSessions;
+        if (currentUser.getUserRole() == UserRole.USER) {
+            parkingSessions = parkingSessionRepository.findAllByUserId(currentUser.getUserId());
+        } else {
+            Long branchId = branchScopeService.resolveReadableBranchId(null);
+            parkingSessions = parkingSessionRepository.findAllByBranchId(branchId);
+        }
         return parkingSessions.stream()
-                    .map(this::convertToResponse) // chuyển đổi từng ParkingSession thành ParkingSessionReponse
-                    .collect(Collectors.toList()); // thu thập kết quả vào một List<ParkingSessionReponse> và trả về
+                    .map(this::convertToResponse)
+                    .collect(Collectors.toList());
     }
     
     
@@ -366,6 +392,10 @@ public class ParkingSessionService {
                 .orElseThrow(() -> new ParkingSessionException("Thẻ gửi xe không tồn tại"));
         if (parkingCard.getStatus() != ParkingCardStatus.AVAILABLE) {
             throw new ParkingSessionException("Thẻ gửi xe hiện không khả dụng");
+        }
+
+        if (parkingCard.getType() == ParkingCardType.MONTHLY) {
+            throw new ParkingSessionException("Thẻ tháng không thể sử dụng cho dịch vụ đặt chỗ (Booking)");
         }
 
         // 2. Tìm booking

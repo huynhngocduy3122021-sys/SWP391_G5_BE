@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import Parking.Service.ParkingCardService;
@@ -32,6 +34,7 @@ public class ParkingCardController {
 
     @PostMapping
     @Operation(summary = "Tạo thẻ giữ xe")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<ParkingCardResponse> createParkingCard(
             @Valid @RequestBody CreateParkingCardRequest request
     ) {
@@ -40,18 +43,23 @@ public class ParkingCardController {
 
     @GetMapping
     @Operation(summary = "Lấy dữ liệu của thẻ")
-    public ResponseEntity<List<ParkingCardResponse>> getAllParkingCards() {
-        return ResponseEntity.ok(parkingCardService.getAllParkingCards());
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<ParkingCardResponse>> getAllParkingCards(
+            @RequestParam(required = false) Long branchId
+    ) {
+        return ResponseEntity.ok(parkingCardService.getAllParkingCards(branchId));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Lấy thẻ giữ xe theo ID")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<ParkingCardResponse> getParkingCardById(@PathVariable Long id) {
         return ResponseEntity.ok(parkingCardService.getParkingCardById(id));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật thông tin thẻ giữ xe")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<ParkingCardResponse> updateParkingCard(
             @PathVariable Long id,
             @Valid @RequestBody UpdateParkingCardRequest request
@@ -61,6 +69,7 @@ public class ParkingCardController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa thẻ giữ xe")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Void> deleteParkingCard(@PathVariable Long id) {
         parkingCardService.deleteParkingCard(id);
         return ResponseEntity.noContent().build();

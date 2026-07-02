@@ -49,6 +49,9 @@ public class SecurityConfig {
                 .requestMatchers("/", "/index.html", "/favicon.ico", "/style.css", "/app.js", "/api/auth/**", "/error").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/parking/slots").permitAll()
 
+                // VNPay callback - không mang JWT token, phải để public
+                .requestMatchers("/api/payments/vnpay-return", "/api/payments/vnpay-ipn").permitAll()
+
                 // Cho phép Swagger chạy không cần token
                 .requestMatchers(
                         "/swagger-ui/**",

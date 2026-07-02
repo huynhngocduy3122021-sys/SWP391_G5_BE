@@ -28,5 +28,9 @@ public class MonthlyTicketResponse {
 
     private LocalDateTime endDate;
 
+    private Long parkingBranchId;
+
+    private String parkingBranchName;
+
     private Integer status; // 1 = Active, 0 = Expired/Locked
 }

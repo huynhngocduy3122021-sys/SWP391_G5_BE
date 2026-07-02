@@ -23,6 +23,7 @@ import java.util.List;
 public class ParkingCardService {
     private final ParkingCardRepository parkingCardRepository;
     private final ParkingBranchRepository parkingBranchRepository;
+    private final BranchScopeService branchScopeService;
 
     @Transactional
     public ParkingCardResponse createParkingCard(CreateParkingCardRequest request) {
@@ -41,6 +42,9 @@ public class ParkingCardService {
             throw new ParkingSessionException("Chi nhánh bãi xe đang ngừng hoạt động");
         }
 
+        // Validate branch scope
+        branchScopeService.assertSameBranch(parkingBranch.getParkingBranchId());
+
         ParkingCard parkingCard = new ParkingCard();
         parkingCard.setCardCode(cardCode);
         parkingCard.setStatus(ParkingCardStatus.AVAILABLE);
@@ -53,21 +57,32 @@ public class ParkingCardService {
     }
 
     @Transactional(readOnly = true)
-    public List<ParkingCardResponse> getAllParkingCards() {
-        return parkingCardRepository.findAll()
-                .stream()
+    public List<ParkingCardResponse> getAllParkingCards(Long branchId) {
+        Long resolvedBranchId = branchScopeService.resolveReadableBranchId(branchId);
+        List<ParkingCard> cards;
+        if (resolvedBranchId == null) {
+            cards = parkingCardRepository.findAll();
+        } else {
+            cards = parkingCardRepository.findByParkingBranchParkingBranchId(resolvedBranchId);
+        }
+        return cards.stream()
                 .map(this::convertToResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public ParkingCardResponse getParkingCardById(Long id) {
-        return convertToResponse(findParkingCard(id));
+        ParkingCard parkingCard = findParkingCard(id);
+        branchScopeService.assertSameBranch(parkingCard.getParkingBranch().getParkingBranchId());
+        return convertToResponse(parkingCard);
     }
 
     @Transactional
     public ParkingCardResponse updateParkingCard(Long id, UpdateParkingCardRequest request) {
         ParkingCard parkingCard = findParkingCard(id);
+        
+        // Validate branch scope of existing card
+        branchScopeService.assertSameBranch(parkingCard.getParkingBranch().getParkingBranchId());
 
         if (request.getCardCode() != null && !request.getCardCode().isBlank()) {
             String cardCode = request.getCardCode().trim();
@@ -83,6 +98,8 @@ public class ParkingCardService {
             if (!parkingBranch.isActive()) {
                 throw new ParkingSessionException("Chi nhánh bãi xe đang ngừng hoạt động");
             }
+            // Validate branch scope of new branch
+            branchScopeService.assertSameBranch(parkingBranch.getParkingBranchId());
             parkingCard.setParkingBranch(parkingBranch);
         }
 
@@ -100,6 +117,7 @@ public class ParkingCardService {
     @Transactional
     public void deleteParkingCard(Long id) {
         ParkingCard parkingCard = findParkingCard(id);
+        branchScopeService.assertSameBranch(parkingCard.getParkingBranch().getParkingBranchId());
         parkingCardRepository.delete(parkingCard);
     }
 

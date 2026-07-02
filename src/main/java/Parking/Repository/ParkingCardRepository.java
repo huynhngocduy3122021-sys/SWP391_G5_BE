@@ -15,4 +15,6 @@ public interface ParkingCardRepository extends JpaRepository<ParkingCard , Long>
             String cardCode,
             Long parkingBranchId
     );
+
+    java.util.List<ParkingCard> findByParkingBranchParkingBranchId(Long parkingBranchId);
 }

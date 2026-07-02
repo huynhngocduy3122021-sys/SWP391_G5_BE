@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import Parking.Service.MonthlyTicketService;
 import Parking.dto.request.CreateMonthlyTicketRequest;
@@ -32,6 +34,7 @@ public class MonthlyTicketController {
 
     @PostMapping
     @Operation(summary = "Tạo vé tháng")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<MonthlyTicketResponse> createMonthlyTicket(
             @Valid @RequestBody CreateMonthlyTicketRequest request
     ) {
@@ -40,18 +43,30 @@ public class MonthlyTicketController {
 
     @GetMapping
     @Operation(summary = "Lấy danh sách vé tháng")
-    public ResponseEntity<List<MonthlyTicketResponse>> getAllMonthlyTickets() {
-        return ResponseEntity.ok(monthlyTicketService.getAllMonthlyTickets());
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<MonthlyTicketResponse>> getAllMonthlyTickets(
+            @RequestParam(required = false) Long branchId
+    ) {
+        return ResponseEntity.ok(monthlyTicketService.getAllMonthlyTickets(branchId));
+    }
+
+    @GetMapping("/my-tickets")
+    @Operation(summary = "Lấy danh sách vé tháng của cư dân đang đăng nhập")
+    @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<MonthlyTicketResponse>> getMyMonthlyTickets() {
+        return ResponseEntity.ok(monthlyTicketService.getMyMonthlyTickets());
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Lấy vé tháng theo ID")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<MonthlyTicketResponse> getMonthlyTicketById(@PathVariable Long id) {
         return ResponseEntity.ok(monthlyTicketService.getMonthlyTicketById(id));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật thông tin vé tháng")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<MonthlyTicketResponse> updateMonthlyTicket(
             @PathVariable Long id,
             @Valid @RequestBody UpdateMonthlyTicketRequest request
@@ -61,6 +76,7 @@ public class MonthlyTicketController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa vé tháng")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Void> deleteMonthlyTicket(@PathVariable Long id) {
         monthlyTicketService.deleteMonthlyTicket(id);
         return ResponseEntity.noContent().build();
