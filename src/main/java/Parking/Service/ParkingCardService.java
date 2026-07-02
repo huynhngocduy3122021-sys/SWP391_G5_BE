@@ -10,6 +10,7 @@ import Parking.dto.request.CreateParkingCardRequest;
 import Parking.dto.request.UpdateParkingCardRequest;
 import Parking.dto.response.ParkingCardResponse;
 import Parking.enums.ParkingCardStatus;
+import Parking.enums.ParkingCardType;
 import Parking.exception.exceptions.ParkingSessionException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,9 @@ public class ParkingCardService {
         ParkingCard parkingCard = new ParkingCard();
         parkingCard.setCardCode(cardCode);
         parkingCard.setStatus(ParkingCardStatus.AVAILABLE);
+        if (request.getType() != null) {
+            parkingCard.setType(request.getType());
+        }
         parkingCard.setParkingBranch(parkingBranch);
 
         return convertToResponse(parkingCardRepository.save(parkingCard));
@@ -86,6 +90,10 @@ public class ParkingCardService {
             parkingCard.setStatus(request.getStatus());
         }
 
+        if (request.getType() != null) {
+            parkingCard.setType(request.getType());
+        }
+
         return convertToResponse(parkingCardRepository.save(parkingCard));
     }
 
@@ -107,6 +115,7 @@ public class ParkingCardService {
                 .parkingCardId(parkingCard.getParkingCardId())
                 .cardCode(parkingCard.getCardCode())
                 .status(parkingCard.getStatus())
+                .type(parkingCard.getType())
                 .parkingBranchId(parkingBranch != null ? parkingBranch.getParkingBranchId() : null)
                 .parkingBranchName(parkingBranch != null ? parkingBranch.getBranchName() : null)
                 .build();

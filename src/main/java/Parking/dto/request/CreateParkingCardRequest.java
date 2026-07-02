@@ -1,11 +1,13 @@
 package Parking.dto.request;
 
+import Parking.enums.ParkingCardType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+
 @Getter
 @Setter
 public class CreateParkingCardRequest {
@@ -17,7 +19,8 @@ public class CreateParkingCardRequest {
     )
     private String cardCode;
 
-    
-     @NotNull(message = "ParkingBranchID cannot null")
+    @NotNull(message = "ParkingBranchID cannot null")
     private Long parkingBranchId;
+
+    private ParkingCardType type;
 }

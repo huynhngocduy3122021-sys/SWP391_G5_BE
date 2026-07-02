@@ -22,8 +22,9 @@ erDiagram
     
     PARKING_SESSION ||--|| PAYMENT : "được trả bởi"
     PARKING_SESSION ||--o{ VEHICLE_IMAGE : "lưu ảnh"
-    
-    PRICE_POLICY }o--|| VEHICLE_TYPE : "áp dụng cho"
+
+    MONTHLY_TICKET }o--|| VEHICLE : "đăng ký cho"
+    MONTHLY_TICKET }o--|| PARKING_CARD : "liên kết với"
 ```
 
 ---
@@ -63,7 +64,9 @@ erDiagram
 
 ### 8. `parking_card` (Thẻ gửi xe)
 * Quản lý thẻ RFID vật lý cấp cho khách khi vào cổng (`cardCode`).
-* Gồm trạng thái: `AVAILABLE` (sẵn sàng cấp), `IN_USE` (đang giữ xe).
+* Gồm các thông tin:
+  * `status`: Trạng thái thẻ (`AVAILABLE` - sẵn sàng cấp, `IN_USE` - đang giữ xe, `LOST`, `DISABLED`).
+  * `type`: Phân loại thẻ (`REGULAR` - thường, `MONTHLY` - tháng, `VIP` - vip).
 
 ### 9. `parking_session` (Phiên gửi xe)
 * Trái tim của hệ thống, ghi lại toàn bộ hành trình gửi xe.
@@ -72,3 +75,15 @@ erDiagram
 ### 10. `payment` (Giao dịch thanh toán)
 * Chi tiết thanh toán của một phiên gửi xe.
 * Gồm các thông tin: `paymentMethod` (`CASH` hoặc `VNPAY`), `paymentStatus` (`PENDING` / `PAID` / `FAILED`), và mã đối chiếu `transactionRef`.
+
+### 11. `monthly_ticket` (Vé tháng)
+* Quản lý vé tháng gửi xe đăng ký cho khách hàng/phương tiện cụ thể.
+* Gồm các thông tin:
+  * `ticket_id`: Khóa chính.
+  * `vehicle`: Phương tiện đăng ký vé tháng.
+  * `parking_card`: Thẻ vật lý liên kết.
+  * `guest_name`: Tên khách hàng (khi phương tiện không thuộc tài khoản user hệ thống).
+  * `guest_phone`: Số điện thoại của khách.
+  * `start_date`: Ngày bắt đầu hiệu lực.
+  * `end_date`: Ngày hết hạn.
+  * `status`: Trạng thái (`1` = Đang hoạt động, `0` = Đã hết hạn/Bị khóa).
