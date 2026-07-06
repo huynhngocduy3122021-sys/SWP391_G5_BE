@@ -289,6 +289,14 @@ public class ParkingSessionService {
             parkingSessions = parkingSessionRepository.findAllByBranchId(branchId);
         }
         return parkingSessions.stream()
+                    .filter(session -> {
+                        // Nếu là STAFF thì chỉ hiển thị xe đang trong bãi (ACTIVE)
+                        if (currentUser.getUserRole() == UserRole.STAFF) {
+                            return session.getStatus() == ParkingSessionStatus.ACTIVE;
+                        }
+                        // Nếu là MANAGER hoặc ADMIN thì hiển thị toàn bộ
+                        return true;
+                    })
                     .map(this::convertToResponse)
                     .collect(Collectors.toList());
     }
