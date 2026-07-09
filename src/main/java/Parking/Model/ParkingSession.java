@@ -56,6 +56,12 @@ public class ParkingSession {
         @Column(name = "total_amount")
         private BigDecimal totalAmount;
 
+        @Column(name = "penalty_fee")
+        private BigDecimal penaltyFee;
+
+        @Column(name = "parking_fee")
+        private BigDecimal parkingFee;
+
         @Enumerated(EnumType.STRING)
         @Column(name = "status", nullable = false)
         private ParkingSessionStatus status = ParkingSessionStatus.ACTIVE;

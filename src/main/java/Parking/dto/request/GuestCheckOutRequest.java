@@ -21,4 +21,5 @@ public class GuestCheckOutRequest {
 
     private PaymentMethod paymentMethod;
     private String licensePlate;
+    private Boolean lostCard;
 }

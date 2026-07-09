@@ -79,4 +79,16 @@ public interface MonthlyTicketRepository extends JpaRepository<MonthlyTicket, Lo
         WHERE mt.vehicle.user.userId = :userId
     """)
     List<MonthlyTicket> findAllByUserId(@Param("userId") Long userId);
+
+    @Query("""
+        SELECT COUNT(mt) > 0 FROM MonthlyTicket mt
+        WHERE mt.vehicle.user.userId = :userId
+          AND mt.parkingCard.type = 'EMPLOYEE'
+          AND mt.status = 1
+          AND (:ticketId IS NULL OR mt.ticketId <> :ticketId)
+    """)
+    boolean existsActiveEmployeeTicketByUserId(
+        @Param("userId") Long userId, 
+        @Param("ticketId") Long ticketId
+    );
 }

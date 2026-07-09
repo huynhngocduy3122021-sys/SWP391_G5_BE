@@ -16,6 +16,7 @@ import Parking.dto.request.UpdateMonthlyTicketRequest;
 import Parking.dto.response.MonthlyTicketResponse;
 import Parking.enums.ParkingCardStatus;
 import Parking.enums.ParkingCardType;
+import Parking.enums.UserRole;
 import Parking.exception.exceptions.ParkingSessionException;
 import lombok.RequiredArgsConstructor;
 
@@ -45,8 +46,9 @@ public class MonthlyTicketService {
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy thẻ giữ xe"));
 
         // Validate parking card properties
-        if (parkingCard.getType() != ParkingCardType.MONTHLY) {
-            throw new ParkingSessionException("Chỉ cho phép thẻ giữ xe loại tháng (MONTHLY) đăng ký vé tháng");
+        boolean isEmployeeCard = parkingCard.getCardCode() != null && parkingCard.getCardCode().toUpperCase().startsWith("EMP-");
+        if (parkingCard.getType() != ParkingCardType.MONTHLY && !isEmployeeCard) {
+            throw new ParkingSessionException("Chỉ cho phép thẻ giữ xe loại tháng (MONTHLY) hoặc nhân viên (EMPLOYEE) đăng ký vé");
         }
         if (parkingCard.getStatus() == ParkingCardStatus.LOST || parkingCard.getStatus() == ParkingCardStatus.DISABLED) {
             throw new ParkingSessionException("Thẻ giữ xe đang bị khóa hoặc báo mất");
@@ -71,13 +73,31 @@ public class MonthlyTicketService {
             }
         }
 
+        java.time.LocalDateTime finalEndDate = request.getEndDate();
+
+        if (isEmployeeCard) {
+            User employee = vehicle.getUser();
+            if (employee == null) {
+                throw new ParkingSessionException("Phương tiện phải được liên kết với một tài khoản để đăng ký thẻ nhân viên");
+            }
+            if (employee.getUserRole() == UserRole.USER) {
+                 throw new ParkingSessionException("Tài khoản liên kết với phương tiện không phải là nhân viên");
+            }
+            if (request.getStatus() != null && request.getStatus() == 1) {
+                if (monthlyTicketRepository.existsActiveEmployeeTicketByUserId(employee.getUserId(), null)) {
+                    throw new ParkingSessionException("Nhân viên này đã có 1 thẻ đang hoạt động");
+                }
+            }
+            finalEndDate = java.time.LocalDateTime.of(2099, 12, 31, 23, 59, 59);
+        }
+
         MonthlyTicket monthlyTicket = new MonthlyTicket();
         monthlyTicket.setVehicle(vehicle);
         monthlyTicket.setParkingCard(parkingCard);
         monthlyTicket.setGuestName(request.getGuestName());
         monthlyTicket.setGuestPhone(request.getGuestPhone());
         monthlyTicket.setStartDate(request.getStartDate());
-        monthlyTicket.setEndDate(request.getEndDate());
+        monthlyTicket.setEndDate(finalEndDate);
         monthlyTicket.setStatus(request.getStatus());
 
         return convertToResponse(monthlyTicketRepository.save(monthlyTicket));
@@ -128,8 +148,9 @@ public class MonthlyTicketService {
         }
 
         // Validate parking card properties
-        if (parkingCard.getType() != ParkingCardType.MONTHLY) {
-            throw new ParkingSessionException("Chỉ cho phép thẻ giữ xe loại tháng (MONTHLY) đăng ký vé tháng");
+        boolean isEmployeeCard = parkingCard.getCardCode() != null && parkingCard.getCardCode().toUpperCase().startsWith("EMP-");
+        if (parkingCard.getType() != ParkingCardType.MONTHLY && !isEmployeeCard) {
+            throw new ParkingSessionException("Chỉ cho phép thẻ giữ xe loại tháng (MONTHLY) hoặc nhân viên (EMPLOYEE) đăng ký vé");
         }
         if (parkingCard.getStatus() == ParkingCardStatus.LOST || parkingCard.getStatus() == ParkingCardStatus.DISABLED) {
             throw new ParkingSessionException("Thẻ giữ xe đang bị khóa hoặc báo mất");
@@ -148,8 +169,24 @@ public class MonthlyTicketService {
         java.time.LocalDateTime endDate = request.getEndDate() != null ? request.getEndDate() : monthlyTicket.getEndDate();
         Integer status = request.getStatus() != null ? request.getStatus() : monthlyTicket.getStatus();
 
-        if (startDate.isAfter(endDate) || startDate.isEqual(endDate)) {
-            throw new ParkingSessionException("Ngày bắt đầu phải trước ngày kết thúc");
+        if (isEmployeeCard) {
+            User employee = vehicle.getUser();
+            if (employee == null) {
+                throw new ParkingSessionException("Phương tiện phải được liên kết với một tài khoản để cập nhật thẻ nhân viên");
+            }
+            if (employee.getUserRole() == UserRole.USER) {
+                 throw new ParkingSessionException("Tài khoản liên kết với phương tiện không phải là nhân viên");
+            }
+            if (status != null && status == 1) {
+                if (monthlyTicketRepository.existsActiveEmployeeTicketByUserId(employee.getUserId(), id)) {
+                    throw new ParkingSessionException("Nhân viên này đã có 1 thẻ đang hoạt động");
+                }
+            }
+            endDate = java.time.LocalDateTime.of(2099, 12, 31, 23, 59, 59);
+        } else {
+            if (startDate.isAfter(endDate) || startDate.isEqual(endDate)) {
+                throw new ParkingSessionException("Ngày bắt đầu phải trước ngày kết thúc");
+            }
         }
 
         // Overlapping monthly ticket validation (exclude current ticket ID)

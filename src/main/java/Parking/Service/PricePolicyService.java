@@ -25,6 +25,7 @@ public class PricePolicyService {
         pricePolicy.setBasePrice(request.getBasePrice());
         pricePolicy.setBaseDurationMinutes(request.getBaseDurationMinutes());
         pricePolicy.setExtraHourPrice(request.getExtraHourPrice());
+        pricePolicy.setExtraDurationMinutes(request.getExtraDurationMinutes());
         pricePolicy.setActive(true);
         pricePolicy.setVehicleType(vehicleType);
 
@@ -49,6 +50,7 @@ public class PricePolicyService {
         pricePolicy.setBasePrice(request.getBasePrice());
         pricePolicy.setBaseDurationMinutes(request.getBaseDurationMinutes());
         pricePolicy.setExtraHourPrice(request.getExtraHourPrice());
+        pricePolicy.setExtraDurationMinutes(request.getExtraDurationMinutes());
         pricePolicy.setActive(request.isActive());
         pricePolicy.setVehicleType(vehicleType);
 
