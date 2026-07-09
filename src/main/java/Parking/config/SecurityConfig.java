@@ -47,7 +47,13 @@ public class SecurityConfig {
                 
                 // Cho phép API đăng ký / đăng nhập và xem sơ đồ đỗ xe công cộng
                 .requestMatchers("/", "/index.html", "/favicon.ico", "/style.css", "/app.js", "/api/auth/**", "/error").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/parking/slots").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, 
+                    "/api/parking/slots", 
+                    "/api/parking-branches", 
+                    "/api/parking-zones/**", 
+                    "/api/vehicle-types", 
+                    "/api/price-policies"
+                ).permitAll()
 
                 // VNPay callback - không mang JWT token, phải để public
                 .requestMatchers("/api/payments/vnpay-return", "/api/payments/vnpay-ipn").permitAll()

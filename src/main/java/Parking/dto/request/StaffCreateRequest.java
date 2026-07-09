@@ -23,4 +23,6 @@ public class StaffCreateRequest {
     
     @NotNull(message = "Parking branch is required")
     private Long parkingBranchId;
+    
+    private String userAddress;
 }
