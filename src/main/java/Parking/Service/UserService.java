@@ -95,6 +95,7 @@ public class UserService implements UserDetailsService  {
         newStaff.setUserEmail(request.getUserEmail());
         newStaff.setUserPhone(request.getUserPhone());
         newStaff.setUserPassword(passwordEncoder.encode(request.getUserPassword()));
+        newStaff.setUserAddress(request.getUserAddress() != null ? request.getUserAddress() : "System");
         newStaff.setUserRole(UserRole.STAFF);
         newStaff.setParkingBranch(branch);
         
@@ -118,6 +119,7 @@ public class UserService implements UserDetailsService  {
         newManager.setUserEmail(request.getUserEmail());
         newManager.setUserPhone(request.getUserPhone());
         newManager.setUserPassword(passwordEncoder.encode(request.getUserPassword()));
+        newManager.setUserAddress(request.getUserAddress() != null ? request.getUserAddress() : "System");
         newManager.setUserRole(UserRole.MANAGER);
         newManager.setParkingBranch(branch);
         

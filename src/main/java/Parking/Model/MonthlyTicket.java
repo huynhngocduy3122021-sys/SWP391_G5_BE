@@ -45,4 +45,12 @@ public class MonthlyTicket {
 
     @Column(name = "status", nullable = false)
     private Integer status; // 1 = Active, 0 = Expired/Locked
+
+    @Column(name = "created_at", nullable = true, updatable = false)
+    private LocalDateTime createdAt;
+
+    @jakarta.persistence.PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

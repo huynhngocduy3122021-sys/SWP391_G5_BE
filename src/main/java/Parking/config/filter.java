@@ -44,7 +44,11 @@ public class filter extends OncePerRequestFilter {
                 "/v3/api-docs/**",
                 "/v3/api-docs",
                 "/api/auth/reset-password",
-                "/api/parking/slots"
+                "/api/parking/slots",
+                "/api/parking-branches",
+                "/api/parking-zones/**",
+                "/api/vehicle-types",
+                "/api/price-policies"
     );
 
             public boolean isPublicAPI(String uri) {
