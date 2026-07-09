@@ -42,6 +42,8 @@ public class ParkingSessionResponse {
     private LocalDateTime checkOutTime;
 
     private BigDecimal totalAmount;
+    private BigDecimal penaltyFee;
+    private BigDecimal parkingFee;
 
     private ParkingSessionStatus sessionStatus;
 

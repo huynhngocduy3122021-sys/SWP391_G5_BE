@@ -45,7 +45,7 @@ public class PaymentService {
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     @Transactional
-    public GuestCheckOutResponse processCheckOutPayment(ParkingSession parkingSession, PaymentMethod paymentMethod, String clientIp) {
+    public GuestCheckOutResponse processCheckOutPayment(ParkingSession parkingSession, PaymentMethod paymentMethod, String clientIp, Boolean lostCard) {
         // b1: kiểm tra chưa thanh toán
         boolean paymentExists = paymentRepository.existsByParkingSessionParkingSessionId(parkingSession.getParkingSessionId());
         Payment payment;
@@ -67,12 +67,14 @@ public class PaymentService {
         // b2: chính sách tính giá
         Long vehicleTypeId = parkingSession.getVehicle().getVehicleType().getVehicleTypeId();
 
-        PricePolicy pricePolicy = pricePolicyRepository.findFirstByVehicleTypeVehicleTypeIdAndActiveTrueOrderByPricePolicyIdDesc(vehicleTypeId)
+        PricePolicy pricePolicy = pricePolicyRepository.findFirstActiveHourlyPolicy(vehicleTypeId)
                     .orElseThrow(() -> new ParkingSessionException("Active price policy not found"));
 
         LocalDateTime checkOutTime = LocalDateTime.now();
         // b3: tính phí
-        BigDecimal totalAmount;
+        BigDecimal parkingFee;
+        BigDecimal penaltyFee = (lostCard != null && lostCard) ? new BigDecimal("50000") : BigDecimal.ZERO;
+        
         boolean isMonthlyTicketActive = false;
         if (parkingSession.getParkingCard().getType() == ParkingCardType.MONTHLY) {
             isMonthlyTicketActive = monthlyTicketRepository.existsActiveTicketByCard(
@@ -81,10 +83,17 @@ public class PaymentService {
             );
         }
 
-        if (isMonthlyTicketActive) {
-            totalAmount = BigDecimal.ZERO;
+        if (isMonthlyTicketActive || (parkingSession.getParkingCard().getCardCode() != null && parkingSession.getParkingCard().getCardCode().toUpperCase().startsWith("EMP-"))) {
+            parkingFee = BigDecimal.ZERO;
         } else {
-            totalAmount = caculateParkingFee(parkingSession.getCheckInTime(), checkOutTime, pricePolicy);
+            parkingFee = caculateParkingFee(parkingSession.getCheckInTime(), checkOutTime, pricePolicy);
+        }
+
+        BigDecimal totalAmount = parkingFee.add(penaltyFee);
+        parkingSession.setParkingFee(parkingFee);
+        parkingSession.setPenaltyFee(penaltyFee);
+        if (lostCard != null && lostCard) {
+            parkingSession.getParkingCard().setStatus(ParkingCardStatus.LOST);
         }
 
         // b4: cập nhật thông tin payment
@@ -208,8 +217,10 @@ public class PaymentService {
             fee = pricePolicy.getBasePrice().setScale(2, RoundingMode.HALF_UP);
         } else {
             long extraMinutes = totalMinutes - pricePolicy.getBaseDurationMinutes();
-            long extraHours = (long) Math.ceil(extraMinutes / 60.0); // ceil là làm tròn số lên
-            BigDecimal extraAmount = pricePolicy.getExtraHourPrice().multiply(BigDecimal.valueOf(extraHours));
+            int extraBlockMinutes = pricePolicy.getExtraDurationMinutes() != null && pricePolicy.getExtraDurationMinutes() > 0 
+                    ? pricePolicy.getExtraDurationMinutes() : 60;
+            long extraBlocks = (long) Math.ceil(extraMinutes / (double) extraBlockMinutes);
+            BigDecimal extraAmount = pricePolicy.getExtraHourPrice().multiply(BigDecimal.valueOf(extraBlocks));
             fee = pricePolicy.getBasePrice().add(extraAmount).setScale(2, RoundingMode.HALF_UP);
         }
 

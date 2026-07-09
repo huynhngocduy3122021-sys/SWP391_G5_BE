@@ -44,6 +44,11 @@ public class filter extends OncePerRequestFilter {
                 "/v3/api-docs/**",
                 "/v3/api-docs",
                 "/api/auth/reset-password",
+                "/api/payments/vnpay-return",
+                "/api/payments/vnpay-ipn"
+    );
+
+    private final List<String> PUBLIC_GET_ENDPOINTS = List.of(
                 "/api/parking/slots",
                 "/api/parking-branches",
                 "/api/parking-zones/**",
@@ -51,11 +56,20 @@ public class filter extends OncePerRequestFilter {
                 "/api/price-policies"
     );
 
-            public boolean isPublicAPI(String uri) {
+            public boolean isPublicAPI(String uri, String method) {
                 AntPathMatcher matcher = new AntPathMatcher();
 
-                return PUBLIC_API_ENDPOINTS.stream()
+                boolean isPublic = PUBLIC_API_ENDPOINTS.stream()
                         .anyMatch(pattern -> matcher.match(pattern, uri));
+                
+                if (isPublic) return true;
+
+                if ("GET".equalsIgnoreCase(method)) {
+                    return PUBLIC_GET_ENDPOINTS.stream()
+                            .anyMatch(pattern -> matcher.match(pattern, uri));
+                }
+
+                return false;
             }
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -75,7 +89,7 @@ public class filter extends OncePerRequestFilter {
             return;
         }
 
-        if(isPublicAPI(uri)){
+        if(isPublicAPI(uri, request.getMethod())){
             //api public
             // tất cả access
             filterChain.doFilter(request , response);

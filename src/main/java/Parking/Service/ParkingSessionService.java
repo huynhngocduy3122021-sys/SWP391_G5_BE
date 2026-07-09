@@ -236,7 +236,7 @@ public class ParkingSessionService {
 
             // b3: chuyen giao cho PaymentService de tinh tien va thanh toan
             System.out.println(parkingSession + " " + request.getPaymentMethod() + " " + clientIp);
-            return paymentService.processCheckOutPayment(parkingSession, request.getPaymentMethod(), clientIp);
+            return paymentService.processCheckOutPayment(parkingSession, request.getPaymentMethod(), clientIp, request.getLostCard());
         }
 
         public ParkingSessionResponse getActiveSessionByCard(String cardCode) {
@@ -253,7 +253,7 @@ public class ParkingSessionService {
             try {
                 Long vehicleTypeId = parkingSession.getVehicle().getVehicleType().getVehicleTypeId();
                 PricePolicy pricePolicy = pricePolicyRepository
-                        .findFirstByVehicleTypeVehicleTypeIdAndActiveTrueOrderByPricePolicyIdDesc(vehicleTypeId)
+                        .findFirstActiveHourlyPolicy(vehicleTypeId)
                         .orElse(null);
 
                 if (pricePolicy != null) {
@@ -276,7 +276,28 @@ public class ParkingSessionService {
             ParkingSession parkingSession = parkingSessionRepository
                     .findFirstByVehicleLicensePlateIgnoreCaseAndStatus(normalizedPlate, ParkingSessionStatus.ACTIVE)
                     .orElseThrow(() -> new ParkingSessionException("Active parking session not found for this license plate"));
-            return convertToResponse(parkingSession);
+            
+            ParkingSessionResponse response = convertToResponse(parkingSession);
+
+            try {
+                Long vehicleTypeId = parkingSession.getVehicle().getVehicleType().getVehicleTypeId();
+                PricePolicy pricePolicy = pricePolicyRepository
+                        .findFirstActiveHourlyPolicy(vehicleTypeId)
+                        .orElse(null);
+
+                if (pricePolicy != null) {
+                    BigDecimal tempFee = paymentService.caculateParkingFee(
+                            parkingSession.getCheckInTime(),
+                            LocalDateTime.now(),
+                            pricePolicy
+                    );
+                    response.setTotalAmount(tempFee);
+                }
+            } catch (Exception e) {
+                // Keep default fee if error
+            }
+
+            return response;
         }
 
     public List<ParkingSessionResponse> getAllParkingSession() {
@@ -350,6 +371,8 @@ public class ParkingSessionService {
             .paymentStatus(payment == null ? null: payment.getPaymentStatus())
             .vehicleImageIds(vehicleImageIds)
             .imageUrls(imageUrls)
+            .penaltyFee(parkingSession.getPenaltyFee())
+            .parkingFee(parkingSession.getParkingFee())
             .build();
     }
 
@@ -402,8 +425,8 @@ public class ParkingSessionService {
             throw new ParkingSessionException("Thẻ gửi xe hiện không khả dụng");
         }
 
-        if (parkingCard.getType() == ParkingCardType.MONTHLY) {
-            throw new ParkingSessionException("Thẻ tháng không thể sử dụng cho dịch vụ đặt chỗ (Booking)");
+        if (parkingCard.getType() == ParkingCardType.MONTHLY || (parkingCard.getCardCode() != null && parkingCard.getCardCode().toUpperCase().startsWith("EMP-"))) {
+            throw new ParkingSessionException("Thẻ tháng hoặc thẻ nhân viên không thể sử dụng cho dịch vụ đặt chỗ (Booking)");
         }
 
         // 2. Tìm booking

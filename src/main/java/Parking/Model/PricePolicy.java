@@ -35,10 +35,17 @@ public class PricePolicy {
     @Column(name = "extra_hour_price", nullable = false)
     private BigDecimal extraHourPrice;
 
+    @Column(name = "extra_duration_minutes", nullable = true)
+    private Integer extraDurationMinutes = 60;
+
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
     @ManyToOne
     @JoinColumn(name = "vehicle_type_id")
     private VehicleType vehicleType;
+
+    public Integer getExtraDurationMinutes() {
+        return extraDurationMinutes == null ? 60 : extraDurationMinutes;
+    }
 }

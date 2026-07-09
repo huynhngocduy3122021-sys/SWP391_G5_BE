@@ -28,6 +28,8 @@ public class UpdatePricePolicyRequest {
     @DecimalMin(value = "0.0", inclusive = true, message = "Extra hour price must be greater than or equal to 0")
     private BigDecimal extraHourPrice;
 
+    private Integer extraDurationMinutes = 60;
+
     @NotNull(message = "Vehicle type id is required")
     @Positive(message = "Vehicle type id must be greater than 0")
     private Long vehicleTypeId;
