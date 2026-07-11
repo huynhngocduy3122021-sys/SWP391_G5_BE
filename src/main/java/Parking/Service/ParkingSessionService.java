@@ -83,7 +83,7 @@ public class ParkingSessionService {
     private final CurrentUserService currentUserService;
 
     public ParkingSessionResponse guestCheckIn(GuestCheckInRequest request) { // hàm tạo guest check in
-        
+        LocalDateTime currentTime = (request.getTime() != null) ? request.getTime() : LocalDateTime.now();
         
         String licesePlate = normalizeLicensePlate(request.getLicensePlate());
         String cardCode = normalizeCardCode(request.getCardCode());
@@ -139,8 +139,7 @@ public class ParkingSessionService {
 
             // b4.5 : Validate monthly card / monthly ticket properties if it is a monthly card
             if (parkingCard.getType() == ParkingCardType.MONTHLY) {
-                LocalDateTime now = LocalDateTime.now();
-                MonthlyTicket activeTicket = monthlyTicketRepository.findActiveTicketByCard(parkingCard.getParkingCardId(), now)
+                MonthlyTicket activeTicket = monthlyTicketRepository.findActiveTicketByCard(parkingCard.getParkingCardId(), currentTime)
                         .orElseThrow(() -> new ParkingSessionException("Thẻ tháng không có vé tháng hoạt động hoặc đã hết hạn"));
 
                 // Validate that the license plate matches the vehicle in the monthly ticket
@@ -181,7 +180,7 @@ public class ParkingSessionService {
             parkingSession.setParkingBranch(parkingBranch);
             parkingSession.setVehicle(vehicle);
             parkingSession.setParkingCard(parkingCard);
-            parkingSession.setCheckInTime(LocalDateTime.now());
+            parkingSession.setCheckInTime(currentTime);
             parkingSession.setCheckOutTime(null);
             parkingSession.setTotalAmount(null);
             parkingSession.setStatus(ParkingSessionStatus.ACTIVE);
@@ -190,13 +189,12 @@ public class ParkingSessionService {
 
             // b9.5 : check and link active booking
             List<Booking> bookings = bookingRepository.findByVehicleLicensePlateIgnoreCaseAndStatus(licesePlate, BookingStatus.CONFIRMED);
-            LocalDateTime now = LocalDateTime.now();
             for (Booking b : bookings) {
-                if (!now.isBefore(b.getExpectedArrivalTime().minusMinutes(15)) && !now.isAfter(b.getHoldUntil())) {
+                if (!currentTime.isBefore(b.getExpectedArrivalTime().minusMinutes(15)) && !currentTime.isAfter(b.getHoldUntil())) {
                     b.setStatus(BookingStatus.COMPLETED);
                     b.setParkingSession(parkingSession);
-                    b.setCompletedAt(now);
-                    b.setUpdatedAt(now);
+                    b.setCompletedAt(currentTime);
+                    b.setUpdatedAt(currentTime);
                     bookingRepository.save(b);
                     break;
                 }
@@ -236,10 +234,10 @@ public class ParkingSessionService {
 
             // b3: chuyen giao cho PaymentService de tinh tien va thanh toan
             System.out.println(parkingSession + " " + request.getPaymentMethod() + " " + clientIp);
-            return paymentService.processCheckOutPayment(parkingSession, request.getPaymentMethod(), clientIp, request.getLostCard());
+            return paymentService.processCheckOutPayment(parkingSession, request.getPaymentMethod(), clientIp, request.getLostCard(), request.getTime());
         }
 
-        public ParkingSessionResponse getActiveSessionByCard(String cardCode) {
+        public ParkingSessionResponse getActiveSessionByCard(String cardCode, LocalDateTime time) {
             String normalizedCardCode = normalizeCardCode(cardCode);
 
             // Tìm session ACTIVE tương ứng với cardCode
@@ -257,9 +255,10 @@ public class ParkingSessionService {
                         .orElse(null);
 
                 if (pricePolicy != null) {
+                    LocalDateTime currentTime = (time != null) ? time : LocalDateTime.now();
                     BigDecimal tempFee = paymentService.caculateParkingFee(
                             parkingSession.getCheckInTime(),
-                            LocalDateTime.now(),
+                            currentTime,
                             pricePolicy
                     );
                     response.setTotalAmount(tempFee);
@@ -271,7 +270,7 @@ public class ParkingSessionService {
             return response;
         }
 
-        public ParkingSessionResponse getActiveSessionByLicensePlate(String licensePlate) {
+        public ParkingSessionResponse getActiveSessionByLicensePlate(String licensePlate, LocalDateTime time) {
             String normalizedPlate = normalizeLicensePlate(licensePlate);
             ParkingSession parkingSession = parkingSessionRepository
                     .findFirstByVehicleLicensePlateIgnoreCaseAndStatus(normalizedPlate, ParkingSessionStatus.ACTIVE)
@@ -286,9 +285,10 @@ public class ParkingSessionService {
                         .orElse(null);
 
                 if (pricePolicy != null) {
+                    LocalDateTime currentTime = (time != null) ? time : LocalDateTime.now();
                     BigDecimal tempFee = paymentService.caculateParkingFee(
                             parkingSession.getCheckInTime(),
-                            LocalDateTime.now(),
+                            currentTime,
                             pricePolicy
                     );
                     response.setTotalAmount(tempFee);
@@ -415,7 +415,7 @@ public class ParkingSessionService {
         return vehicleRepository.save(vehicle);
     }
 
-    public ParkingSessionResponse bookingCheckIn(String bookingCode, String cardCode) {
+    public ParkingSessionResponse bookingCheckIn(String bookingCode, String cardCode, LocalDateTime time) {
         cardCode = normalizeCardCode(cardCode);
 
         // 1. Tìm và khóa thẻ
@@ -438,9 +438,9 @@ public class ParkingSessionService {
         }
 
         // Kiểm tra thời gian hẹn
-        LocalDateTime now = LocalDateTime.now();
-        if (now.isBefore(booking.getExpectedArrivalTime().minusMinutes(120))) {
-            throw new ParkingSessionException("Quá sớm! Thời gian check-in hợp lệ bắt đầu từ: " + booking.getExpectedArrivalTime().minusMinutes(15));
+        LocalDateTime now = (time != null) ? time : LocalDateTime.now();
+        if (now.isBefore(booking.getExpectedArrivalTime().minusMinutes(60))) {
+            throw new ParkingSessionException("Quá sớm! Thời gian check-in hợp lệ bắt đầu từ: " + booking.getExpectedArrivalTime().minusMinutes(60));
         }
         if (now.isAfter(booking.getHoldUntil())) {
             throw new ParkingSessionException("Đặt chỗ đã hết hạn giữ chỗ lúc: " + booking.getHoldUntil());

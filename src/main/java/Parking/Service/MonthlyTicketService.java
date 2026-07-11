@@ -47,8 +47,8 @@ public class MonthlyTicketService {
 
         // Validate parking card properties
         boolean isEmployeeCard = parkingCard.getCardCode() != null && parkingCard.getCardCode().toUpperCase().startsWith("EMP-");
-        if (parkingCard.getType() != ParkingCardType.MONTHLY && !isEmployeeCard) {
-            throw new ParkingSessionException("Chỉ cho phép thẻ giữ xe loại tháng (MONTHLY) hoặc nhân viên (EMPLOYEE) đăng ký vé");
+        if (parkingCard.getType() != ParkingCardType.MONTHLY && parkingCard.getType() != ParkingCardType.VIP && !isEmployeeCard) {
+            throw new ParkingSessionException("Chỉ cho phép thẻ giữ xe loại tháng (MONTHLY), VIP hoặc nhân viên (EMPLOYEE) đăng ký vé");
         }
         if (parkingCard.getStatus() == ParkingCardStatus.LOST || parkingCard.getStatus() == ParkingCardStatus.DISABLED) {
             throw new ParkingSessionException("Thẻ giữ xe đang bị khóa hoặc báo mất");
@@ -100,6 +100,12 @@ public class MonthlyTicketService {
         monthlyTicket.setEndDate(finalEndDate);
         monthlyTicket.setStatus(request.getStatus());
 
+        if (isEmployeeCard) {
+            parkingCard.setType(ParkingCardType.EMPLOYEE);
+        }
+        parkingCard.setStatus(ParkingCardStatus.AVAILABLE);
+        parkingCardRepository.save(parkingCard);
+
         return convertToResponse(monthlyTicketRepository.save(monthlyTicket));
     }
 
@@ -149,8 +155,8 @@ public class MonthlyTicketService {
 
         // Validate parking card properties
         boolean isEmployeeCard = parkingCard.getCardCode() != null && parkingCard.getCardCode().toUpperCase().startsWith("EMP-");
-        if (parkingCard.getType() != ParkingCardType.MONTHLY && !isEmployeeCard) {
-            throw new ParkingSessionException("Chỉ cho phép thẻ giữ xe loại tháng (MONTHLY) hoặc nhân viên (EMPLOYEE) đăng ký vé");
+        if (parkingCard.getType() != ParkingCardType.MONTHLY && parkingCard.getType() != ParkingCardType.VIP && !isEmployeeCard) {
+            throw new ParkingSessionException("Chỉ cho phép thẻ giữ xe loại tháng (MONTHLY), VIP hoặc nhân viên (EMPLOYEE) đăng ký vé");
         }
         if (parkingCard.getStatus() == ParkingCardStatus.LOST || parkingCard.getStatus() == ParkingCardStatus.DISABLED) {
             throw new ParkingSessionException("Thẻ giữ xe đang bị khóa hoặc báo mất");
@@ -213,6 +219,12 @@ public class MonthlyTicketService {
         monthlyTicket.setStartDate(startDate);
         monthlyTicket.setEndDate(endDate);
         monthlyTicket.setStatus(status);
+
+        if (isEmployeeCard) {
+            parkingCard.setType(ParkingCardType.EMPLOYEE);
+        }
+        parkingCard.setStatus(ParkingCardStatus.AVAILABLE);
+        parkingCardRepository.save(parkingCard);
 
         return convertToResponse(monthlyTicketRepository.save(monthlyTicket));
     }
