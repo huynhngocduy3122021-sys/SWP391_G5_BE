@@ -19,6 +19,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.RequestBody;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
+import org.springframework.format.annotation.DateTimeFormat;
 
 @RestController
 @SecurityRequirement(name = "api_key")
@@ -37,17 +39,19 @@ public class ParkingSessionController {
     @GetMapping("/active-session")
     @Operation(summary = "Lấy phiên gửi xe đang hoạt động bằng mã thẻ (để xem trước lúc Checkout)")
     public ResponseEntity<ParkingSessionResponse> getActiveSessionByCardCode(
-            @RequestParam String cardCode
+            @RequestParam String cardCode,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime time
     ) {
-        return ResponseEntity.ok(parkingSessionService.getActiveSessionByCard(cardCode));
+        return ResponseEntity.ok(parkingSessionService.getActiveSessionByCard(cardCode, time));
     }
 
     @GetMapping("/active-session/license-plate")
     @Operation(summary = "Lấy phiên gửi xe đang hoạt động bằng biển số xe (để phục vụ báo mất thẻ)")
     public ResponseEntity<ParkingSessionResponse> getActiveSessionByLicensePlate(
-            @RequestParam String licensePlate
+            @RequestParam String licensePlate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime time
     ) {
-        return ResponseEntity.ok(parkingSessionService.getActiveSessionByLicensePlate(licensePlate));
+        return ResponseEntity.ok(parkingSessionService.getActiveSessionByLicensePlate(licensePlate, time));
     }
 
     @GetMapping()
@@ -60,9 +64,10 @@ public class ParkingSessionController {
     @Operation(summary = "Check-in cho xe đã đặt chỗ trước bằng mã booking và mã thẻ từ")
     public ResponseEntity<ParkingSessionResponse> bookingCheckIn(
             @RequestParam String bookingCode,
-            @RequestParam String cardCode
+            @RequestParam String cardCode,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime time
     ) {
-        return ResponseEntity.ok(parkingSessionService.bookingCheckIn(bookingCode, cardCode));
+        return ResponseEntity.ok(parkingSessionService.bookingCheckIn(bookingCode, cardCode, time));
     }
 
     @PostMapping("/guest/check-out")

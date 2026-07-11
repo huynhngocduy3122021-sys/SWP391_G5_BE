@@ -45,7 +45,7 @@ public class PaymentService {
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     @Transactional
-    public GuestCheckOutResponse processCheckOutPayment(ParkingSession parkingSession, PaymentMethod paymentMethod, String clientIp, Boolean lostCard) {
+    public GuestCheckOutResponse processCheckOutPayment(ParkingSession parkingSession, PaymentMethod paymentMethod, String clientIp, Boolean lostCard, LocalDateTime time) {
         // b1: kiểm tra chưa thanh toán
         boolean paymentExists = paymentRepository.existsByParkingSessionParkingSessionId(parkingSession.getParkingSessionId());
         Payment payment;
@@ -70,7 +70,7 @@ public class PaymentService {
         PricePolicy pricePolicy = pricePolicyRepository.findFirstActiveHourlyPolicy(vehicleTypeId)
                     .orElseThrow(() -> new ParkingSessionException("Active price policy not found"));
 
-        LocalDateTime checkOutTime = LocalDateTime.now();
+        LocalDateTime checkOutTime = (time != null) ? time : LocalDateTime.now();
         // b3: tính phí
         BigDecimal parkingFee;
         BigDecimal penaltyFee = (lostCard != null && lostCard) ? new BigDecimal("50000") : BigDecimal.ZERO;

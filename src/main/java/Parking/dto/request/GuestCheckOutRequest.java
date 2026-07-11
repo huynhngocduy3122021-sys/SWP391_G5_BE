@@ -1,5 +1,7 @@
 package Parking.dto.request;
 
+import java.time.LocalDateTime;
+
 import Parking.enums.PaymentMethod;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -22,4 +24,5 @@ public class GuestCheckOutRequest {
     private PaymentMethod paymentMethod;
     private String licensePlate;
     private Boolean lostCard;
+    private LocalDateTime time;
 }

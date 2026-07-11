@@ -1,5 +1,7 @@
 package Parking.dto.request;
 
+import java.time.LocalDateTime;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -36,4 +38,6 @@ public class GuestCheckInRequest {
     private String vehicleColor;
 
     private String vehicleBrand;
+
+    private LocalDateTime time;
 }

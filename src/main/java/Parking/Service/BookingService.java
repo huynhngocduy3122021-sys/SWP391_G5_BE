@@ -65,11 +65,11 @@ public class BookingService {
 
         // 4. Ràng buộc về thời gian đặt chỗ (Rule 2.3)
         LocalDateTime now = LocalDateTime.now();
-        if (request.getExpectedArrivalTime().isBefore(now.plusMinutes(15))) {
-            throw new BookingException("Thời gian dự kiến đến phải sau thời gian hiện tại ít nhất 15 phút.");
+        if (request.getExpectedArrivalTime().isBefore(now.plusMinutes(60))) {
+            throw new BookingException("Thời gian dự kiến đến phải sau thời gian hiện tại ít nhất 60 phút.");
         }
-        if (request.getExpectedArrivalTime().isAfter(now.plusDays(7))) {
-            throw new BookingException("Thời gian dự kiến đến không được quá 7 ngày kể từ hiện tại.");
+        if (request.getExpectedArrivalTime().isAfter(now.plusMinutes(60))) {
+            throw new BookingException("Thời gian dự kiến đến không được quá 1 tiếng kể từ hiện tại.");
         }
 
         // 5. Kiểm tra biển số xe và đăng ký/gán xe (Rule 2.2)
@@ -142,7 +142,7 @@ public class BookingService {
         booking.setVehicle(vehicle);
         booking.setVehicleType(vehicleType);
         booking.setExpectedArrivalTime(request.getExpectedArrivalTime());
-        booking.setHoldUntil(request.getExpectedArrivalTime().plusMinutes(30)); // Grace period 30m
+        booking.setHoldUntil(request.getExpectedArrivalTime().plusMinutes(60)); // Grace period 60m
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setCreatedAt(now);
         booking.setUpdatedAt(now);
