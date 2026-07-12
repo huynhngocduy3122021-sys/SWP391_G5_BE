@@ -255,6 +255,7 @@ public class MonthlyTicketService {
                 .parkingBranchId(monthlyTicket.getParkingCard().getParkingBranch().getParkingBranchId())
                 .parkingBranchName(monthlyTicket.getParkingCard().getParkingBranch().getBranchName())
                 .status(monthlyTicket.getStatus())
+                .createdAt(monthlyTicket.getCreatedAt())
                 .build();
     }
 }
