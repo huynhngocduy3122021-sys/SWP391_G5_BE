@@ -33,4 +33,6 @@ public class MonthlyTicketResponse {
     private String parkingBranchName;
 
     private Integer status; // 1 = Active, 0 = Expired/Locked
+
+    private LocalDateTime createdAt;
 }
