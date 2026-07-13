@@ -65,8 +65,8 @@ public class BookingService {
 
         // 4. Ràng buộc về thời gian đặt chỗ (Rule 2.3)
         LocalDateTime now = LocalDateTime.now();
-        if (request.getExpectedArrivalTime().isBefore(now.plusMinutes(60))) {
-            throw new BookingException("Thời gian dự kiến đến phải sau thời gian hiện tại ít nhất 60 phút.");
+        if (request.getExpectedArrivalTime().isBefore(now.plusMinutes(15))) {
+            throw new BookingException("Thời gian dự kiến đến phải sau thời gian hiện tại ít nhất 15 phút.");
         }
         if (request.getExpectedArrivalTime().isAfter(now.plusMinutes(60))) {
             throw new BookingException("Thời gian dự kiến đến không được quá 1 tiếng kể từ hiện tại.");
