@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import Parking.Model.*;
 import Parking.Repository.*;
+import Parking.Service.PaymentService;
 import Parking.dto.request.SubmitMonthlyTicketRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,6 +25,7 @@ public class MonthlyTicketRequestController {
     private final UserRepository userRepo;
     private final PricePolicyRepository policyRepo;
     private final ParkingBranchRepository branchRepo;
+    private final PaymentService paymentService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
@@ -72,5 +74,13 @@ public class MonthlyTicketRequestController {
         MonthlyTicketRequest req = requestRepo.findById(id).orElseThrow();
         req.setStatus(status);
         return ResponseEntity.ok(requestRepo.save(req));
+    }
+
+    @PostMapping("/{id}/payment")
+    @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<java.util.Map<String, String>> createMonthlyTicketPayment(@PathVariable Long id, jakarta.servlet.http.HttpServletRequest request) {
+        String clientIp = request.getRemoteAddr();
+        String paymentUrl = paymentService.createMonthlyTicketPayment(id, clientIp);
+        return ResponseEntity.ok(java.util.Map.of("paymentUrl", paymentUrl));
     }
 }

@@ -21,6 +21,8 @@ import Parking.Repository.ParkingSessionRepository;
 import Parking.Repository.PaymentRepository;
 import Parking.Repository.PricePolicyRepository;
 import Parking.Repository.MonthlyTicketRepository;
+import Parking.Repository.MonthlyTicketRequestRepository;
+import Parking.Model.MonthlyTicketRequest;
 import Parking.dto.response.GuestCheckOutResponse;
 import Parking.dto.response.VnpayReturnResponse;
 import Parking.enums.ParkingCardStatus;
@@ -41,6 +43,7 @@ public class PaymentService {
     private final ParkingSessionRepository parkingSessionRepository;
     private final ParkingCardRepository parkingCardRepository;
     private final MonthlyTicketRepository monthlyTicketRepository;
+    private final MonthlyTicketRequestRepository monthlyTicketRequestRepository;
 
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
@@ -192,6 +195,35 @@ public class PaymentService {
         return responseBuilder.build();
     }
 
+    @Transactional
+    public String createMonthlyTicketPayment(Long requestId, String clientIp) {
+        MonthlyTicketRequest request = monthlyTicketRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy yêu cầu thẻ tháng"));
+
+        if (request.getStatus() != 0) {
+            throw new ParkingSessionException("Yêu cầu này không ở trạng thái chờ thanh toán");
+        }
+
+        // Tạo bản ghi Payment
+        Payment payment = new Payment();
+        payment.setMonthlyTicketRequest(request);
+        
+        BigDecimal amount = request.getPricePolicy().getBasePrice();
+        payment.setAmount(amount);
+        payment.setPaymentMethod(PaymentMethod.VNPAY);
+        
+        String txnRef = "TXN_MT_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
+        payment.setTransactionRef(txnRef);
+        payment.setPaymentStatus(PaymentStatus.PENDING);
+        
+        LocalDateTime expiresAt = LocalDateTime.now(VIETNAM_ZONE).plusMinutes(15);
+        payment.setPaymentExpiresAt(expiresAt);
+
+        payment = paymentRepository.save(payment);
+
+        return vnPayService.createPaymentUrl(payment, clientIp);
+    }
+
     public BigDecimal caculateParkingFee(LocalDateTime checkInTime, LocalDateTime checkOutTime, PricePolicy pricePolicy) {
         if (checkInTime == null) {
             throw new ParkingSessionException("Check-in time is missing");
@@ -257,6 +289,8 @@ public class PaymentService {
 
         Payment payment = paymentRepository.findByTransactionRefForUpdate(txnRef)
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy thông tin thanh toán: " + txnRef));
+                
+        String paymentType = payment.getMonthlyTicketRequest() != null ? "MONTHLY_TICKET" : "PARKING_SESSION";
 
         if (payment.getPaymentStatus() == PaymentStatus.PAID) {
             return VnpayReturnResponse.builder()
@@ -266,6 +300,7 @@ public class PaymentService {
                     .vnpTransactionNo(payment.getVnpTransactionNo())
                     .responseCode(payment.getResponseCode())
                     .message("Thanh toán đã được xác nhận thành công trước đó")
+                    .paymentType(paymentType)
                     .build();
         }
 
@@ -290,6 +325,12 @@ public class PaymentService {
                 }
                 parkingSessionRepository.save(session);
             }
+
+            MonthlyTicketRequest mtRequest = payment.getMonthlyTicketRequest();
+            if (mtRequest != null) {
+                mtRequest.setStatus(1); // Approved
+                monthlyTicketRequestRepository.save(mtRequest);
+            }
             paymentRepository.save(payment);
 
             return VnpayReturnResponse.builder()
@@ -298,7 +339,8 @@ public class PaymentService {
                     .transactionRef(txnRef)
                     .vnpTransactionNo(vnpTxnNo)
                     .responseCode(responseCode)
-                    .message("Thanh toán thành công. Phiên gửi xe đã kết thúc.")
+                    .message(session != null ? "Thanh toán thành công. Phiên gửi xe đã kết thúc." : "Thanh toán thành công yêu cầu thẻ tháng.")
+                    .paymentType(paymentType)
                     .build();
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);
@@ -311,6 +353,7 @@ public class PaymentService {
                     .vnpTransactionNo(vnpTxnNo)
                     .responseCode(responseCode)
                     .message("Thanh toán thất bại.")
+                    .paymentType(paymentType)
                     .build();
         }
     }
@@ -377,6 +420,12 @@ public class PaymentService {
                         parkingCardRepository.save(card);
                     }
                     parkingSessionRepository.save(session);
+                }
+                
+                MonthlyTicketRequest mtRequest = payment.getMonthlyTicketRequest();
+                if (mtRequest != null) {
+                    mtRequest.setStatus(1); // Approved
+                    monthlyTicketRequestRepository.save(mtRequest);
                 }
             } else {
                 payment.setPaymentStatus(PaymentStatus.FAILED);
