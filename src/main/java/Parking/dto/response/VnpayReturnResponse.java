@@ -14,5 +14,9 @@ public class VnpayReturnResponse {
     private String vnpTransactionNo;
     private String responseCode;
     private String message;
-    
+    private String paymentType;
+    private String licensePlate;
+    private Long vehicleId;
+    private String policyName;
+    private Long policyId;
 }

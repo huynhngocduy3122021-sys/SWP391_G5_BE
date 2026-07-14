@@ -38,4 +38,8 @@ public class MonthlyTicketRequest {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @OneToOne(mappedBy = "monthlyTicketRequest", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties("monthlyTicketRequest")
+    private Payment payment;
 }
