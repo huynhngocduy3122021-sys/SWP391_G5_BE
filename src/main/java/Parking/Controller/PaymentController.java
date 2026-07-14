@@ -51,11 +51,38 @@ public class PaymentController {
         }
 
         // Xác định trang đích dựa trên loại thanh toán
-        String targetPath = "MONTHLY_TICKET".equals(response.getPaymentType()) ? "/user-dashboard" : "/payment-result";
+        // PARKING_SESSION: redirect về trang Staff Exit (truyền raw VNPay params để FE Staff tự xử lý)
+        // MONTHLY_TICKET: redirect về trang Payment Result (truyền success/message cho User)
+        String targetPath;
+        String queryString;
         
-        // Tạo URL trả về frontend kèm theo tham số kết quả
-        String redirectUrl = frontendUrl + targetPath + "?success=" + response.isSuccess() 
-                + "&message=" + URLEncoder.encode(response.getMessage() != null ? response.getMessage() : "", StandardCharsets.UTF_8);
+        if ("PARKING_SESSION".equals(response.getPaymentType())) {
+            // Staff checkout: redirect về /staff/exit kèm raw VNPay params để GateOutPanel xử lý
+            targetPath = "/staff/exit";
+            StringBuilder sb = new StringBuilder();
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                if (sb.length() > 0) sb.append("&");
+                sb.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8))
+                  .append("=")
+                  .append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
+            }
+            queryString = sb.toString();
+        } else {
+            // Monthly ticket payment: redirect về /payment-result kèm thông tin kết quả
+            targetPath = "/payment-result";
+            queryString = "success=" + response.isSuccess()
+                    + (response.getPaymentType() != null ? "&paymentType=" + response.getPaymentType() : "")
+                    + (response.getTransactionRef() != null ? "&transactionRef=" + response.getTransactionRef() : "")
+                    + (response.getRequestId() != null ? "&requestId=" + response.getRequestId() : "")
+                    + "&message=" + URLEncoder.encode(response.getMessage() != null ? response.getMessage() : "", StandardCharsets.UTF_8);
+        }
+        
+        // Chuẩn hóa frontendUrl để tránh dấu / kép
+        String normalizedFrontendUrl = frontendUrl.endsWith("/")
+                ? frontendUrl.substring(0, frontendUrl.length() - 1)
+                : frontendUrl;
+        
+        String redirectUrl = normalizedFrontendUrl + targetPath + "?" + queryString;
                 
         // Trả về HTTP 302 Redirect để trình duyệt tự động chuyển hướng về trang frontend
         return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(redirectUrl)).build();
