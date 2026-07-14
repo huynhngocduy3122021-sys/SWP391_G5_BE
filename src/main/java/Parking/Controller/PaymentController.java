@@ -37,4 +37,10 @@ public class PaymentController {
         Map<String, String> response = paymentService.handleVnPayIpn(params);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/all")
+    @Operation(summary = "Lấy tất cả payments cho báo cáo doanh thu")
+    public ResponseEntity<?> getAllPayments() {
+        return ResponseEntity.ok(paymentService.getAllPaymentsForReport());
+    }
 }
