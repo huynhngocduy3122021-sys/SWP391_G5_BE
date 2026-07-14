@@ -31,6 +31,13 @@ import Parking.enums.PaymentStatus;
 import Parking.exception.exceptions.ParkingSessionException;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Service xử lý toàn bộ logic tính tiền và Thanh toán.
+ * Bao gồm:
+ * 1. Tính toán số tiền phải trả dựa trên số giờ gửi xe và bảng giá.
+ * 2. Tạo link thanh toán VNPay (nếu khách chọn VNPay).
+ * 3. Nhận phản hồi từ VNPay để cập nhật trạng thái thanh toán thành CÔNG hoặc THẤT BẠI.
+ */
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
@@ -44,6 +51,11 @@ public class PaymentService {
 
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
+    /**
+     * Nghiệp vụ: Xử lý thanh toán khi khách lấy xe ra.
+     * Hàm này sẽ tính toán tổng tiền (gồm tiền gửi xe + tiền phạt nếu có).
+     * Nếu chọn VNPay thì sinh ra URL thanh toán. Nếu chọn Tiền mặt thì hoàn thành luôn.
+     */
     @Transactional
     public GuestCheckOutResponse processCheckOutPayment(ParkingSession parkingSession, PaymentMethod paymentMethod, String clientIp, Boolean lostCard, LocalDateTime time) {
         // b1: kiểm tra chưa thanh toán
@@ -192,6 +204,13 @@ public class PaymentService {
         return responseBuilder.build();
     }
 
+    /**
+     * Thuật toán tính toán số tiền gửi xe dựa theo chính sách giá (Price Policy).
+     * @param checkInTime Giờ vào bãi
+     * @param checkOutTime Giờ ra bãi
+     * @param pricePolicy Bảng giá áp dụng cho loại xe đó
+     * @return Số tiền phải trả (BigDecimal)
+     */
     public BigDecimal caculateParkingFee(LocalDateTime checkInTime, LocalDateTime checkOutTime, PricePolicy pricePolicy) {
         if (checkInTime == null) {
             throw new ParkingSessionException("Check-in time is missing");
@@ -231,6 +250,10 @@ public class PaymentService {
         return fee;
     }
 
+    /**
+     * Hàm này được gọi khi khách hàng thanh toán xong trên web VNPay và bị chuyển hướng (Redirect) trả về Web của chúng ta.
+     * Nhiệm vụ là đọc các tham số VNPay gửi kèm trên URL để xem thanh toán thành công hay chưa.
+     */
     @Transactional
     public VnpayReturnResponse handleVnPayCallback(Map<String, String> params) {
         boolean isValidSig = vnPayService.verifySignature(params);

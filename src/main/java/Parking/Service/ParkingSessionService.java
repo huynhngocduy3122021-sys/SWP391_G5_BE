@@ -55,6 +55,13 @@ import java.util.List;
 import java.util.ArrayList;
 
 
+/**
+ * Service xử lý các nghiệp vụ cốt lõi liên quan đến Lượt Gửi Xe (Parking Session).
+ * Bao gồm:
+ * 1. Khách vãng lai quét thẻ vào bãi (guestCheckIn)
+ * 2. Khách vãng lai quét thẻ ra bãi (guestCheckOut)
+ * 3. Khách hàng đã đặt chỗ trước quét thẻ vào bãi (bookingCheckIn)
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -82,6 +89,10 @@ public class ParkingSessionService {
     private final MonthlyTicketRepository monthlyTicketRepository;
     private final CurrentUserService currentUserService;
 
+    /**
+     * Nghiệp vụ: Khách vãng lai (hoặc khách dùng vé tháng) chạy xe tới cổng và quẹt thẻ vào bãi.
+     * @param request Chứa thông tin biển số xe, mã thẻ, loại xe... do AI/Nhân viên gửi lên.
+     */
     public ParkingSessionResponse guestCheckIn(GuestCheckInRequest request) { // hàm tạo guest check in
         LocalDateTime currentTime = (request.getTime() != null) ? request.getTime() : LocalDateTime.now();
         
@@ -208,6 +219,12 @@ public class ParkingSessionService {
             return convertToResponse(parkingSession);
         }
 
+        /**
+         * Nghiệp vụ: Khách quẹt thẻ để lấy xe ra khỏi bãi.
+         * @param request Chứa mã thẻ, biển số xe lúc ra.
+         * @param clientIp IP của khách (Dùng để gửi cho VNPay nếu khách quét mã QR thanh toán).
+         * @return Gọi sang PaymentService để tính toán số tiền khách phải trả.
+         */
         public GuestCheckOutResponse guestCheckOut(GuestCheckOutRequest request, String clientIp) { // hàm check out
             String cardCode = normalizeCardCode(request.getCardCode());
             String exitLicensePlate = normalizeLicensePlate(request.getLicensePlate());
@@ -415,6 +432,10 @@ public class ParkingSessionService {
         return vehicleRepository.save(vehicle);
     }
 
+    /**
+     * Nghiệp vụ: Khách hàng đã Đặt chỗ trước qua App, đến bãi và quẹt thẻ để check-in.
+     * Hệ thống sẽ kiểm tra xem có đúng giờ không, thẻ có hợp lệ không, sau đó chuyển trạng thái Booking thành COMPLETED.
+     */
     public ParkingSessionResponse bookingCheckIn(String bookingCode, String cardCode, LocalDateTime time) {
         cardCode = normalizeCardCode(cardCode);
 

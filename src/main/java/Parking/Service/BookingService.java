@@ -28,6 +28,10 @@ import Parking.dto.response.BookingResponse;
 import Parking.exception.exceptions.BookingException;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Service xử lý nghiệp vụ Đặt chỗ trước (Booking) qua ứng dụng di động/web.
+ * Cho phép khách hàng chọn trước chi nhánh, loại xe, giờ đến và giữ chỗ.
+ */
 @Service
 @RequiredArgsConstructor
 public class BookingService {
@@ -40,6 +44,14 @@ public class BookingService {
     private final ParkingSessionRepository parkingSessionRepository;
     private final BranchScopeService branchScopeService;
 
+    /**
+     * Nghiệp vụ: Khách hàng tạo mới một yêu cầu Đặt chỗ.
+     * Chứa nhiều logic kiểm tra phức tạp (Rule):
+     * 1. Chỉ cho phép Ô tô đặt chỗ (Xe máy không được đặt).
+     * 2. Thời gian đến tối thiểu phải sau 1 tiếng.
+     * 3. Một tài khoản chỉ được đặt tối đa 3 chỗ cùng lúc.
+     * 4. Tính toán xem bãi có còn trống chỗ không thì mới cho đặt.
+     */
     @Transactional
     public BookingResponse createBooking(CreateBookingRequest request) {
         // 1. Lấy thông tin user hiện tại từ Security Context
@@ -65,8 +77,8 @@ public class BookingService {
 
         // 4. Ràng buộc về thời gian đặt chỗ (Rule 2.3)
         LocalDateTime now = LocalDateTime.now();
-        if (request.getExpectedArrivalTime().isBefore(now.plusMinutes(60))) {
-            throw new BookingException("Thời gian dự kiến đến phải sau thời gian hiện tại ít nhất 60 phút.");
+        if (request.getExpectedArrivalTime().isBefore(now)) {
+            throw new BookingException("Thời gian dự kiến đến phải lớn hơn thời gian hiện tại.");
         }
         if (request.getExpectedArrivalTime().isAfter(now.plusMinutes(60))) {
             throw new BookingException("Thời gian dự kiến đến không được quá 1 tiếng kể từ hiện tại.");
@@ -179,6 +191,10 @@ public class BookingService {
                 .toList();
     }
 
+    /**
+     * Nghiệp vụ: Hủy bỏ một lượt đặt chỗ.
+     * Chỉ người tạo đơn hoặc quản lý/nhân viên mới có quyền hủy.
+     */
     @Transactional
     public BookingResponse cancelBooking(Long bookingId) {
         User user = getCurrentUser();
@@ -210,7 +226,12 @@ public class BookingService {
         return convertToResponse(bookingRepository.save(booking));
     }
 
-    // Scheduler tự động quét dọn dẹp các booking quá hạn giữ chỗ (Rule 5.2)
+    /**
+     * Nghiệp vụ chạy ngầm (Cron Job): Tự động quét và dọn dẹp các đơn đặt chỗ đã quá hạn (Khách đặt nhưng không tới).
+     * - Chạy 5 phút 1 lần.
+     * - Đổi trạng thái từ CONFIRMED sang EXPIRED.
+     * - Phạt tài khoản: Nếu vi phạm quá 3 lần sẽ khóa tài khoản.
+     */
     @Scheduled(cron = "0 */5 * * * *") // Chạy 5 phút 1 lần
     @Transactional
     public void cleanupExpiredBookings() {
