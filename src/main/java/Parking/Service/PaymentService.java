@@ -328,8 +328,7 @@ public class PaymentService {
 
             MonthlyTicketRequest mtRequest = payment.getMonthlyTicketRequest();
             if (mtRequest != null) {
-                mtRequest.setStatus(0);
-                monthlyTicketRequestRepository.save(mtRequest);
+                // Keep the monthly ticket request pending until a manager manually approves it.
             }
             paymentRepository.save(payment);
 
@@ -424,8 +423,7 @@ public class PaymentService {
                 
                 MonthlyTicketRequest mtRequest = payment.getMonthlyTicketRequest();
                 if (mtRequest != null) {
-                    mtRequest.setStatus(0);
-                    monthlyTicketRequestRepository.save(mtRequest);
+                    // Keep the monthly ticket request pending until a manager manually approves it.
                 }
             } else {
                 payment.setPaymentStatus(PaymentStatus.FAILED);
