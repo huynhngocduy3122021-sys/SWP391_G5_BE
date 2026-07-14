@@ -2,11 +2,17 @@ package Parking.Controller;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import Parking.Model.*;
 import Parking.Repository.*;
+import Parking.Service.PaymentService;
+import Parking.enums.ParkingCardStatus;
+import Parking.enums.PaymentStatus;
 import Parking.dto.request.SubmitMonthlyTicketRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,12 +28,14 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 @SecurityRequirement(name = "api_key") // Yêu cầu xác thực (ví dụ như Bearer token) khi test trên Swagger UI
 public class MonthlyTicketRequestController {
 
-    // Các Repository dùng để truy vấn/thao tác dữ liệu với các bảng trong cơ sở dữ liệu
-    private final MonthlyTicketRequestRepository requestRepo; // Thao tác với bảng Yêu cầu vé tháng
-    private final VehicleRepository vehicleRepo;              // Thao tác với bảng Xe
-    private final UserRepository userRepo;                    // Thao tác với bảng Người dùng (Khách hàng/Nhân viên)
-    private final PricePolicyRepository policyRepo;           // Thao tác với bảng Chính sách giá
-    private final ParkingBranchRepository branchRepo;         // Thao tác với bảng Chi nhánh bãi đỗ
+    private final MonthlyTicketRequestRepository requestRepo;
+    private final VehicleRepository vehicleRepo;
+    private final UserRepository userRepo;
+    private final PricePolicyRepository policyRepo;
+    private final ParkingBranchRepository branchRepo;
+    private final MonthlyTicketRepository monthlyTicketRepo;
+    private final ParkingCardRepository parkingCardRepo;
+    private final PaymentService paymentService;
 
     /**
      * API: Gửi một yêu cầu đăng ký vé tháng mới.
@@ -100,14 +108,67 @@ public class MonthlyTicketRequestController {
      */
     @PutMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
+    @Transactional
     public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
         // 1. Tìm kiếm yêu cầu theo ID truyền trên URL
         MonthlyTicketRequest req = requestRepo.findById(id).orElseThrow();
         
-        // 2. Cập nhật trạng thái mới được gửi lên (qua tham số ?status=...)
+        if (status == 1) { // Approved
+            Payment payment = req.getPayment();
+            if (payment == null || payment.getPaymentStatus() != PaymentStatus.PAID) {
+                return ResponseEntity.badRequest().body("Yêu cầu này chưa được thanh toán thành công.");
+            }
+            
+            // Tìm vé cũ của xe để ngắt hoạt động và gia hạn
+            MonthlyTicket oldTicket = monthlyTicketRepo.findLatestTicketByVehicle(req.getVehicle().getVehiclesId()).orElse(null);
+            ParkingCard card = null;
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime startDate = now;
+            LocalDateTime endDate = now.plusMonths(1);
+            
+            if (oldTicket != null) {
+                oldTicket.setStatus(0); // Deactivate old ticket
+                monthlyTicketRepo.save(oldTicket);
+                
+                card = oldTicket.getParkingCard();
+                // Nếu thẻ cũ chưa hết hạn, hạn dùng mới sẽ cộng dồn thêm 1 tháng kể từ ngày hết hạn của thẻ cũ
+                if (oldTicket.getEndDate().isAfter(now)) {
+                    endDate = oldTicket.getEndDate().plusMonths(1);
+                }
+            } else {
+                // First-time purchase: tìm một thẻ giữ xe loại tháng khả dụng tại chi nhánh
+                card = parkingCardRepo.findFirstAvailableMonthlyCard(req.getParkingBranch().getParkingBranchId())
+                        .orElseThrow(() -> new RuntimeException("Không tìm thấy thẻ giữ xe loại tháng còn trống tại chi nhánh " + req.getParkingBranch().getBranchName()));
+            }
+            
+            // Đánh dấu thẻ là đang sử dụng (IN_USE)
+            card.setStatus(ParkingCardStatus.IN_USE);
+            parkingCardRepo.save(card);
+            
+            // Tạo vé tháng mới
+            MonthlyTicket newTicket = new MonthlyTicket();
+            newTicket.setVehicle(req.getVehicle());
+            newTicket.setParkingCard(card);
+            newTicket.setStartDate(startDate);
+            newTicket.setEndDate(endDate);
+            newTicket.setStatus(1); // Active
+            newTicket.setGuestName(req.getUser().getUserFullName());
+            newTicket.setGuestPhone(req.getUser().getUserPhone());
+            
+            monthlyTicketRepo.save(newTicket);
+        }
+        
         req.setStatus(status);
         
         // 3. Lưu lại vào DB và trả về kết quả
         return ResponseEntity.ok(requestRepo.save(req));
+    }
+
+    @PostMapping("/{id}/payment")
+    @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<?> createPayment(@PathVariable Long id, HttpServletRequest request) {
+        String clientIp = request.getRemoteAddr();
+        String paymentUrl = paymentService.createMonthlyTicketPayment(id, clientIp);
+        return ResponseEntity.ok(Map.of("paymentUrl", paymentUrl));
     }
 }

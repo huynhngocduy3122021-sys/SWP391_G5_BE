@@ -85,7 +85,10 @@ public class Payment {
     @JoinColumn(name = "parking_session_id", unique = true)
     private ParkingSession parkingSession;
 
-    // Hàm này sẽ tự động chạy ngay trước khi dữ liệu được INSERT vào Database lần đầu tiên
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "monthly_ticket_request_id", unique = true)
+    private MonthlyTicketRequest monthlyTicketRequest;
+
     @PrePersist
     public void prePersist(){
         if(createdAt == null) {

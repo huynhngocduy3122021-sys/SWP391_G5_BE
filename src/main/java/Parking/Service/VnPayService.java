@@ -93,13 +93,11 @@ public class VnPayService {
          * Nên dùng tiếng Việt không dấu,
          * không chứa ký tự đặc biệt.
          */
-        params.put(
-                "vnp_OrderInfo",
-                "Thanh toan phi gui xe session "
-                        + payment
-                        .getParkingSession()
-                        .getParkingSessionId()
-        );
+        String orderInfo = payment.getParkingSession() != null
+                ? "Thanh toan phi gui xe session " + payment.getParkingSession().getParkingSessionId()
+                : "Thanh toan ve thang - yeu cau " + payment.getMonthlyTicketRequest().getId();
+
+        params.put("vnp_OrderInfo", orderInfo);
 
         params.put(
                 "vnp_OrderType",
@@ -381,17 +379,20 @@ public class VnPayService {
             );
         }
 
-        if (payment.getParkingSession() == null) {
+        boolean hasSession = payment.getParkingSession() != null && payment.getParkingSession().getParkingSessionId() != null;
+        boolean hasMonthlyTicket = payment.getMonthlyTicketRequest() != null;
+
+        if (!hasSession && !hasMonthlyTicket) {
             throw new IllegalArgumentException(
-                    "Payment parkingSession is required"
+                    "Payment must be linked to either a parking session or a monthly ticket request"
             );
         }
 
-        if (payment
-                .getParkingSession()
-                .getParkingSessionId() == null) {
+        if (payment.getMonthlyTicketRequest() != null && payment
+                .getMonthlyTicketRequest()
+                .getId() == null) {
             throw new IllegalArgumentException(
-                    "Parking session must be saved "
+                    "Monthly ticket request must be saved "
                     + "before creating VNPAY URL"
             );
         }

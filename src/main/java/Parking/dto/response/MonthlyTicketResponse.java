@@ -51,6 +51,7 @@ public class MonthlyTicketResponse {
     // Tên của chi nhánh bãi đỗ xe
     private String parkingBranchName;
 
-    // Trạng thái hiện tại của vé: 1 = Đang hoạt động (Active/Còn hạn), 0 = Đã hết hạn hoặc bị khóa
-    private Integer status;
+    private Integer status; // 1 = Active, 0 = Expired/Locked
+
+    private LocalDateTime createdAt;
 }

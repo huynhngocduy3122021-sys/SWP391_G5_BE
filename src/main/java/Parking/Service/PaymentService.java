@@ -21,6 +21,8 @@ import Parking.Repository.ParkingSessionRepository;
 import Parking.Repository.PaymentRepository;
 import Parking.Repository.PricePolicyRepository;
 import Parking.Repository.MonthlyTicketRepository;
+import Parking.Repository.MonthlyTicketRequestRepository;
+import Parking.Model.MonthlyTicketRequest;
 import Parking.dto.response.GuestCheckOutResponse;
 import Parking.dto.response.VnpayReturnResponse;
 import Parking.enums.ParkingCardStatus;
@@ -48,6 +50,7 @@ public class PaymentService {
     private final ParkingSessionRepository parkingSessionRepository;
     private final ParkingCardRepository parkingCardRepository;
     private final MonthlyTicketRepository monthlyTicketRepository;
+    private final MonthlyTicketRequestRepository monthlyTicketRequestRepository;
 
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
@@ -204,13 +207,35 @@ public class PaymentService {
         return responseBuilder.build();
     }
 
-    /**
-     * Thuật toán tính toán số tiền gửi xe dựa theo chính sách giá (Price Policy).
-     * @param checkInTime Giờ vào bãi
-     * @param checkOutTime Giờ ra bãi
-     * @param pricePolicy Bảng giá áp dụng cho loại xe đó
-     * @return Số tiền phải trả (BigDecimal)
-     */
+    @Transactional
+    public String createMonthlyTicketPayment(Long requestId, String clientIp) {
+        MonthlyTicketRequest request = monthlyTicketRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy yêu cầu thẻ tháng"));
+
+        if (request.getStatus() != 0) {
+            throw new ParkingSessionException("Yêu cầu này không ở trạng thái chờ thanh toán");
+        }
+
+        // Tạo bản ghi Payment
+        Payment payment = new Payment();
+        payment.setMonthlyTicketRequest(request);
+        
+        BigDecimal amount = request.getPricePolicy().getBasePrice();
+        payment.setAmount(amount);
+        payment.setPaymentMethod(PaymentMethod.VNPAY);
+        
+        String txnRef = "TXN_MT_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
+        payment.setTransactionRef(txnRef);
+        payment.setPaymentStatus(PaymentStatus.PENDING);
+        
+        LocalDateTime expiresAt = LocalDateTime.now(VIETNAM_ZONE).plusMinutes(15);
+        payment.setPaymentExpiresAt(expiresAt);
+
+        payment = paymentRepository.save(payment);
+
+        return vnPayService.createPaymentUrl(payment, clientIp);
+    }
+
     public BigDecimal caculateParkingFee(LocalDateTime checkInTime, LocalDateTime checkOutTime, PricePolicy pricePolicy) {
         if (checkInTime == null) {
             throw new ParkingSessionException("Check-in time is missing");
@@ -415,5 +440,50 @@ public class PaymentService {
         }
 
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<Parking.dto.response.PaymentReportResponse> getAllPaymentsForReport() {
+        java.util.List<Payment> payments = paymentRepository.findAll();
+        return payments.stream().map(p -> {
+            Parking.dto.response.PaymentReportResponse.PaymentReportResponseBuilder builder = Parking.dto.response.PaymentReportResponse.builder()
+                    .paymentId(p.getPaymentId())
+                    .amount(p.getAmount())
+                    .paymentMethod(p.getPaymentMethod() != null ? p.getPaymentMethod().name() : null)
+                    .paymentStatus(p.getPaymentStatus() != null ? p.getPaymentStatus().name() : null)
+                    .createdAt(p.getCreatedAt())
+                    .paidAt(p.getPaidAt())
+                    .transactionRef(p.getTransactionRef());
+
+            // Monthly ticket request info
+            MonthlyTicketRequest mtr = p.getMonthlyTicketRequest();
+            if (mtr != null) {
+                builder.monthlyTicketRequestId(mtr.getId())
+                       .monthlyTicketRequestStatus(mtr.getStatus());
+                if (mtr.getPricePolicy() != null) {
+                    builder.policyName(mtr.getPricePolicy().getPolicyName())
+                           .policyBasePrice(mtr.getPricePolicy().getBasePrice());
+                }
+                if (mtr.getParkingBranch() != null) {
+                    builder.branchName(mtr.getParkingBranch().getBranchName())
+                           .branchId(mtr.getParkingBranch().getParkingBranchId());
+                }
+                if (mtr.getVehicle() != null) {
+                    builder.vehicleLicensePlate(mtr.getVehicle().getLicensePlate());
+                }
+                if (mtr.getUser() != null) {
+                    builder.userName(mtr.getUser().getUserFullName());
+                }
+            }
+
+            // Parking session info
+            ParkingSession ps = p.getParkingSession();
+            if (ps != null) {
+                builder.parkingSessionId(ps.getParkingSessionId())
+                       .sessionBranchName(ps.getParkingBranch() != null ? ps.getParkingBranch().getBranchName() : null);
+            }
+
+            return builder.build();
+        }).collect(java.util.stream.Collectors.toList());
     }
 }

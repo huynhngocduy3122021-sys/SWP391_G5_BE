@@ -46,5 +46,9 @@ public class MonthlyTicketRequest {
     private Integer status; // Trạng thái đơn: 0 = Đang chờ duyệt (Pending), 1 = Đã duyệt (Approved), 2 = Bị từ chối (Rejected)
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now(); // Ngày nộp đơn
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @OneToOne(mappedBy = "monthlyTicketRequest", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties("monthlyTicketRequest")
+    private Payment payment;
 }
