@@ -291,6 +291,7 @@ public class PaymentService {
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy thông tin thanh toán: " + txnRef));
                 
         String paymentType = payment.getMonthlyTicketRequest() != null ? "MONTHLY_TICKET" : "PARKING_SESSION";
+        Long requestId = payment.getMonthlyTicketRequest() != null ? payment.getMonthlyTicketRequest().getId() : null;
 
         if (payment.getPaymentStatus() == PaymentStatus.PAID) {
             return VnpayReturnResponse.builder()
@@ -301,6 +302,7 @@ public class PaymentService {
                     .responseCode(payment.getResponseCode())
                     .message("Thanh toán đã được xác nhận thành công trước đó")
                     .paymentType(paymentType)
+                    .requestId(requestId)
                     .build();
         }
 
@@ -328,7 +330,7 @@ public class PaymentService {
 
             MonthlyTicketRequest mtRequest = payment.getMonthlyTicketRequest();
             if (mtRequest != null) {
-                mtRequest.setStatus(1); // Approved
+                mtRequest.setStatus(1); // PENDING_MANAGER_APPROVAL
                 monthlyTicketRequestRepository.save(mtRequest);
             }
             paymentRepository.save(payment);
@@ -339,8 +341,9 @@ public class PaymentService {
                     .transactionRef(txnRef)
                     .vnpTransactionNo(vnpTxnNo)
                     .responseCode(responseCode)
-                    .message(session != null ? "Thanh toán thành công. Phiên gửi xe đã kết thúc." : "Thanh toán thành công yêu cầu thẻ tháng.")
+                    .message(session != null ? "Thanh toán thành công. Phiên gửi xe đã kết thúc." : "Thanh toán thành công. Yêu cầu đang chờ Manager duyệt.")
                     .paymentType(paymentType)
+                    .requestId(requestId)
                     .build();
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);
@@ -354,6 +357,7 @@ public class PaymentService {
                     .responseCode(responseCode)
                     .message("Thanh toán thất bại.")
                     .paymentType(paymentType)
+                    .requestId(requestId)
                     .build();
         }
     }
@@ -424,7 +428,7 @@ public class PaymentService {
                 
                 MonthlyTicketRequest mtRequest = payment.getMonthlyTicketRequest();
                 if (mtRequest != null) {
-                    mtRequest.setStatus(1); // Approved
+                    mtRequest.setStatus(1); // PENDING_MANAGER_APPROVAL
                     monthlyTicketRequestRepository.save(mtRequest);
                 }
             } else {

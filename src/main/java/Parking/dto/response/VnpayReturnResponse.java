@@ -15,4 +15,5 @@ public class VnpayReturnResponse {
     private String responseCode;
     private String message;
     private String paymentType;
+    private Long requestId;
 }
