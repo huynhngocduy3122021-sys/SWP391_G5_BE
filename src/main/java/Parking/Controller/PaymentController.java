@@ -1,7 +1,12 @@
 package Parking.Controller;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -52,7 +57,7 @@ public class PaymentController {
 
         // Xác định trang đích dựa trên loại thanh toán
         // PARKING_SESSION: redirect về trang Staff Exit (truyền raw VNPay params để FE Staff tự xử lý)
-        // MONTHLY_TICKET: redirect về trang Payment Result (truyền success/message cho User)
+        // MONTHLY_TICKET: redirect về trang User Dashboard
         String targetPath;
         String queryString;
         
@@ -68,13 +73,29 @@ public class PaymentController {
             }
             queryString = sb.toString();
         } else {
-            // Monthly ticket payment: redirect về /payment-result kèm thông tin kết quả
-            targetPath = "/payment-result";
+            // Monthly ticket payment: redirect về /user-dashboard kèm thông tin kết quả
+            targetPath = "/user-dashboard";
+            
+            String extraParams = "";
+            if (response.getLicensePlate() != null) {
+                extraParams += "&licensePlate=" + URLEncoder.encode(response.getLicensePlate(), StandardCharsets.UTF_8);
+            }
+            if (response.getVehicleId() != null) {
+                extraParams += "&vehicleId=" + response.getVehicleId();
+            }
+            if (response.getPolicyName() != null) {
+                extraParams += "&policyName=" + URLEncoder.encode(response.getPolicyName(), StandardCharsets.UTF_8);
+            }
+            if (response.getPolicyId() != null) {
+                extraParams += "&policyId=" + response.getPolicyId();
+            }
+
             queryString = "success=" + response.isSuccess()
                     + (response.getPaymentType() != null ? "&paymentType=" + response.getPaymentType() : "")
                     + (response.getTransactionRef() != null ? "&transactionRef=" + response.getTransactionRef() : "")
                     + (response.getRequestId() != null ? "&requestId=" + response.getRequestId() : "")
-                    + "&message=" + URLEncoder.encode(response.getMessage() != null ? response.getMessage() : "", StandardCharsets.UTF_8);
+                    + "&message=" + URLEncoder.encode(response.getMessage() != null ? response.getMessage() : "", StandardCharsets.UTF_8)
+                    + extraParams;
         }
         
         // Chuẩn hóa frontendUrl để tránh dấu / kép
@@ -93,5 +114,11 @@ public class PaymentController {
     public ResponseEntity<Map<String, String>> vnPayIpn(@RequestParam Map<String, String> params) {
         Map<String, String> response = paymentService.handleVnPayIpn(params);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/all")
+    @Operation(summary = "Lấy tất cả payments cho báo cáo doanh thu")
+    public ResponseEntity<?> getAllPayments() {
+        return ResponseEntity.ok(paymentService.getAllPaymentsForReport());
     }
 }

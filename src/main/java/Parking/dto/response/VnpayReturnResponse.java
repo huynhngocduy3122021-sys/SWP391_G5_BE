@@ -16,4 +16,8 @@ public class VnpayReturnResponse {
     private String message;
     private String paymentType;
     private Long requestId;
+    private String licensePlate;
+    private Long vehicleId;
+    private String policyName;
+    private Long policyId;
 }

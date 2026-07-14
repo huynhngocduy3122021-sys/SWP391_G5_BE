@@ -289,9 +289,6 @@ public class PaymentService {
 
         Payment payment = paymentRepository.findByTransactionRefForUpdate(txnRef)
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy thông tin thanh toán: " + txnRef));
-                
-        String paymentType = payment.getMonthlyTicketRequest() != null ? "MONTHLY_TICKET" : "PARKING_SESSION";
-        Long requestId = payment.getMonthlyTicketRequest() != null ? payment.getMonthlyTicketRequest().getId() : null;
 
         if (payment.getPaymentStatus() == PaymentStatus.PAID) {
             return VnpayReturnResponse.builder()
@@ -301,8 +298,6 @@ public class PaymentService {
                     .vnpTransactionNo(payment.getVnpTransactionNo())
                     .responseCode(payment.getResponseCode())
                     .message("Thanh toán đã được xác nhận thành công trước đó")
-                    .paymentType(paymentType)
-                    .requestId(requestId)
                     .build();
         }
 
@@ -327,12 +322,6 @@ public class PaymentService {
                 }
                 parkingSessionRepository.save(session);
             }
-
-            MonthlyTicketRequest mtRequest = payment.getMonthlyTicketRequest();
-            if (mtRequest != null) {
-                mtRequest.setStatus(1); // PENDING_MANAGER_APPROVAL
-                monthlyTicketRequestRepository.save(mtRequest);
-            }
             paymentRepository.save(payment);
 
             return VnpayReturnResponse.builder()
@@ -341,9 +330,7 @@ public class PaymentService {
                     .transactionRef(txnRef)
                     .vnpTransactionNo(vnpTxnNo)
                     .responseCode(responseCode)
-                    .message(session != null ? "Thanh toán thành công. Phiên gửi xe đã kết thúc." : "Thanh toán thành công. Yêu cầu đang chờ Manager duyệt.")
-                    .paymentType(paymentType)
-                    .requestId(requestId)
+                    .message("Thanh toán thành công. Phiên gửi xe đã kết thúc.")
                     .build();
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);
@@ -356,8 +343,6 @@ public class PaymentService {
                     .vnpTransactionNo(vnpTxnNo)
                     .responseCode(responseCode)
                     .message("Thanh toán thất bại.")
-                    .paymentType(paymentType)
-                    .requestId(requestId)
                     .build();
         }
     }
@@ -425,12 +410,6 @@ public class PaymentService {
                     }
                     parkingSessionRepository.save(session);
                 }
-                
-                MonthlyTicketRequest mtRequest = payment.getMonthlyTicketRequest();
-                if (mtRequest != null) {
-                    mtRequest.setStatus(1); // PENDING_MANAGER_APPROVAL
-                    monthlyTicketRequestRepository.save(mtRequest);
-                }
             } else {
                 payment.setPaymentStatus(PaymentStatus.FAILED);
             }
@@ -445,5 +424,50 @@ public class PaymentService {
         }
 
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<Parking.dto.response.PaymentReportResponse> getAllPaymentsForReport() {
+        java.util.List<Payment> payments = paymentRepository.findAll();
+        return payments.stream().map(p -> {
+            Parking.dto.response.PaymentReportResponse.PaymentReportResponseBuilder builder = Parking.dto.response.PaymentReportResponse.builder()
+                    .paymentId(p.getPaymentId())
+                    .amount(p.getAmount())
+                    .paymentMethod(p.getPaymentMethod() != null ? p.getPaymentMethod().name() : null)
+                    .paymentStatus(p.getPaymentStatus() != null ? p.getPaymentStatus().name() : null)
+                    .createdAt(p.getCreatedAt())
+                    .paidAt(p.getPaidAt())
+                    .transactionRef(p.getTransactionRef());
+
+            // Monthly ticket request info
+            MonthlyTicketRequest mtr = p.getMonthlyTicketRequest();
+            if (mtr != null) {
+                builder.monthlyTicketRequestId(mtr.getId())
+                       .monthlyTicketRequestStatus(mtr.getStatus());
+                if (mtr.getPricePolicy() != null) {
+                    builder.policyName(mtr.getPricePolicy().getPolicyName())
+                           .policyBasePrice(mtr.getPricePolicy().getBasePrice());
+                }
+                if (mtr.getParkingBranch() != null) {
+                    builder.branchName(mtr.getParkingBranch().getBranchName())
+                           .branchId(mtr.getParkingBranch().getParkingBranchId());
+                }
+                if (mtr.getVehicle() != null) {
+                    builder.vehicleLicensePlate(mtr.getVehicle().getLicensePlate());
+                }
+                if (mtr.getUser() != null) {
+                    builder.userName(mtr.getUser().getUserFullName());
+                }
+            }
+
+            // Parking session info
+            ParkingSession ps = p.getParkingSession();
+            if (ps != null) {
+                builder.parkingSessionId(ps.getParkingSessionId())
+                       .sessionBranchName(ps.getParkingBranch() != null ? ps.getParkingBranch().getBranchName() : null);
+            }
+
+            return builder.build();
+        }).collect(java.util.stream.Collectors.toList());
     }
 }
