@@ -48,6 +48,23 @@ public class MonthlyTicketRequestController {
         ParkingBranch branch = branchRepo.findById(req.getBranchId())
                 .orElseThrow(() -> new RuntimeException("Branch not found"));
 
+        if (vehicle.getUser() == null || !vehicle.getUser().getUserId().equals(user.getUserId())) {
+            return ResponseEntity.status(403).body(Map.of("message", "Phương tiện không thuộc tài khoản hiện tại"));
+        }
+
+        if (vehicle.isDeleted()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Phương tiện đã bị xóa"));
+        }
+
+        if (!policy.isActive()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Gói dịch vụ đã ngừng hoạt động"));
+        }
+
+        if (vehicle.getVehicleType() == null || policy.getVehicleType() == null ||
+            !vehicle.getVehicleType().getVehicleTypeId().equals(policy.getVehicleType().getVehicleTypeId())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Loại phương tiện không phù hợp với gói dịch vụ"));
+        }
+
         MonthlyTicketRequest mtr = new MonthlyTicketRequest();
         mtr.setUser(user);
         mtr.setVehicle(vehicle);
@@ -81,14 +98,45 @@ public class MonthlyTicketRequestController {
     public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
         MonthlyTicketRequest req = requestRepo.findById(id).orElseThrow();
         
-        if (status == 1) { // Approved
+        if (status == 2) { // Approved
+            if (req.getStatus() != 1) { // PENDING_APPROVAL
+                return ResponseEntity.badRequest().body("Yêu cầu không ở trạng thái chờ duyệt.");
+            }
+            
+            Vehicle vehicle = req.getVehicle();
+            PricePolicy policy = req.getPricePolicy();
+            if (vehicle.getVehicleType() == null || policy.getVehicleType() == null ||
+                !vehicle.getVehicleType().getVehicleTypeId().equals(policy.getVehicleType().getVehicleTypeId())) {
+                return ResponseEntity.badRequest().body("Dữ liệu yêu cầu không hợp lệ: loại xe không khớp gói.");
+            }
+
             Payment payment = req.getPayment();
             if (payment == null || payment.getPaymentStatus() != PaymentStatus.PAID) {
                 return ResponseEntity.badRequest().body("Yêu cầu này chưa được thanh toán thành công.");
             }
             
-            // Tìm vé cũ của xe để ngắt hoạt động và gia hạn
-            MonthlyTicket oldTicket = monthlyTicketRepo.findLatestTicketByVehicle(req.getVehicle().getVehiclesId()).orElse(null);
+            MonthlyTicket oldTicket = req.getRenewalOfTicket();
+            if (oldTicket != null) {
+                if (!oldTicket.getVehicle().getVehiclesId().equals(req.getVehicle().getVehiclesId())) {
+                    return ResponseEntity.badRequest().body("Xe gia hạn không khớp vé hiện tại");
+                }
+
+                PricePolicy currentPolicy = oldTicket.getPricePolicy();
+                if (currentPolicy == null || currentPolicy.getPricePolicyId() == null) {
+                    return ResponseEntity.badRequest().body(
+                        "Không xác định được gói hiện tại của vé. Không thể duyệt gia hạn."
+                    );
+                }
+
+                if (!currentPolicy.getPricePolicyId().equals(policy.getPricePolicyId())) {
+                    return ResponseEntity.badRequest().body(
+                        "Không thể duyệt: gói gia hạn không trùng với gói hiện tại của vé."
+                    );
+                }
+            } else {
+                oldTicket = monthlyTicketRepo.findLatestTicketByVehicle(req.getVehicle().getVehiclesId()).orElse(null);
+            }
+            
             ParkingCard card = null;
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime startDate = now;
@@ -122,8 +170,25 @@ public class MonthlyTicketRequestController {
             newTicket.setStatus(1); // Active
             newTicket.setGuestName(req.getUser().getUserFullName());
             newTicket.setGuestPhone(req.getUser().getUserPhone());
+            newTicket.setMonthlyTicketRequest(req);
+            newTicket.setPricePolicy(req.getPricePolicy());
             
             monthlyTicketRepo.save(newTicket);
+        } else if (status == -1) { // Rejected
+            boolean ticketIssuedFromThisRequest =
+                    monthlyTicketRepo.existsByMonthlyTicketRequestId(id);
+
+            if (ticketIssuedFromThisRequest) {
+                return ResponseEntity.badRequest().body("Không thể từ chối yêu cầu đã cấp vé.");
+            }
+
+            // Dữ liệu cũ có thể có trạng thái APPROVED dù chưa thực sự cấp vé.
+            // Payment PAID không đồng nghĩa với việc vé đã được phát hành.
+            if (req.getStatus() == 2
+                    && req.getPayment() != null
+                    && req.getPayment().getPaymentStatus() == PaymentStatus.PAID) {
+                req.setStatus(1); // Chuẩn hóa về PENDING_APPROVAL trước khi reject.
+            }
         }
         
         req.setStatus(status);

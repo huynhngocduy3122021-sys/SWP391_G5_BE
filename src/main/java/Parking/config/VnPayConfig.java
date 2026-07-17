@@ -14,6 +14,9 @@ public class VnPayConfig {
     @Value("${vnpay.enabled:false}")
     private boolean enabled;
 
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+
     @Value("${vnpay.tmn-code:}")
     private String tmnCode;
 

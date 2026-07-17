@@ -10,9 +10,21 @@ import lombok.Setter;
 @Builder
 public class MonthlyTicketResponse {
 
+    @Getter
+    @Setter
+    @Builder
+    public static class PricePolicySummary {
+        private Long pricePolicyId;
+        private String policyName;
+        private Long vehicleTypeId;
+        private String vehicleTypeName;
+    }
+
     private Long ticketId;
 
     private Long vehicleId;
+
+    private Long vehicleTypeId;
 
     private String licensePlate;
 
@@ -31,6 +43,12 @@ public class MonthlyTicketResponse {
     private Long parkingBranchId;
 
     private String parkingBranchName;
+
+    private Long pricePolicyId;
+
+    private PricePolicySummary pricePolicy;
+
+    private Long monthlyTicketRequestId;
 
     private Integer status; // 1 = Active, 0 = Expired/Locked
 

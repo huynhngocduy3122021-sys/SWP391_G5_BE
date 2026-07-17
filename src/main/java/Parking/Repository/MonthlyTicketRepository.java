@@ -10,6 +10,12 @@ import java.util.List;
 public interface MonthlyTicketRepository extends JpaRepository<MonthlyTicket, Long> {
 
     @Query("""
+        SELECT COUNT(mt) > 0 FROM MonthlyTicket mt
+        WHERE mt.monthlyTicketRequest.id = :requestId
+    """)
+    boolean existsByMonthlyTicketRequestId(@Param("requestId") Long requestId);
+
+    @Query("""
         SELECT mt FROM MonthlyTicket mt
         WHERE :branchId IS NULL
            OR mt.parkingCard.parkingBranch.parkingBranchId = :branchId
