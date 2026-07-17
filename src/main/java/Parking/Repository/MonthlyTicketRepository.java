@@ -98,14 +98,5 @@ public interface MonthlyTicketRepository extends JpaRepository<MonthlyTicket, Lo
         @Param("ticketId") Long ticketId
     );
 
-    @Query("""
-        SELECT mt FROM MonthlyTicket mt
-        WHERE mt.vehicle.vehiclesId = :vehicleId
-        ORDER BY mt.endDate DESC
-    """)
-    List<MonthlyTicket> findByVehicleVehiclesIdOrderByEndDateDesc(@Param("vehicleId") Long vehicleId);
-
-    default java.util.Optional<MonthlyTicket> findLatestTicketByVehicle(Long vehicleId) {
-        return findByVehicleVehiclesIdOrderByEndDateDesc(vehicleId).stream().findFirst();
-    }
+    java.util.Optional<MonthlyTicket> findFirstByVehicleVehiclesIdOrderByEndDateDesc(Long vehicleId);
 }

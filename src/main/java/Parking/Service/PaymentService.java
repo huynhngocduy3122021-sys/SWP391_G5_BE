@@ -200,7 +200,7 @@ public class PaymentService {
         MonthlyTicketRequest request = monthlyTicketRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy yêu cầu thẻ tháng"));
 
-        if (request.getStatus() != 0) {
+        if (request.getStatus() != Parking.enums.MonthlyTicketRequestStatus.PENDING_PAYMENT) {
             throw new ParkingSessionException("Yêu cầu này không ở trạng thái chờ thanh toán");
         }
 
@@ -335,8 +335,8 @@ public class PaymentService {
             }
             
             MonthlyTicketRequest mtr = payment.getMonthlyTicketRequest();
-            if (mtr != null && mtr.getStatus() != null && mtr.getStatus() == 0) {
-                mtr.setStatus(1); // PENDING_APPROVAL
+            if (mtr != null && mtr.getStatus() != null && mtr.getStatus() == Parking.enums.MonthlyTicketRequestStatus.PENDING_PAYMENT) {
+                mtr.setStatus(Parking.enums.MonthlyTicketRequestStatus.PENDING_APPROVAL); // PENDING_APPROVAL
                 monthlyTicketRequestRepository.save(mtr);
             }
             paymentRepository.save(payment);
@@ -429,8 +429,8 @@ public class PaymentService {
                 }
                 
                 MonthlyTicketRequest mtr = payment.getMonthlyTicketRequest();
-                if (mtr != null && mtr.getStatus() != null && mtr.getStatus() == 0) {
-                    mtr.setStatus(1); // PENDING_APPROVAL
+                if (mtr != null && mtr.getStatus() != null && mtr.getStatus() == Parking.enums.MonthlyTicketRequestStatus.PENDING_PAYMENT) {
+                    mtr.setStatus(Parking.enums.MonthlyTicketRequestStatus.PENDING_APPROVAL); // PENDING_APPROVAL
                     monthlyTicketRequestRepository.save(mtr);
                 }
             } else {
@@ -466,7 +466,7 @@ public class PaymentService {
             MonthlyTicketRequest mtr = p.getMonthlyTicketRequest();
             if (mtr != null) {
                 builder.monthlyTicketRequestId(mtr.getId())
-                       .monthlyTicketRequestStatus(mtr.getStatus());
+                       .monthlyTicketRequestStatus(mtr.getStatus() != null ? mtr.getStatus().getCode() : null);
                 if (mtr.getPricePolicy() != null) {
                     builder.policyName(mtr.getPricePolicy().getPolicyName())
                            .policyBasePrice(mtr.getPricePolicy().getBasePrice());

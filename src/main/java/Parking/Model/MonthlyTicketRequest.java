@@ -34,7 +34,8 @@ public class MonthlyTicketRequest {
     private ParkingBranch parkingBranch;
 
     @Column(nullable = false)
-    private Integer status; // 0 = PENDING_PAYMENT, 1 = PENDING_APPROVAL, 2 = APPROVED, -1 = REJECTED, -2 = EXPIRED
+    @jakarta.persistence.Convert(converter = Parking.enums.MonthlyTicketRequestStatusConverter.class)
+    private Parking.enums.MonthlyTicketRequestStatus status; // 0 = PENDING_PAYMENT, 1 = PENDING_APPROVAL, 2 = APPROVED, -1 = REJECTED, -2 = EXPIRED
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

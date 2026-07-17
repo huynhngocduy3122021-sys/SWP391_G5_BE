@@ -26,6 +26,7 @@ import Parking.Repository.ParkingSessionRepository;
 import Parking.Repository.PaymentRepository;
 import Parking.Repository.PricePolicyRepository;
 import Parking.enums.PaymentStatus;
+import Parking.enums.MonthlyTicketRequestStatus;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceMonthlyTicketTest {
@@ -44,7 +45,7 @@ class PaymentServiceMonthlyTicketTest {
     void handleVnPayCallback_shouldMoveMonthlyTicketRequestToPendingApprovalAfterSuccessfulPayment() {
         MonthlyTicketRequest request = new MonthlyTicketRequest();
         request.setId(10L);
-        request.setStatus(0);
+        request.setStatus(MonthlyTicketRequestStatus.PENDING_PAYMENT);
 
         Payment payment = new Payment();
         payment.setPaymentStatus(PaymentStatus.PENDING);
@@ -66,7 +67,7 @@ class PaymentServiceMonthlyTicketTest {
 
         paymentService.handleVnPayCallback(params);
 
-        assertEquals(1, request.getStatus());
+        assertEquals(MonthlyTicketRequestStatus.PENDING_APPROVAL, request.getStatus());
         verify(monthlyTicketRequestRepository).save(request);
     }
 }

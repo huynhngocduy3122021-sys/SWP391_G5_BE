@@ -102,7 +102,7 @@ public class MonthlyTicketService {
         monthlyTicket.setGuestPhone(request.getGuestPhone());
         monthlyTicket.setStartDate(request.getStartDate());
         monthlyTicket.setEndDate(finalEndDate);
-        monthlyTicket.setStatus(request.getStatus());
+        monthlyTicket.setStatus(request.getStatus() != null ? Parking.enums.MonthlyTicketStatus.fromCode(request.getStatus()) : null);
 
         if (isEmployeeCard) {
             parkingCard.setType(ParkingCardType.EMPLOYEE);
@@ -177,7 +177,7 @@ public class MonthlyTicketService {
 
         java.time.LocalDateTime startDate = request.getStartDate() != null ? request.getStartDate() : monthlyTicket.getStartDate();
         java.time.LocalDateTime endDate = request.getEndDate() != null ? request.getEndDate() : monthlyTicket.getEndDate();
-        Integer status = request.getStatus() != null ? request.getStatus() : monthlyTicket.getStatus();
+        Integer status = request.getStatus() != null ? request.getStatus() : (monthlyTicket.getStatus() != null ? monthlyTicket.getStatus().getCode() : null);
 
         if (isEmployeeCard) {
             User employee = vehicle.getUser();
@@ -222,7 +222,7 @@ public class MonthlyTicketService {
 
         monthlyTicket.setStartDate(startDate);
         monthlyTicket.setEndDate(endDate);
-        monthlyTicket.setStatus(status);
+        monthlyTicket.setStatus(status != null ? Parking.enums.MonthlyTicketStatus.fromCode(status) : null);
 
         if (isEmployeeCard) {
             parkingCard.setType(ParkingCardType.EMPLOYEE);
@@ -280,7 +280,7 @@ public class MonthlyTicketService {
                 .endDate(monthlyTicket.getEndDate())
                 .parkingBranchId(monthlyTicket.getParkingCard().getParkingBranch().getParkingBranchId())
                 .parkingBranchName(monthlyTicket.getParkingCard().getParkingBranch().getBranchName())
-                .status(monthlyTicket.getStatus())
+                .status(monthlyTicket.getStatus() != null ? monthlyTicket.getStatus().getCode() : null)
                 .createdAt(monthlyTicket.getCreatedAt())
                 .pricePolicyId(pricePolicy != null ? pricePolicy.getPricePolicyId() : null)
                 .pricePolicy(pricePolicy != null ? MonthlyTicketResponse.PricePolicySummary.builder()
