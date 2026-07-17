@@ -255,13 +255,13 @@ Vấn đề:
 - Hỏng barrier ở cổng nào?
 - Lỗi camera nào?
 - Mất điện tầng/khu nào?
-- Slot/khu vực nào bị ảnh hưởng?
+- Tầng/khu vực nào bị ảnh hưởng?
 
 Nên chỉnh:
 
 - Nếu chưa có bảng thiết bị, tối thiểu thêm mô tả vị trí bắt buộc cho sự cố kỹ thuật.
-- Nếu có mở rộng, incident nên optional link tới floor/zone/slot/device.
-- Với sự cố ảnh hưởng vận hành, có thể tự động chuyển slot/zone sang `MAINTENANCE` nếu phù hợp.
+- Nếu có mở rộng, incident nên optional link tới floor/zone/device.
+- Với sự cố ảnh hưởng vận hành, có thể tự động chuyển zone sang `MAINTENANCE` nếu phù hợp.
 
 ## 16. Thiếu xử lý bảo mật dữ liệu cá nhân
 

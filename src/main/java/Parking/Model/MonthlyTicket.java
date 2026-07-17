@@ -47,6 +47,7 @@ public class MonthlyTicket {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private MonthlyTicketRequest monthlyTicketRequest;
 
+
     @Column(name = "guest_name", columnDefinition = "NVARCHAR(255)")
     private String guestName;
 
@@ -60,7 +61,8 @@ public class MonthlyTicket {
     private LocalDateTime endDate;
 
     @Column(name = "status", nullable = false)
-    private Integer status; // 1 = Active, 0 = Expired/Locked
+    @jakarta.persistence.Convert(converter = Parking.enums.MonthlyTicketStatusConverter.class)
+    private Parking.enums.MonthlyTicketStatus status; // 1 = Active, 0 = Expired/Locked
 
     @Column(name = "created_at", nullable = true, updatable = false)
     private LocalDateTime createdAt;

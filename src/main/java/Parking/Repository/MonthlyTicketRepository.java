@@ -98,14 +98,17 @@ public interface MonthlyTicketRepository extends JpaRepository<MonthlyTicket, Lo
         @Param("ticketId") Long ticketId
     );
 
-    @Query("""
-        SELECT mt FROM MonthlyTicket mt
-        WHERE mt.vehicle.vehiclesId = :vehicleId
-        ORDER BY mt.endDate DESC
-    """)
-    List<MonthlyTicket> findByVehicleVehiclesIdOrderByEndDateDesc(@Param("vehicleId") Long vehicleId);
+    java.util.Optional<MonthlyTicket> findFirstByVehicleVehiclesIdOrderByEndDateDesc(Long vehicleId);
 
-    default java.util.Optional<MonthlyTicket> findLatestTicketByVehicle(Long vehicleId) {
-        return findByVehicleVehiclesIdOrderByEndDateDesc(vehicleId).stream().findFirst();
-    }
+    @Query("""
+        SELECT COUNT(mt) > 0 FROM MonthlyTicket mt
+        WHERE mt.vehicle.vehiclesId = :vehicleId
+          AND mt.status = 1
+          AND mt.startDate <= :time
+          AND mt.endDate >= :time
+    """)
+    boolean existsActiveTicketByVehicle(
+        @Param("vehicleId") Long vehicleId,
+        @Param("time") LocalDateTime time
+    );
 }

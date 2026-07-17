@@ -38,4 +38,26 @@ public interface MonthlyTicketRequestRepository extends JpaRepository<MonthlyTic
                 .stream()
                 .findFirst();
     }
+
+    @Query("""
+        SELECT CASE WHEN COUNT(request) > 0 THEN true ELSE false END
+        FROM MonthlyTicketRequest request
+        WHERE request.user.userId = :userId
+          AND request.status IN :statuses
+    """)
+    boolean existsOpenRequestByUser(
+            @Param("userId") Long userId,
+            @Param("statuses") java.util.Collection<Parking.enums.MonthlyTicketRequestStatus> statuses
+    );
+
+    @Query("""
+        SELECT CASE WHEN COUNT(request) > 0 THEN true ELSE false END
+        FROM MonthlyTicketRequest request
+        WHERE request.renewalOfTicket.ticketId = :ticketId
+          AND request.status IN :statuses
+    """)
+    boolean existsByRenewalOfTicketTicketIdAndStatusIn(
+            @Param("ticketId") Long ticketId,
+            @Param("statuses") java.util.Collection<Parking.enums.MonthlyTicketRequestStatus> statuses
+    );
 }

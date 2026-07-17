@@ -45,10 +45,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                             req -> req
                 
-                // Cho phép API đăng ký / đăng nhập và xem sơ đồ đỗ xe công cộng
+                // Cho phép API đăng ký / đăng nhập và xem dữ liệu công cộng
                 .requestMatchers("/", "/index.html", "/favicon.ico", "/style.css", "/app.js", "/api/auth/**", "/error").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, 
-                    "/api/parking/slots", 
                     "/api/parking-branches", 
                     "/api/parking-zones/**", 
                     "/api/vehicle-types", 

@@ -114,7 +114,7 @@ public class ParkingSessionService {
             throw e;
         }
 
-        ParkingBranch parkingBranch = parkingBranchRepository.findByParkingBranchId(barnchId)
+        ParkingBranch parkingBranch = parkingBranchRepository.findById(barnchId)
                                     .orElseThrow(() -> new ParkingSessionException("Parking branch not found"));
         
         if(!parkingBranch.isActive()) {

@@ -109,16 +109,7 @@ public class VnPayService {
                 "vn"
         );
 
-        if (payment.getMonthlyTicketRequest() != null) {
-            String returnUrl = vnPayConfig.getFrontendUrl();
-            if (returnUrl != null && returnUrl.endsWith("/")) {
-                returnUrl = returnUrl.substring(0, returnUrl.length() - 1);
-            }
-            returnUrl += "/payment-result?paymentType=MONTHLY_TICKET&requestId=" + payment.getMonthlyTicketRequest().getId();
-            params.put("vnp_ReturnUrl", returnUrl);
-        } else {
-            params.put("vnp_ReturnUrl", vnPayConfig.getReturnUrl());
-        }
+        params.put("vnp_ReturnUrl", vnPayConfig.getReturnUrl());
 
         params.put(
                 "vnp_IpAddr",
