@@ -302,6 +302,17 @@ public class PaymentService {
         }
 
         boolean isSuccess = "00".equals(responseCode);
+        if (isSuccess) {
+            String vnpAmountStr = params.get("vnp_Amount");
+            if (vnpAmountStr != null) {
+                BigDecimal expectedAmount = payment.getAmount();
+                BigDecimal receivedAmount = vnPayService.convertVnPayAmount(vnpAmountStr);
+                if (expectedAmount.compareTo(receivedAmount) != 0) {
+                    isSuccess = false;
+                    responseCode = "04";
+                }
+            }
+        }
         payment.setVnpTransactionNo(vnpTxnNo);
         payment.setBankCode(bankCode);
         payment.setResponseCode(responseCode);
@@ -321,6 +332,12 @@ public class PaymentService {
                     parkingCardRepository.save(card);
                 }
                 parkingSessionRepository.save(session);
+            }
+            
+            MonthlyTicketRequest mtr = payment.getMonthlyTicketRequest();
+            if (mtr != null && mtr.getStatus() != null && mtr.getStatus() == 0) {
+                mtr.setStatus(1); // PENDING_APPROVAL
+                monthlyTicketRequestRepository.save(mtr);
             }
             paymentRepository.save(payment);
 
@@ -409,6 +426,12 @@ public class PaymentService {
                         parkingCardRepository.save(card);
                     }
                     parkingSessionRepository.save(session);
+                }
+                
+                MonthlyTicketRequest mtr = payment.getMonthlyTicketRequest();
+                if (mtr != null && mtr.getStatus() != null && mtr.getStatus() == 0) {
+                    mtr.setStatus(1); // PENDING_APPROVAL
+                    monthlyTicketRequestRepository.save(mtr);
                 }
             } else {
                 payment.setPaymentStatus(PaymentStatus.FAILED);

@@ -6,9 +6,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import Parking.Model.User;
 import Parking.Model.MonthlyTicket;
+import Parking.Model.MonthlyTicketRequest;
 import Parking.Model.ParkingCard;
+import Parking.Model.PricePolicy;
 import Parking.Model.Vehicle;
 import Parking.Repository.MonthlyTicketRepository;
+import Parking.Repository.MonthlyTicketRequestRepository;
 import Parking.Repository.ParkingCardRepository;
 import Parking.Repository.VehicleRepository;
 import Parking.dto.request.CreateMonthlyTicketRequest;
@@ -25,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 public class MonthlyTicketService {
 
     private final MonthlyTicketRepository monthlyTicketRepository;
+    private final MonthlyTicketRequestRepository monthlyTicketRequestRepository;
     private final VehicleRepository vehicleRepository;
     private final ParkingCardRepository parkingCardRepository;
     private final BranchScopeService branchScopeService;
@@ -242,9 +246,31 @@ public class MonthlyTicketService {
     }
 
     private MonthlyTicketResponse convertToResponse(MonthlyTicket monthlyTicket) {
+        PricePolicy pricePolicy = monthlyTicket.getPricePolicy();
+        MonthlyTicketRequest request = monthlyTicket.getMonthlyTicketRequest();
+
+        // Tương thích dữ liệu vé cũ được cấp trước khi monthly_ticket có
+        // price_policy_id/monthly_ticket_request_id. Chỉ lấy request đã thanh
+        // toán của đúng xe, đúng chi nhánh và được tạo trước thời điểm cấp vé.
+        if (pricePolicy == null) {
+            MonthlyTicketRequest issuedRequest = request != null
+                    ? request
+                    : monthlyTicketRequestRepository.findBestIssuedRequestForTicket(
+                        monthlyTicket.getVehicle().getVehiclesId(),
+                        monthlyTicket.getParkingCard().getParkingBranch().getParkingBranchId(),
+                        monthlyTicket.getCreatedAt()
+                    ).orElse(null);
+
+            if (issuedRequest != null) {
+                request = issuedRequest;
+                pricePolicy = issuedRequest.getPricePolicy();
+            }
+        }
+
         return MonthlyTicketResponse.builder()
                 .ticketId(monthlyTicket.getTicketId())
                 .vehicleId(monthlyTicket.getVehicle().getVehiclesId())
+                .vehicleTypeId(monthlyTicket.getVehicle().getVehicleType() != null ? monthlyTicket.getVehicle().getVehicleType().getVehicleTypeId() : null)
                 .licensePlate(monthlyTicket.getVehicle().getLicensePlate())
                 .parkingCardId(monthlyTicket.getParkingCard().getParkingCardId())
                 .cardCode(monthlyTicket.getParkingCard().getCardCode())
@@ -256,6 +282,14 @@ public class MonthlyTicketService {
                 .parkingBranchName(monthlyTicket.getParkingCard().getParkingBranch().getBranchName())
                 .status(monthlyTicket.getStatus())
                 .createdAt(monthlyTicket.getCreatedAt())
+                .pricePolicyId(pricePolicy != null ? pricePolicy.getPricePolicyId() : null)
+                .pricePolicy(pricePolicy != null ? MonthlyTicketResponse.PricePolicySummary.builder()
+                        .pricePolicyId(pricePolicy.getPricePolicyId())
+                        .policyName(pricePolicy.getPolicyName())
+                        .vehicleTypeId(pricePolicy.getVehicleType() != null ? pricePolicy.getVehicleType().getVehicleTypeId() : null)
+                        .vehicleTypeName(pricePolicy.getVehicleType() != null ? pricePolicy.getVehicleType().getTypeName() : null)
+                        .build() : null)
+                .monthlyTicketRequestId(request != null ? request.getId() : null)
                 .build();
     }
 }

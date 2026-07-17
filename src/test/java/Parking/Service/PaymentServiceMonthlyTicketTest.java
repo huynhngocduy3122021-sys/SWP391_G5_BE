@@ -41,7 +41,7 @@ class PaymentServiceMonthlyTicketTest {
     @InjectMocks private PaymentService paymentService;
 
     @Test
-    void handleVnPayCallback_shouldKeepMonthlyTicketRequestPendingAfterSuccessfulPayment() {
+    void handleVnPayCallback_shouldMoveMonthlyTicketRequestToPendingApprovalAfterSuccessfulPayment() {
         MonthlyTicketRequest request = new MonthlyTicketRequest();
         request.setId(10L);
         request.setStatus(0);
@@ -66,7 +66,7 @@ class PaymentServiceMonthlyTicketTest {
 
         paymentService.handleVnPayCallback(params);
 
-        assertEquals(0, request.getStatus());
+        assertEquals(1, request.getStatus());
         verify(monthlyTicketRequestRepository).save(request);
     }
 }

@@ -21,7 +21,7 @@ public class MonthlyTicketRequest {
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"password", "roles", "staffList", "tokens", "vehicles", "bookings"})
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"userPassword", "password", "roles", "staffList", "tokens", "vehicles", "bookings", "authorities", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "username"})
     private User user;
 
     @ManyToOne
@@ -34,7 +34,7 @@ public class MonthlyTicketRequest {
     private ParkingBranch parkingBranch;
 
     @Column(nullable = false)
-    private Integer status; // 0 = Pending, 1 = Approved, 2 = Rejected
+    private Integer status; // 0 = PENDING_PAYMENT, 1 = PENDING_APPROVAL, 2 = APPROVED, -1 = REJECTED, -2 = EXPIRED
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -42,4 +42,9 @@ public class MonthlyTicketRequest {
     @OneToOne(mappedBy = "monthlyTicketRequest", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @com.fasterxml.jackson.annotation.JsonIgnoreProperties("monthlyTicketRequest")
     private Payment payment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "renewal_of_ticket_id")
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"vehicle", "parkingCard"})
+    private MonthlyTicket renewalOfTicket;
 }
