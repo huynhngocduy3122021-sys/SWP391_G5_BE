@@ -12,6 +12,7 @@ import Parking.Service.PaymentService;
 import Parking.Service.MonthlyTicketRequestService;
 import Parking.enums.MonthlyTicketRequestStatus;
 import Parking.dto.request.SubmitMonthlyTicketRequest;
+import Parking.dto.response.MonthlyTicketRequestResponse;
 import Parking.web.ClientIpResolver;
 import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -29,26 +30,41 @@ public class MonthlyTicketRequestController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<MonthlyTicketRequest> submitRequest(@Valid @RequestBody SubmitMonthlyTicketRequest req) {
-        return ResponseEntity.ok(requestService.submitRequest(req));
+    public ResponseEntity<MonthlyTicketRequestResponse> submitRequest(@Valid @RequestBody SubmitMonthlyTicketRequest req) {
+        return ResponseEntity.ok(requestService.toResponse(requestService.submitRequest(req)));
     }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<List<MonthlyTicketRequest>> getAllRequests() {
+    public ResponseEntity<List<MonthlyTicketRequestResponse>> getAllRequests() {
         return ResponseEntity.ok(requestService.getAllRequests());
     }
 
     @GetMapping("/my-requests")
     @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<List<MonthlyTicketRequest>> getMyRequests() {
+    public ResponseEntity<List<MonthlyTicketRequestResponse>> getMyRequests() {
         return ResponseEntity.ok(requestService.getMyRequests());
     }
 
     @PutMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<MonthlyTicketRequest> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
-        return ResponseEntity.ok(requestService.updateStatus(id, MonthlyTicketRequestStatus.fromCode(status)));
+    public ResponseEntity<MonthlyTicketRequestResponse> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
+        return ResponseEntity.ok(requestService.toResponse(
+                requestService.updateStatus(id, MonthlyTicketRequestStatus.fromCode(status))));
+    }
+
+    @PutMapping("/{id}/approve")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<MonthlyTicketRequestResponse> approve(@PathVariable Long id) {
+        return ResponseEntity.ok(requestService.toResponse(
+                requestService.updateStatus(id, MonthlyTicketRequestStatus.APPROVED)));
+    }
+
+    @PutMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<MonthlyTicketRequestResponse> reject(@PathVariable Long id) {
+        return ResponseEntity.ok(requestService.toResponse(
+                requestService.updateStatus(id, MonthlyTicketRequestStatus.REJECTED)));
     }
 
     @PostMapping("/{id}/payment")

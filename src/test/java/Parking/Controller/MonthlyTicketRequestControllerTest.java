@@ -15,6 +15,7 @@ import Parking.Model.MonthlyTicketRequest;
 import Parking.Service.MonthlyTicketRequestService;
 import Parking.Service.PaymentService;
 import Parking.enums.MonthlyTicketRequestStatus;
+import Parking.dto.response.MonthlyTicketRequestResponse;
 import Parking.web.ClientIpResolver;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,12 +31,15 @@ class MonthlyTicketRequestControllerTest {
     void updateStatus_shouldConvertRejectedCodeAndDelegateToService() {
         MonthlyTicketRequest updated = new MonthlyTicketRequest();
         updated.setStatus(MonthlyTicketRequestStatus.REJECTED);
+        MonthlyTicketRequestResponse dto = MonthlyTicketRequestResponse.builder()
+                .status("REJECTED").statusCode(-1).build();
         when(requestService.updateStatus(32L, MonthlyTicketRequestStatus.REJECTED)).thenReturn(updated);
+        when(requestService.toResponse(updated)).thenReturn(dto);
 
-        ResponseEntity<MonthlyTicketRequest> response = controller.updateStatus(32L, -1);
+        ResponseEntity<MonthlyTicketRequestResponse> response = controller.updateStatus(32L, -1);
 
         assertEquals(200, response.getStatusCode().value());
-        assertEquals(MonthlyTicketRequestStatus.REJECTED, response.getBody().getStatus());
+        assertEquals("REJECTED", response.getBody().getStatus());
         verify(requestService).updateStatus(32L, MonthlyTicketRequestStatus.REJECTED);
     }
 
@@ -43,11 +47,44 @@ class MonthlyTicketRequestControllerTest {
     void updateStatus_shouldConvertApprovedCodeAndDelegateToService() {
         MonthlyTicketRequest updated = new MonthlyTicketRequest();
         updated.setStatus(MonthlyTicketRequestStatus.APPROVED);
+        MonthlyTicketRequestResponse dto = MonthlyTicketRequestResponse.builder()
+                .status("APPROVED").statusCode(2).build();
         when(requestService.updateStatus(33L, MonthlyTicketRequestStatus.APPROVED)).thenReturn(updated);
+        when(requestService.toResponse(updated)).thenReturn(dto);
 
-        ResponseEntity<MonthlyTicketRequest> response = controller.updateStatus(33L, 2);
+        ResponseEntity<MonthlyTicketRequestResponse> response = controller.updateStatus(33L, 2);
 
-        assertEquals(MonthlyTicketRequestStatus.APPROVED, response.getBody().getStatus());
+        assertEquals("APPROVED", response.getBody().getStatus());
         verify(requestService).updateStatus(33L, MonthlyTicketRequestStatus.APPROVED);
+    }
+
+    @Test
+    void reject_shouldDelegateRejectedStatusWithoutNumericMapping() {
+        MonthlyTicketRequest updated = new MonthlyTicketRequest();
+        updated.setStatus(MonthlyTicketRequestStatus.REJECTED);
+        MonthlyTicketRequestResponse dto = MonthlyTicketRequestResponse.builder()
+                .status("REJECTED").statusCode(-1).build();
+        when(requestService.updateStatus(34L, MonthlyTicketRequestStatus.REJECTED)).thenReturn(updated);
+        when(requestService.toResponse(updated)).thenReturn(dto);
+
+        ResponseEntity<MonthlyTicketRequestResponse> response = controller.reject(34L);
+
+        assertEquals("REJECTED", response.getBody().getStatus());
+        verify(requestService).updateStatus(34L, MonthlyTicketRequestStatus.REJECTED);
+    }
+
+    @Test
+    void approve_shouldDelegateApprovedStatusWithoutNumericMapping() {
+        MonthlyTicketRequest updated = new MonthlyTicketRequest();
+        updated.setStatus(MonthlyTicketRequestStatus.APPROVED);
+        MonthlyTicketRequestResponse dto = MonthlyTicketRequestResponse.builder()
+                .status("APPROVED").statusCode(2).build();
+        when(requestService.updateStatus(35L, MonthlyTicketRequestStatus.APPROVED)).thenReturn(updated);
+        when(requestService.toResponse(updated)).thenReturn(dto);
+
+        ResponseEntity<MonthlyTicketRequestResponse> response = controller.approve(35L);
+
+        assertEquals("APPROVED", response.getBody().getStatus());
+        verify(requestService).updateStatus(35L, MonthlyTicketRequestStatus.APPROVED);
     }
 }

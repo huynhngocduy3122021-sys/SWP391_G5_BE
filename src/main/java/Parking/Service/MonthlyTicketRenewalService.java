@@ -16,6 +16,7 @@ import Parking.Repository.PricePolicyRepository;
 import Parking.Repository.ParkingBranchRepository;
 import Parking.Repository.MonthlyTicketRequestRepository;
 import Parking.dto.request.CreateRenewalRequest;
+import Parking.dto.response.MonthlyTicketRequestResponse;
 import Parking.enums.MonthlyTicketRequestStatus;
 import Parking.exception.exceptions.ResourceNotFoundException;
 import Parking.exception.exceptions.ForbiddenOperationException;
@@ -30,16 +31,64 @@ public class MonthlyTicketRenewalService {
     private final ParkingBranchRepository branchRepo;
     private final MonthlyTicketRequestRepository requestRepo;
     private final CurrentUserService currentUserService;
+    private final Parking.Repository.UserRepository userRepo;
+    private final MonthlyTicketRequestService monthlyTicketRequestService;
+
+    private static final java.util.List<MonthlyTicketRequestStatus> OPEN_REQUEST_STATUSES = java.util.List.of(
+            MonthlyTicketRequestStatus.PENDING_PAYMENT,
+            MonthlyTicketRequestStatus.PENDING_APPROVAL
+    );
 
     @Transactional
-    public MonthlyTicketRequest createRenewalRequest(Long ticketId, CreateRenewalRequest dto) {
-        User currentUser = currentUserService.getCurrentUser();
-        if (currentUser == null) {
+    public MonthlyTicketRequestResponse createRenewalRequest(Long ticketId, CreateRenewalRequest dto) {
+        User authenticatedUser = currentUserService.getCurrentUser();
+        if (authenticatedUser == null) {
             throw new ResourceNotFoundException("User not found");
+        }
+
+        User currentUser = userRepo.findByIdForUpdate(authenticatedUser.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (requestRepo.existsOpenRequestByUser(
+                currentUser.getUserId(), OPEN_REQUEST_STATUSES)) {
+            throw new InvalidTicketStateException(
+                    "Bạn đang có yêu cầu thẻ tháng chưa hoàn tất. "
+                    + "Không thể tạo thêm yêu cầu gia hạn."
+            );
+        }
+
+        if (requestRepo.existsByRenewalOfTicketTicketIdAndStatusIn(
+                ticketId, OPEN_REQUEST_STATUSES)) {
+            throw new InvalidTicketStateException(
+                    "Vé tháng này đã có yêu cầu gia hạn đang xử lý."
+            );
         }
 
         MonthlyTicket ticket = ticketRepo.findById(ticketId)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vé tháng"));
+
+        if (ticket.getStatus() != Parking.enums.MonthlyTicketStatus.ACTIVE && ticket.getStatus() != Parking.enums.MonthlyTicketStatus.INACTIVE) {
+            throw new InvalidTicketStateException("Trạng thái vé tháng không hợp lệ để gia hạn.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (ticket.getEndDate() == null) {
+            throw new InvalidTicketStateException("Vé tháng không có ngày hết hạn hợp lệ.");
+        }
+        if (ticket.getEndDate().isBefore(now.minusDays(30))) {
+            throw new InvalidTicketStateException(
+                    "Vé đã hết hạn quá thời gian cho phép gia hạn. Vui lòng đăng ký gói mới."
+            );
+        }
+
+        if (ticket.getParkingCard() == null || ticket.getParkingCard().getParkingBranch() == null) {
+            throw new InvalidTicketStateException("Vé tháng không có thông tin chi nhánh hợp lệ.");
+        }
+
+        Long currentBranchId = ticket.getParkingCard().getParkingBranch().getParkingBranchId();
+        if (!currentBranchId.equals(dto.getBranchId())) {
+            throw new InvalidTicketStateException("Gia hạn phải thực hiện tại chi nhánh của vé hiện tại.");
+        }
 
         if (!ticket.getVehicle().getUser().getUserId().equals(currentUser.getUserId())) {
             throw new ForbiddenOperationException("Bạn không sở hữu vé tháng này");
@@ -97,6 +146,7 @@ public class MonthlyTicketRenewalService {
         request.setCreatedAt(LocalDateTime.now());
         request.setRenewalOfTicket(ticket);
 
-        return requestRepo.save(request);
+        MonthlyTicketRequest savedRequest = requestRepo.save(request);
+        return monthlyTicketRequestService.toResponse(savedRequest);
     }
 }

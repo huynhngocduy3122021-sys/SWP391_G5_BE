@@ -49,7 +49,6 @@ public class filter extends OncePerRequestFilter {
     );
 
     private final List<String> PUBLIC_GET_ENDPOINTS = List.of(
-                "/api/parking/slots",
                 "/api/parking-branches",
                 "/api/parking-zones/**",
                 "/api/vehicle-types",

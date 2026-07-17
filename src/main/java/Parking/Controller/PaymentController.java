@@ -45,7 +45,7 @@ public class PaymentController {
             return ResponseEntity.ok(response);
         }
         
-        URI redirectUri = paymentRedirectUrlBuilder.buildRedirectUri(response, params);
+        URI redirectUri = paymentRedirectUrlBuilder.buildRedirectUri(response);
                 
         return ResponseEntity.status(HttpStatus.FOUND).location(redirectUri).build();
     }

@@ -25,6 +25,7 @@ import Parking.enums.MonthlyTicketStatus;
 import Parking.enums.ParkingCardStatus;
 import Parking.enums.PaymentStatus;
 import Parking.dto.request.SubmitMonthlyTicketRequest;
+import Parking.dto.response.MonthlyTicketRequestResponse;
 import Parking.exception.exceptions.ResourceNotFoundException;
 import Parking.exception.exceptions.ForbiddenOperationException;
 import Parking.exception.exceptions.InvalidTicketStateException;
@@ -40,15 +41,41 @@ public class MonthlyTicketRequestService {
     private final MonthlyTicketRepository monthlyTicketRepo;
     private final ParkingCardRepository parkingCardRepo;
     private final CurrentUserService currentUserService;
+    private final Parking.Repository.UserRepository userRepo;
 
+    private static final List<MonthlyTicketRequestStatus> OPEN_REQUEST_STATUSES = List.of(
+            MonthlyTicketRequestStatus.PENDING_PAYMENT,
+            MonthlyTicketRequestStatus.PENDING_APPROVAL
+    );
+
+    @Transactional
     public MonthlyTicketRequest submitRequest(SubmitMonthlyTicketRequest req) {
-        User user = currentUserService.getCurrentUser();
-        if (user == null) {
+        User authenticatedUser = currentUserService.getCurrentUser();
+        if (authenticatedUser == null) {
             throw new ResourceNotFoundException("User not found");
+        }
+
+        User user = userRepo.findByIdForUpdate(authenticatedUser.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (requestRepo.existsOpenRequestByUser(
+                user.getUserId(), OPEN_REQUEST_STATUSES)) {
+            throw new InvalidTicketStateException(
+                    "Bạn đang có yêu cầu thẻ tháng chưa hoàn tất. "
+                    + "Vui lòng thanh toán hoặc chờ quản lý xét duyệt."
+            );
         }
 
         Vehicle vehicle = vehicleRepo.findById(req.getVehicleId())
                 .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found"));
+
+        if (monthlyTicketRepo.existsActiveTicketByVehicle(
+                vehicle.getVehiclesId(), LocalDateTime.now())) {
+            throw new InvalidTicketStateException(
+                    "Phương tiện đã có vé tháng còn hiệu lực. Vui lòng sử dụng chức năng gia hạn."
+            );
+        }
+
         PricePolicy policy = policyRepo.findById(req.getPolicyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Policy not found"));
         ParkingBranch branch = branchRepo.findById(req.getBranchId())
@@ -79,16 +106,95 @@ public class MonthlyTicketRequestService {
         return requestRepo.save(mtr);
     }
 
-    public List<MonthlyTicketRequest> getAllRequests() {
-        return requestRepo.findAll();
+    @Transactional(readOnly = true)
+    public List<MonthlyTicketRequestResponse> getAllRequests() {
+        return requestRepo.findAll().stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public List<MonthlyTicketRequest> getMyRequests() {
+    @Transactional(readOnly = true)
+    public List<MonthlyTicketRequestResponse> getMyRequests() {
         User user = currentUserService.getCurrentUser();
         if (user == null) {
             throw new ResourceNotFoundException("User not found");
         }
-        return requestRepo.findByUserUserId(user.getUserId());
+        return requestRepo.findByUserUserId(user.getUserId()).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    public MonthlyTicketRequestResponse toResponse(MonthlyTicketRequest request) {
+        Vehicle vehicle = request.getVehicle();
+        User user = request.getUser();
+        PricePolicy policy = request.getPricePolicy();
+        ParkingBranch branch = request.getParkingBranch();
+        Payment payment = request.getPayment();
+        MonthlyTicket renewalTicket = request.getRenewalOfTicket();
+
+        MonthlyTicketRequestResponse.VehicleSummary vehicleSummary = vehicle == null ? null
+                : MonthlyTicketRequestResponse.VehicleSummary.builder()
+                    .vehiclesId(vehicle.getVehiclesId())
+                    .licensePlate(vehicle.getLicensePlate())
+                    .vehicleColor(vehicle.getVehicleColor())
+                    .vehicleBrand(vehicle.getVehicleBrand())
+                    .vehicleTypeId(vehicle.getVehicleType() == null ? null : vehicle.getVehicleType().getVehicleTypeId())
+                    .vehicleTypeName(vehicle.getVehicleType() == null ? null : vehicle.getVehicleType().getTypeName())
+                    .build();
+
+        MonthlyTicketRequestResponse.UserSummary userSummary = user == null ? null
+                : MonthlyTicketRequestResponse.UserSummary.builder()
+                    .userId(user.getUserId())
+                    .userFullName(user.getUserFullName())
+                    .userEmail(user.getUserEmail())
+                    .userPhone(user.getUserPhone())
+                    .build();
+
+        MonthlyTicketRequestResponse.PricePolicySummary policySummary = policy == null ? null
+                : MonthlyTicketRequestResponse.PricePolicySummary.builder()
+                    .pricePolicyId(policy.getPricePolicyId())
+                    .policyName(policy.getPolicyName())
+                    .basePrice(policy.getBasePrice())
+                    .build();
+
+        MonthlyTicketRequestResponse.ParkingBranchSummary branchSummary = branch == null ? null
+                : MonthlyTicketRequestResponse.ParkingBranchSummary.builder()
+                    .parkingBranchId(branch.getParkingBranchId())
+                    .branchName(branch.getBranchName())
+                    .build();
+
+        MonthlyTicketRequestResponse.PaymentSummary paymentSummary = payment == null ? null
+                : MonthlyTicketRequestResponse.PaymentSummary.builder()
+                    .paymentId(payment.getPaymentId())
+                    .amount(payment.getAmount())
+                    .paymentMethod(payment.getPaymentMethod() == null ? null : payment.getPaymentMethod().name())
+                    .paymentStatus(payment.getPaymentStatus() == null ? null : payment.getPaymentStatus().name())
+                    .transactionRef(payment.getTransactionRef())
+                    .responseCode(payment.getResponseCode())
+                    .createdAt(payment.getCreatedAt())
+                    .paidAt(payment.getPaidAt())
+                    .build();
+
+        MonthlyTicketRequestResponse.RenewalSummary renewalSummary = renewalTicket == null ? null
+                : MonthlyTicketRequestResponse.RenewalSummary.builder()
+                    .ticketId(renewalTicket.getTicketId())
+                    .startDate(renewalTicket.getStartDate())
+                    .endDate(renewalTicket.getEndDate())
+                    .status(renewalTicket.getStatus() == null ? null : renewalTicket.getStatus().name())
+                    .build();
+
+        return MonthlyTicketRequestResponse.builder()
+                .id(request.getId())
+                .vehicle(vehicleSummary)
+                .user(userSummary)
+                .pricePolicy(policySummary)
+                .parkingBranch(branchSummary)
+                .status(request.getStatus() == null ? null : request.getStatus().name())
+                .statusCode(request.getStatus() == null ? null : request.getStatus().getCode())
+                .createdAt(request.getCreatedAt())
+                .payment(paymentSummary)
+                .renewalOfTicket(renewalSummary)
+                .build();
     }
 
     @Transactional
@@ -136,33 +242,33 @@ public class MonthlyTicketRequestService {
             LocalDateTime endDate = now.plusMonths(1);
             
             if (oldTicket != null) {
-                oldTicket.setStatus(MonthlyTicketStatus.INACTIVE);
+                LocalDateTime baseDate = oldTicket.getEndDate().isAfter(now)
+                        ? oldTicket.getEndDate()
+                        : now;
+                oldTicket.setEndDate(baseDate.plusMonths(1));
+                oldTicket.setStatus(MonthlyTicketStatus.ACTIVE);
+                oldTicket.setPricePolicy(policy);
                 monthlyTicketRepo.save(oldTicket);
-                
-                card = oldTicket.getParkingCard();
-                if (oldTicket.getEndDate().isAfter(now)) {
-                    endDate = oldTicket.getEndDate().plusMonths(1);
-                }
             } else {
                 card = parkingCardRepo.findFirstAvailableMonthlyCard(req.getParkingBranch().getParkingBranchId())
                         .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thẻ giữ xe loại tháng còn trống tại chi nhánh " + req.getParkingBranch().getBranchName()));
+                
+                card.setStatus(ParkingCardStatus.IN_USE);
+                parkingCardRepo.save(card);
+                
+                MonthlyTicket newTicket = new MonthlyTicket();
+                newTicket.setVehicle(req.getVehicle());
+                newTicket.setParkingCard(card);
+                newTicket.setStartDate(startDate);
+                newTicket.setEndDate(endDate);
+                newTicket.setStatus(MonthlyTicketStatus.ACTIVE);
+                newTicket.setGuestName(req.getUser().getUserFullName());
+                newTicket.setGuestPhone(req.getUser().getUserPhone());
+                newTicket.setMonthlyTicketRequest(req);
+                newTicket.setPricePolicy(req.getPricePolicy());
+                
+                monthlyTicketRepo.save(newTicket);
             }
-            
-            card.setStatus(ParkingCardStatus.IN_USE);
-            parkingCardRepo.save(card);
-            
-            MonthlyTicket newTicket = new MonthlyTicket();
-            newTicket.setVehicle(req.getVehicle());
-            newTicket.setParkingCard(card);
-            newTicket.setStartDate(startDate);
-            newTicket.setEndDate(endDate);
-            newTicket.setStatus(MonthlyTicketStatus.ACTIVE);
-            newTicket.setGuestName(req.getUser().getUserFullName());
-            newTicket.setGuestPhone(req.getUser().getUserPhone());
-            newTicket.setMonthlyTicketRequest(req);
-            newTicket.setPricePolicy(req.getPricePolicy());
-            
-            monthlyTicketRepo.save(newTicket);
         } else if (status == MonthlyTicketRequestStatus.REJECTED) {
             boolean ticketIssuedFromThisRequest = monthlyTicketRepo.existsByMonthlyTicketRequestId(id);
 
@@ -170,10 +276,11 @@ public class MonthlyTicketRequestService {
                 throw new InvalidTicketStateException("Không thể từ chối yêu cầu đã cấp vé.");
             }
 
-            if (req.getStatus() == MonthlyTicketRequestStatus.APPROVED
-                    && req.getPayment() != null
-                    && req.getPayment().getPaymentStatus() == PaymentStatus.PAID) {
-                req.setStatus(MonthlyTicketRequestStatus.PENDING_APPROVAL); 
+            if (req.getStatus() != MonthlyTicketRequestStatus.PENDING_PAYMENT
+                    && req.getStatus() != MonthlyTicketRequestStatus.PENDING_APPROVAL) {
+                throw new InvalidTicketStateException(
+                        "Chỉ có thể từ chối yêu cầu đang chờ thanh toán hoặc chờ duyệt."
+                );
             }
         }
         

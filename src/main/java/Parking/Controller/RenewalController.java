@@ -6,6 +6,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
 import Parking.Service.MonthlyTicketRenewalService;
 import Parking.dto.request.CreateRenewalRequest;
+import Parking.dto.response.MonthlyTicketRequestResponse;
 import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
@@ -20,7 +21,7 @@ public class RenewalController {
 
     @PostMapping("/{ticketId}/renewal-requests")
     @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<?> createRenewalRequest(
+    public ResponseEntity<MonthlyTicketRequestResponse> createRenewalRequest(
             @PathVariable Long ticketId,
             @Valid @RequestBody CreateRenewalRequest dto) {
 

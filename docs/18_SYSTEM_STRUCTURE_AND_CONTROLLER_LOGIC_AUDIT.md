@@ -139,7 +139,6 @@ Hướng sửa: tách `PaymentRedirectUrlBuilder` hoặc private collaborator th
 Các Controller có import `Parking.Model` trực tiếp:
 
 - `VehicleTypeController` trả `VehicleType`.
-- `ParkingController` trả `Slot`.
 - `PricePolicyController` trả `PricePolicy`.
 - `VehicleImageController` dùng `VehicleImageType` trong API.
 - Hai Controller vé tháng trả nhiều Entity trực tiếp.
@@ -250,4 +249,3 @@ Không bắt buộc phải tạo mọi class ngay. Điểm quan trọng là Cont
 | Medium | Redirect builder trong `PaymentController` | Sửa sau luồng vé tháng |
 | Medium | Trả trực tiếp JPA Entity | Chuyển dần theo từng API |
 | Medium | Validation, current user và client IP chưa tập trung | Sửa theo từng Controller |
-
