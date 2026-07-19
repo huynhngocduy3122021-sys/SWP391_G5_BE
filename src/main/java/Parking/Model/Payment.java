@@ -3,7 +3,6 @@ package Parking.Model;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import org.springframework.cglib.core.Local;
 
 import Parking.enums.PaymentMethod;
 import Parking.enums.PaymentStatus;

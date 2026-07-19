@@ -10,7 +10,6 @@ import Parking.dto.request.CreateParkingCardRequest;
 import Parking.dto.request.UpdateParkingCardRequest;
 import Parking.dto.response.ParkingCardResponse;
 import Parking.enums.ParkingCardStatus;
-import Parking.enums.ParkingCardType;
 import Parking.exception.exceptions.ParkingSessionException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

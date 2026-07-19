@@ -15,6 +15,11 @@ public interface ParkingZoneRepository extends JpaRepository<ParkingZone,Long> {
 
     List<ParkingZone>findByParkingFloorParkingBranchParkingBranchId(Long parkingBranchId);
 
+    /**
+     * Tính tổng sức chứa của các khu vực đỗ xe đang hoạt động trong một chi nhánh,
+     * nhưng chỉ dành cho loại phương tiện được chỉ định.
+     * Dùng khi cần thống kê số chỗ theo từng loại xe (ô tô, xe máy,...).
+     */
     @Query("""
         SELECT COALESCE(SUM(zone.capacity), 0)
         FROM ParkingZone zone
@@ -29,6 +34,11 @@ public interface ParkingZoneRepository extends JpaRepository<ParkingZone,Long> {
             @Param("vehicleTypeId") Long vehicleTypeId
     );
 
+    /**
+     * Tính tổng sức chứa của tất cả khu vực đỗ xe đang hoạt động trong một chi nhánh,
+     * không phân biệt loại phương tiện.
+     * Dùng khi cần thống kê tổng số chỗ của toàn chi nhánh.
+     */
     @Query("""
         SELECT COALESCE(SUM(zone.capacity), 0)
         FROM ParkingZone zone

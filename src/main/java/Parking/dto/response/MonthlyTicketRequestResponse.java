@@ -58,6 +58,8 @@ public class MonthlyTicketRequestResponse {
     @Getter @Setter @Builder
     public static class RenewalSummary {
         private Long ticketId;
+        private Long parkingCardId;
+        private String cardCode;
         private LocalDateTime startDate;
         private LocalDateTime endDate;
         private String status;

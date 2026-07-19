@@ -8,10 +8,10 @@ import lombok.Getter;
 @Getter
 @Setter
 public class CreateVehicleTypeRequest {
-    @NotBlank(message = "Type name is required")
-    @Size(max = 100, message = "Type name must not exceed 100 characters")
+    @NotBlank(message = "Tên loại phương tiện là bắt buộc")
+    @Size(max = 100, message = "Tên loại phương tiện không được vượt quá 100 ký tự")
     private String typeName;
 
-    @Size(max = 255, message = "Description must not exceed 255 characters")
+    @Size(max = 255, message = "Mô tả không được vượt quá 255 ký tự")
     private String description;
 }

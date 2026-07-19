@@ -2,7 +2,6 @@ package Parking.Service;
 
 import java.util.List;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,16 +33,16 @@ public class ParkingZoneService {
         VehicleType vehicleType =findVehicleType(request.getVehicleTypeId());
 
         if (!parkingFloor.isActive()) {
-            throw new ParkingSessionException("Parking floor is inactive");
+            throw new ParkingSessionException("Tầng đỗ xe đang ngừng hoạt động");
         }
 
         if (!parkingFloor.getParkingBranch().isActive()) {
-            throw new ParkingSessionException("Parking branch is inactive");
+            throw new ParkingSessionException("Chi nhánh bãi xe đang ngừng hoạt động");
         }
 
         if (parkingZoneRepository.existsByParkingFloorParkingFloorId(parkingFloor.getParkingFloorId())) {
 
-            throw new ParkingSessionException("Parking floor already has a parking zone");
+            throw new ParkingSessionException("Tầng đỗ xe đã có khu vực đỗ xe");
         }
 
         ParkingZone parkingZone = new ParkingZone();
@@ -97,7 +96,7 @@ public class ParkingZoneService {
         boolean floorAlreadyHasOtherZone =parkingZoneRepository.existsByParkingFloorParkingFloorIdAndParkingZoneIdNot(newFloor.getParkingFloorId(),id);
 
         if (floorAlreadyHasOtherZone) {
-            throw new ParkingSessionException("Parking floor already has another parking zone");
+            throw new ParkingSessionException("Tầng đỗ xe đã có một khu vực đỗ xe khác");
         }
 
         parkingZone.setZoneName(request.getZoneName().trim());
@@ -121,17 +120,17 @@ public class ParkingZoneService {
 
     private ParkingFloor findFloor(Long id) {
         return parkingFloorRepository.findById(id)
-                .orElseThrow(() -> new ParkingSessionException("Parking floor not found"));
+                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy tầng đỗ xe"));
     }
 
     private VehicleType findVehicleType(Long id) {
         return vehicleTypeRepository.findById(id)
-                .orElseThrow(() ->new ParkingSessionException("Vehicle type not found"));
+                .orElseThrow(() ->new ParkingSessionException("Không tìm thấy loại phương tiện"));
     }
 
     private ParkingZone findZone(Long id) {
         return parkingZoneRepository.findById(id)
-                .orElseThrow(() -> new ParkingSessionException("Parking zone not found"));
+                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy khu vực đỗ xe"));
     }
 
     private ParkingZoneResponse convertToParkingZone(ParkingZone parkingZone) {

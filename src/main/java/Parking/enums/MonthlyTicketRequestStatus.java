@@ -23,6 +23,6 @@ public enum MonthlyTicketRequestStatus {
                 return status;
             }
         }
-        throw new IllegalArgumentException("Unknown MonthlyTicketRequestStatus code: " + code);
+        throw new IllegalArgumentException("Mã trạng thái yêu cầu vé tháng không hợp lệ: " + code);
     }
 }

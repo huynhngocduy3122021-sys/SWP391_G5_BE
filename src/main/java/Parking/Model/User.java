@@ -23,24 +23,24 @@ public class User implements UserDetails {
     @Column(name = "user_id")
     private Long userId;
     @Column(name = "user_full_name", columnDefinition = "nvarchar(255)", nullable = false)
-    @NotEmpty(message = "Full name is required")
+    @NotEmpty(message = "Họ và tên là bắt buộc")
     private String userFullName;
 
   
     @Column(name = "user_email" , columnDefinition = "NVARCHAR(255)", unique = true)
     @Email
-    @NotEmpty(message = "Email cannot be empty!")
+    @NotEmpty(message = "Email không được để trống!")
     private String userEmail;
 
     @Column(name = "user_password", nullable = false)
     private String userPassword;
 
  @Column(name = "user_phone", unique = true)
-    @Pattern(regexp = "(03|05|07|08|09|012|016|018|019)[0-9]{8}$", message = "Phone invalid!")
-    @NotEmpty(message = "Phone cannot be empty!" )
+    @Pattern(regexp = "(03|05|07|08|09|012|016|018|019)[0-9]{8}$", message = "Số điện thoại không hợp lệ!")
+    @NotEmpty(message = "Số điện thoại không được để trống!" )
     private String userPhone;
     @Column(name = "user_address", columnDefinition = "nvarchar(255)")
-    // @NotEmpty(message = "Address cannot be empty!")
+    // @NotEmpty(message = "Địa chỉ không được để trống!")
     private String userAddress;
 
     @Enumerated(EnumType.STRING)

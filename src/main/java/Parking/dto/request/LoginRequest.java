@@ -9,8 +9,8 @@ import jakarta.validation.constraints.Email;
 
 public class LoginRequest {
     
-    @NotBlank(message = "Email or phone is required")
+    @NotBlank(message = "Email hoặc số điện thoại là bắt buộc")
     private String identifier;
-    @NotBlank(message = "Password is required")
+    @NotBlank(message = "Mật khẩu là bắt buộc")
     private String userPassword;
 }

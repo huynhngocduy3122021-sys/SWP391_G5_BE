@@ -11,22 +11,22 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CreateVehicleRequest {
-    @NotBlank(message = "License plate is required")
-    @Size(min = 5, max = 20, message = "License plate must be between 5 and 20 characters")
+    @NotBlank(message = "Biển số xe là bắt buộc")
+    @Size(min = 5, max = 20, message = "Biển số xe phải có từ 5 đến 20 ký tự")
     @Pattern(
             regexp = "^[A-Za-z0-9\\-.]+$",
-            message = "License plate can only contain letters, numbers, '-' or '.'"
+            message = "Biển số xe chỉ được chứa chữ cái, chữ số, dấu '-' hoặc dấu '.'"
     )
     private String licensePlate;
 
-    @Size(max = 255, message = "Vehicle color must not exceed 255 characters")
+    @Size(max = 255, message = "Màu phương tiện không được vượt quá 255 ký tự")
     private String vehicleColor;
 
-    @Size(max = 100, message = "Vehicle brand must not exceed 100 characters")
+    @Size(max = 100, message = "Thương hiệu phương tiện không được vượt quá 100 ký tự")
     private String vehicleBrand;
 
-    @NotNull(message = "Vehicle type id is required")
-    @Positive(message = "Vehicle type id must be greater than 0")
+    @NotNull(message = "ID loại phương tiện là bắt buộc")
+    @Positive(message = "ID loại phương tiện phải lớn hơn 0")
     private Long vehicleTypeId;
 
     private Long userId;

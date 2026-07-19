@@ -12,17 +12,17 @@ import lombok.Setter;
 @Setter
 public class CreateBookingRequest {
 
-    @NotNull(message = "Parking branch ID is required")
+    @NotNull(message = "ID chi nhánh bãi xe là bắt buộc")
     private Long parkingBranchId;
 
-    @NotNull(message = "Vehicle type ID is required")
+    @NotNull(message = "ID loại phương tiện là bắt buộc")
     private Long vehicleTypeId;
 
-    @NotBlank(message = "License plate is required")
-    @Size(max = 20, message = "License plate must not exceed 20 characters")
+    @NotBlank(message = "Biển số xe là bắt buộc")
+    @Size(max = 20, message = "Biển số xe không được vượt quá 20 ký tự")
     private String licensePlate;
 
-    @NotNull(message = "Expected arrival time is required")
+    @NotNull(message = "Thời gian dự kiến đến là bắt buộc")
     private LocalDateTime expectedArrivalTime;
 
     private String vehicleColor;

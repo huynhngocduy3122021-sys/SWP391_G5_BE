@@ -43,11 +43,11 @@ public class MonthlyTicketRenewalService {
     public MonthlyTicketRequestResponse createRenewalRequest(Long ticketId, CreateRenewalRequest dto) {
         User authenticatedUser = currentUserService.getCurrentUser();
         if (authenticatedUser == null) {
-            throw new ResourceNotFoundException("User not found");
+            throw new ResourceNotFoundException("Không tìm thấy người dùng");
         }
 
         User currentUser = userRepo.findByIdForUpdate(authenticatedUser.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         if (requestRepo.existsOpenRequestByUser(
                 currentUser.getUserId(), OPEN_REQUEST_STATUSES)) {

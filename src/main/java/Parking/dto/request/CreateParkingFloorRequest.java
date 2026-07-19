@@ -2,7 +2,6 @@ package Parking.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -11,16 +10,16 @@ import lombok.Setter;
 @Setter
 public class CreateParkingFloorRequest {
 
-    @NotBlank(message = "Floor name is required")
+    @NotBlank(message = "Tên tầng là bắt buộc")
     @Size(max = 100)
     private String floorName;
 
-    @NotNull(message = "Floor number is required")
+    @NotNull(message = "Số tầng là bắt buộc")
     private Integer floorNumber;
 
     @Size(max = 255)
     private String description;
 
-    @NotNull(message = "Parking branch id is required")
+    @NotNull(message = "ID chi nhánh bãi xe là bắt buộc")
     private Long parkingBranchId;
 }

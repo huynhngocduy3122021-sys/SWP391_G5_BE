@@ -11,7 +11,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 
 import Parking.Model.Booking;
 import Parking.Model.ParkingBranch;
-import Parking.Model.ParkingSession;
 import Parking.Model.User;
 import Parking.Model.Vehicle;
 import Parking.Model.VehicleType;

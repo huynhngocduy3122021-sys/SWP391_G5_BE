@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import Parking.Model.MonthlyTicketRequest;
 import Parking.Service.MonthlyTicketRequestService;
 import Parking.Service.PaymentService;
+import Parking.dto.request.ApproveMonthlyTicketRequest;
 import Parking.enums.MonthlyTicketRequestStatus;
 import Parking.dto.response.MonthlyTicketRequestResponse;
 import Parking.web.ClientIpResolver;
@@ -74,17 +75,19 @@ class MonthlyTicketRequestControllerTest {
     }
 
     @Test
-    void approve_shouldDelegateApprovedStatusWithoutNumericMapping() {
+    void approve_shouldDelegateSelectedParkingCardToService() {
         MonthlyTicketRequest updated = new MonthlyTicketRequest();
         updated.setStatus(MonthlyTicketRequestStatus.APPROVED);
         MonthlyTicketRequestResponse dto = MonthlyTicketRequestResponse.builder()
                 .status("APPROVED").statusCode(2).build();
-        when(requestService.updateStatus(35L, MonthlyTicketRequestStatus.APPROVED)).thenReturn(updated);
+        ApproveMonthlyTicketRequest request = new ApproveMonthlyTicketRequest();
+        request.setParkingCardId(12L);
+        when(requestService.approveRequest(35L, 12L)).thenReturn(updated);
         when(requestService.toResponse(updated)).thenReturn(dto);
 
-        ResponseEntity<MonthlyTicketRequestResponse> response = controller.approve(35L);
+        ResponseEntity<MonthlyTicketRequestResponse> response = controller.approve(35L, request);
 
         assertEquals("APPROVED", response.getBody().getStatus());
-        verify(requestService).updateStatus(35L, MonthlyTicketRequestStatus.APPROVED);
+        verify(requestService).approveRequest(35L, 12L);
     }
 }

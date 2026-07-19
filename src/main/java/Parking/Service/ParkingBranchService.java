@@ -3,7 +3,6 @@ package Parking.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +33,7 @@ public class ParkingBranchService {
         String branchName = request.getBranchName().trim();
 
         if (parkingBranchRepository.existsByBranchNameIgnoreCase(branchName)) {
-            throw new ParkingSessionException("Parking branch name already exists" );
+            throw new ParkingSessionException("Tên chi nhánh bãi xe đã tồn tại");
         }
 
         ParkingBranch parkingBranch = new ParkingBranch();
@@ -68,7 +67,7 @@ public class ParkingBranchService {
         if(request.getBranchName() != null && !request.getBranchName().isBlank()) {
             String newName = request.getBranchName().trim();
             if (!parkingBranch.getBranchName().equalsIgnoreCase(newName) && parkingBranchRepository.existsByBranchNameIgnoreCase(newName)) {
-                throw new ParkingSessionException("Parking branch name already exists");
+                throw new ParkingSessionException("Tên chi nhánh bãi xe đã tồn tại");
             }
             parkingBranch.setBranchName(newName);
         }
@@ -94,7 +93,7 @@ public class ParkingBranchService {
 
     private ParkingBranch findBranch(Long id) {
         return parkingBranchRepository.findById(id)
-                .orElseThrow(() -> new ParkingSessionException("Parking branch not found"));
+                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy chi nhánh bãi xe"));
     }
 
     private ParkingBranchResponse convertBranchResponse(ParkingBranch parkingBranch) {

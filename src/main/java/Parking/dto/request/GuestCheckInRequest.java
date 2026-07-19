@@ -13,25 +13,25 @@ import lombok.Setter;
 @Getter
 @Setter
 public class GuestCheckInRequest {
-     @NotBlank(message = "License plate is required")
-    @Size(min = 5, max = 20, message = "License plate must be between 5 and 20 characters")
+     @NotBlank(message = "Biển số xe là bắt buộc")
+    @Size(min = 5, max = 20, message = "Biển số xe phải có từ 5 đến 20 ký tự")
     @Pattern(
             regexp = "^[A-Za-z0-9\\-.]+$",
-            message = "License plate can only contain letters, numbers, '-' or '.'"
+            message = "Biển số xe chỉ được chứa chữ cái, chữ số, dấu '-' hoặc dấu '.'"
     )
     private String licensePlate;
 
-    @NotNull(message = "Vehicle type id is required")
-    @Positive(message = "Vehicle type id must be greater than 0")
+    @NotNull(message = "ID loại phương tiện là bắt buộc")
+    @Positive(message = "ID loại phương tiện phải lớn hơn 0")
     private Long vehicleTypeId;
 
     
 
-    @NotBlank(message = "Card code is required")
-    @Size(min = 3, max = 50, message = "Card code must be between 3 and 50 characters")
+    @NotBlank(message = "Mã thẻ là bắt buộc")
+    @Size(min = 3, max = 50, message = "Mã thẻ phải có từ 3 đến 50 ký tự")
     @Pattern(
             regexp = "^[A-Za-z0-9\\-_]+$",
-            message = "Card code can only contain letters, numbers, '-' or '_'"
+            message = "Mã thẻ chỉ được chứa chữ cái, chữ số, dấu '-' hoặc dấu '_'"
     )
     private String cardCode;
 
