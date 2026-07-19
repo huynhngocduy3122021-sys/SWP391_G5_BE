@@ -44,19 +44,19 @@ public List<VehicleImageResponse> uploadVehicleImages(
 ) {
     if (files == null || files.isEmpty()) {
         throw new ParkingSessionException(
-                "Image files cannot be empty"
+                "Danh sách tệp hình ảnh không được để trống"
         );
     }
 
     if (files.size() > 5) {
         throw new ParkingSessionException(
-                "Cannot upload more than 5 images at once"
+                "Không thể tải lên quá 5 hình ảnh cùng lúc"
         );
     }
 
     if (imageType == null) {
         throw new ParkingSessionException(
-                "Image type is required"
+                "Loại hình ảnh là bắt buộc"
         );
     }
 
@@ -65,7 +65,7 @@ public List<VehicleImageResponse> uploadVehicleImages(
                     .findById(parkingSessionId)
                     .orElseThrow(() ->
                             new ParkingSessionException(
-                                    "Parking session not found"
+                                    "Không tìm thấy phiên gửi xe"
                             )
                     );
 
@@ -98,7 +98,7 @@ public List<VehicleImageResponse> uploadVehicleImages(
             Object publicIdValue = uploadResult.get("public_id");
 
             if (secureUrlValue == null || publicIdValue == null) {
-                throw new ParkingSessionException( "Cloudinary did not return image information");
+                throw new ParkingSessionException("Cloudinary không trả về thông tin hình ảnh");
             }
 
             String imageUrl =secureUrlValue.toString();
@@ -132,7 +132,7 @@ public List<VehicleImageResponse> uploadVehicleImages(
     } catch (IOException exception) {
         uploadedPublicIds.forEach(this::deleteFromCloudinarySilently);
 
-        throw new ParkingSessionException("Cannot upload images to Cloudinary");
+        throw new ParkingSessionException("Không thể tải hình ảnh lên Cloudinary");
 
     } catch (RuntimeException exception) {
         /*
@@ -149,7 +149,7 @@ public List<VehicleImageResponse> uploadVehicleImages(
     @Transactional(readOnly = true)
     public List<VehicleImageResponse> getImagesBySession( Long parkingSessionId) {
         if (!parkingSessionRepository.existsById(parkingSessionId)) {
-            throw new ParkingSessionException("Parking session not found");
+            throw new ParkingSessionException("Không tìm thấy phiên gửi xe");
         }
 
         return vehicleImageRepository
@@ -171,18 +171,18 @@ public List<VehicleImageResponse> uploadVehicleImages(
 
     private void validateImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new ParkingSessionException( "Image file cannot be empty");
+            throw new ParkingSessionException("Tệp hình ảnh không được để trống");
         }
 
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new ParkingSessionException( "Image size cannot exceed 10 MB");
+            throw new ParkingSessionException("Kích thước hình ảnh không được vượt quá 10 MB");
         }
 
         String contentType = file.getContentType();
 
         if (contentType == null || !contentType.startsWith("image/")) {
 
-            throw new ParkingSessionException("Uploaded file must be an image");
+            throw new ParkingSessionException("Tệp tải lên phải là hình ảnh");
         }
     }
 

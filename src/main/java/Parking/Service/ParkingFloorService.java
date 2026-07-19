@@ -31,13 +31,13 @@ public class ParkingFloorService {
                 findBranch(request.getParkingBranchId());
 
         if (!parkingBranch.isActive()) {
-            throw new ParkingSessionException("Parking branch is inactive");
+            throw new ParkingSessionException("Chi nhánh bãi xe đang ngừng hoạt động");
         }
 
         boolean floorExists =parkingFloorRepository.existsByParkingBranchParkingBranchIdAndFloorNumber(parkingBranch.getParkingBranchId(),request.getFloorNumber());
 
         if (floorExists) {
-            throw new ParkingSessionException("Floor number already exists in this branch");
+            throw new ParkingSessionException("Số tầng đã tồn tại trong chi nhánh này");
         }
 
         ParkingFloor parkingFloor = new ParkingFloor();
@@ -80,16 +80,16 @@ public class ParkingFloorService {
         
         ParkingBranch parkingBranch = parkingFloor.getParkingBranch();
         if(parkingBranch == null) {
-            throw new ParkingSessionException("Parking floor does not belong to any branch");
+            throw new ParkingSessionException("Tầng đỗ xe không thuộc chi nhánh nào");
         }
         if(!parkingBranch.isActive()) {
-            throw new ParkingSessionException("Parking branch is inactive");
+            throw new ParkingSessionException("Chi nhánh bãi xe đang ngừng hoạt động");
         }
 
         if (request.getParkingBranchId() != null && !request.getParkingBranchId().equals(parkingBranch.getParkingBranchId())) {
             ParkingBranch newBranch = findBranch(request.getParkingBranchId());
             if (!newBranch.isActive()) {
-                throw new ParkingSessionException("New parking branch is inactive");
+                throw new ParkingSessionException("Chi nhánh bãi xe mới đang ngừng hoạt động");
             }
             parkingFloor.setParkingBranch(newBranch);
             parkingBranch = newBranch;
@@ -103,7 +103,7 @@ public class ParkingFloorService {
         );
 
         if (duplicateFloor) {
-            throw new ParkingSessionException("Floor number already exists in this branch");
+            throw new ParkingSessionException("Số tầng đã tồn tại trong chi nhánh này");
         }
         if(request.getFloorName() != null && !request.getFloorName().isBlank()) {
             parkingFloor.setFloorName(request.getFloorName().trim());
@@ -131,12 +131,12 @@ public class ParkingFloorService {
 
     private ParkingBranch findBranch(Long id) {
         return parkingBranchRepository.findById(id)
-                .orElseThrow(() ->new ParkingSessionException("Parking branch not found"));
+                .orElseThrow(() ->new ParkingSessionException("Không tìm thấy chi nhánh bãi xe"));
     }
 
     private ParkingFloor findFloor(Long id) {
         return parkingFloorRepository.findById(id)
-                .orElseThrow(() ->new ParkingSessionException("Parking floor not found"));
+                .orElseThrow(() ->new ParkingSessionException("Không tìm thấy tầng đỗ xe"));
     }
 
     private ParkingFloorResponse covertToParkingFloor(ParkingFloor parkingFloor) {

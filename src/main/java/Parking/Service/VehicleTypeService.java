@@ -26,7 +26,7 @@ public class VehicleTypeService {
 
     public VehicleType getVehicleTypeById(Long id) {
         return vehicleTypeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Vehicle type not found with ID: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy loại phương tiện có ID: " + id));
     }
 
     public VehicleType updateVehicleType(Long id, Parking.dto.request.UpdateVehicleTypeRequest request) {

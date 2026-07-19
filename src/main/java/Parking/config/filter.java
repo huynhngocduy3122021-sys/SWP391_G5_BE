@@ -99,7 +99,7 @@ public class filter extends OncePerRequestFilter {
             //=> check token
             String token = getToken(request);
             if(token == null) {
-                resolver.resolveException(request , response , null , new AuthenticationException("Empty token!"));
+                resolver.resolveException(request , response , null , new AuthenticationException("Token không được để trống!"));
                 return;
             }
             // co token
@@ -108,7 +108,7 @@ public class filter extends OncePerRequestFilter {
             try {
                 member = tokenService.extractToken(token);
                 if (member == null) {
-                    resolver.resolveException(request , response , null , new AuthenticationException("User not found!"));
+                    resolver.resolveException(request , response , null , new AuthenticationException("Không tìm thấy người dùng!"));
                     return;
                 }
                 if (!member.isAccountNonLocked()) {
@@ -117,14 +117,14 @@ public class filter extends OncePerRequestFilter {
                 }
             } catch (ExpiredJwtException expiredJwtException) {
                 //1. token het hang
-                resolver.resolveException(request , response , null , new AuthenticationException("Expired token!"));
+                resolver.resolveException(request , response , null , new AuthenticationException("Token đã hết hạn!"));
                 return;
             } catch (MalformedJwtException malformedJwtException) {
                 //2. sai token
-                resolver.resolveException(request, response, null, new AuthenticationException("Invalid token!"));
+                resolver.resolveException(request, response, null, new AuthenticationException("Token không hợp lệ!"));
                 return;
             } catch (Exception exception) {
-                resolver.resolveException(request, response, null, new AuthenticationException("Authentication failed: " + exception.getMessage()));
+                resolver.resolveException(request, response, null, new AuthenticationException("Xác thực thất bại: " + exception.getMessage()));
                 return;
             }
             // luu thong tin vua request

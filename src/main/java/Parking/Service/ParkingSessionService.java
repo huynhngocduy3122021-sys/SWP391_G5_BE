@@ -1,16 +1,9 @@
 package Parking.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
-import javax.xml.datatype.DatatypeConfigurationException;
-
-import org.hibernate.validator.constraints.time.DurationMax;
-import org.springframework.boot.autoconfigure.jms.JmsProperties.Listener.Session;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import Parking.Repository.ParkingBranchRepository;
@@ -30,7 +23,6 @@ import Parking.dto.request.GuestCheckInRequest;
 import Parking.dto.request.GuestCheckOutRequest;
 import Parking.dto.response.GuestCheckOutResponse;
 import Parking.dto.response.ParkingSessionResponse;
-import Parking.dto.response.UserResponse;
 import Parking.enums.ParkingCardStatus;
 import Parking.enums.ParkingSessionStatus;
 import Parking.enums.BookingStatus;
@@ -44,7 +36,6 @@ import Parking.enums.UserRole;
 import Parking.Model.ParkingBranch;
 import Parking.Model.ParkingCard;
 import Parking.Model.ParkingSession;
-import Parking.Model.ParkingZone;
 import Parking.Model.Payment;
 import Parking.Model.PricePolicy;
 import Parking.Model.Vehicle;
@@ -91,16 +82,16 @@ public class ParkingSessionService {
         // b1 : tim va khoa the
 
         ParkingCard parkingCard = parkingCardRepository.findByCardCodeIgnoreCase(cardCode)
-                                .orElseThrow(() -> new ParkingSessionException("Parking card not found"));
+                                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy thẻ giữ xe"));
 
         if(parkingCard.getStatus() != ParkingCardStatus.AVAILABLE) {
-            throw new ParkingSessionException("Parking card is not available");
+            throw new ParkingSessionException("Thẻ giữ xe hiện không khả dụng");
         }
 
         // b2 : lay va khoa chi nhanh
 
         if(parkingCard.getParkingBranch() == null) {
-            throw new ParkingSessionException("Parking card does not belong to any branch");
+            throw new ParkingSessionException("Thẻ giữ xe chưa được gán cho chi nhánh nào");
         }
 
         Long barnchId = parkingCard.getParkingBranch().getParkingBranchId();
@@ -115,16 +106,16 @@ public class ParkingSessionService {
         }
 
         ParkingBranch parkingBranch = parkingBranchRepository.findById(barnchId)
-                                    .orElseThrow(() -> new ParkingSessionException("Parking branch not found"));
+                                    .orElseThrow(() -> new ParkingSessionException("Không tìm thấy chi nhánh bãi xe"));
         
         if(!parkingBranch.isActive()) {
-            throw new ParkingSessionException("Parking branch is inactive");
+            throw new ParkingSessionException("Chi nhánh bãi xe đang ngừng hoạt động");
         }
 
         // b3 : tim loai xe
 
         VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
-                            .orElseThrow(() -> new ParkingSessionException("Vehicle type not found"));
+                            .orElseThrow(() -> new ParkingSessionException("Không tìm thấy loại phương tiện"));
 
         //b4 : tim hoac tao phuong tien
 
@@ -134,7 +125,7 @@ public class ParkingSessionService {
             // kiem tra xe : mac du da ton tai nhung loai xe FE gui ko giong loai xe
             
             if(!vehicle.getVehicleType().getVehicleTypeId().equals(vehicleType.getVehicleTypeId())) {
-                throw new ParkingSessionException("Vehicle type does not match existing vehicle information");
+                throw new ParkingSessionException("Loại phương tiện không khớp với thông tin phương tiện hiện có");
             }
 
             // b4.5 : Validate monthly card / monthly ticket properties if it is a monthly card
@@ -152,27 +143,27 @@ public class ParkingSessionService {
               boolean vehicleHasActiveSession = parkingSessionRepository.existsByVehicleVehiclesIdAndStatus(vehicle.getVehiclesId(),ParkingSessionStatus.ACTIVE);
 
             if (vehicleHasActiveSession) {
-                throw new ParkingSessionException( "Vehicle already has an active parking session");
+                throw new ParkingSessionException("Phương tiện đã có một phiên gửi xe đang hoạt động");
                 }
 
             //b6 : kiem tra the co session hay chua
             boolean cardHasActiveSession =parkingSessionRepository.existsByParkingCardParkingCardIdAndStatus(parkingCard.getParkingCardId(),ParkingSessionStatus.ACTIVE);
 
             if (cardHasActiveSession) {
-                throw new ParkingSessionException("Parking card is already being used");
+                throw new ParkingSessionException("Thẻ giữ xe đang được sử dụng");
             }
             // b7 : tinh tong suc chua cua chi nhanh
 
              Long totalCapacity = parkingZoneRepository.calculateTotalCapacity(parkingBranch.getParkingBranchId(),vehicleType.getVehicleTypeId());
 
             if (totalCapacity == null || totalCapacity <= 0) {
-                throw new ParkingSessionException("Branch has no active parking zone for this vehicle type");
+                throw new ParkingSessionException("Chi nhánh không có khu vực đỗ xe đang hoạt động cho loại phương tiện này");
             }
             //b8 : diem so xe dang active
             long currentVehicleCount = parkingSessionRepository.countByParkingBranchParkingBranchIdAndVehicleVehicleTypeVehicleTypeIdAndStatus(parkingBranch.getParkingBranchId(),vehicleType.getVehicleTypeId(),ParkingSessionStatus.ACTIVE);
 
             if (currentVehicleCount >= totalCapacity) {
-                throw new ParkingSessionException("Parking lot is full for this vehicle type");
+                throw new ParkingSessionException("Bãi xe đã hết chỗ cho loại phương tiện này");
             }
             //b9 : tao parking session
             ParkingSession parkingSession =new ParkingSession();
@@ -215,7 +206,7 @@ public class ParkingSessionService {
             // b1 : tim va khoa session active
             ParkingSession parkingSession =
                     parkingSessionRepository.findFirstByParkingCardCardCodeIgnoreCaseAndStatus(cardCode,ParkingSessionStatus.ACTIVE)
-                        .orElseThrow(() -> new ParkingSessionException("Active parking session not found"));
+                        .orElseThrow(() -> new ParkingSessionException("Không tìm thấy phiên gửi xe đang hoạt động"));
             
             try {
                 branchScopeService.assertSameBranch(parkingSession.getParkingBranch().getParkingBranchId());
@@ -229,7 +220,7 @@ public class ParkingSessionService {
             String storedLicensePlate = normalizeLicensePlate(parkingSession.getVehicle().getLicensePlate());
 
             if (!storedLicensePlate.equals(exitLicensePlate)) {
-                throw new ParkingSessionException("Exit license plate does not match entry license plate");
+                throw new ParkingSessionException("Biển số xe lúc ra không khớp với biển số xe lúc vào");
             }
 
             // b3: chuyen giao cho PaymentService de tinh tien va thanh toan
@@ -243,7 +234,7 @@ public class ParkingSessionService {
             // Tìm session ACTIVE tương ứng với cardCode
             ParkingSession parkingSession =
                     parkingSessionRepository.findFirstByParkingCardCardCodeIgnoreCaseAndStatus(normalizedCardCode, ParkingSessionStatus.ACTIVE)
-                            .orElseThrow(() -> new ParkingSessionException("Active parking session not found"));
+                            .orElseThrow(() -> new ParkingSessionException("Không tìm thấy phiên gửi xe đang hoạt động"));
 
             ParkingSessionResponse response = convertToResponse(parkingSession);
 
@@ -274,7 +265,7 @@ public class ParkingSessionService {
             String normalizedPlate = normalizeLicensePlate(licensePlate);
             ParkingSession parkingSession = parkingSessionRepository
                     .findFirstByVehicleLicensePlateIgnoreCaseAndStatus(normalizedPlate, ParkingSessionStatus.ACTIVE)
-                    .orElseThrow(() -> new ParkingSessionException("Active parking session not found for this license plate"));
+                    .orElseThrow(() -> new ParkingSessionException("Không tìm thấy phiên gửi xe đang hoạt động cho biển số này"));
             
             ParkingSessionResponse response = convertToResponse(parkingSession);
 
@@ -376,9 +367,15 @@ public class ParkingSessionService {
             .build();
     }
 
+    /**
+     * Chuẩn hóa biển số xe để việc lưu trữ và so sánh không bị ảnh hưởng
+     * bởi khoảng trắng hoặc sự khác nhau giữa chữ hoa và chữ thường.
+     */
     private String normalizeLicensePlate(String licensePlate) {
         return licensePlate
             .trim()
+            // Regex "\\s+" khớp với một hoặc nhiều ký tự khoảng trắng ở bất kỳ vị trí nào
+            // (dấu cách, tab, xuống dòng,...); thay bằng chuỗi rỗng để loại bỏ chúng.
             .replaceAll("\\s+", "")
             .toUpperCase();
     }

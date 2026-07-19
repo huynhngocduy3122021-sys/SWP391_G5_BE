@@ -7,9 +7,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CreateRenewalRequest {
-    @NotNull(message = "Policy ID is required")
+    @NotNull(message = "ID gói dịch vụ là bắt buộc")
     private Long policyId;
 
-    @NotNull(message = "Branch ID is required")
+    @NotNull(message = "ID chi nhánh là bắt buộc")
     private Long branchId;
 }

@@ -18,7 +18,7 @@ public class PricePolicyService {
 
     public PricePolicy createPricePolicy(CreatePricePolicyRequest request) {
         VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
-                .orElseThrow(() -> new RuntimeException("Vehicle type not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy loại phương tiện"));
 
         PricePolicy pricePolicy = new PricePolicy();
         pricePolicy.setPolicyName(request.getPolicyName());
@@ -38,13 +38,13 @@ public class PricePolicyService {
 
     public PricePolicy getPricePolicyById(Long id) {
         return pricePolicyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Price policy not found with ID: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy chính sách giá có ID: " + id));
     }
 
     public PricePolicy updatePricePolicy(Long id, Parking.dto.request.UpdatePricePolicyRequest request) {
         PricePolicy pricePolicy = getPricePolicyById(id);
         VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
-                .orElseThrow(() -> new RuntimeException("Vehicle type not found with ID: " + request.getVehicleTypeId()));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy loại phương tiện có ID: " + request.getVehicleTypeId()));
 
         pricePolicy.setPolicyName(request.getPolicyName());
         pricePolicy.setBasePrice(request.getBasePrice());

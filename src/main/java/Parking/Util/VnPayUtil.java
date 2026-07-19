@@ -60,11 +60,11 @@ public final class VnPayUtil {
      */
     public static String hmacSHA512(String secretKey,String data) {
         if (secretKey == null || secretKey.isBlank()) {
-            throw new IllegalArgumentException("VNPAY secret key cannot be empty");
+            throw new IllegalArgumentException("Khóa bí mật VNPAY không được để trống");
         }
 
         if (data == null) {
-            throw new IllegalArgumentException("VNPAY hash data cannot be null");
+            throw new IllegalArgumentException("Dữ liệu tạo mã băm VNPAY không được null");
         }
 
         try {
@@ -85,7 +85,7 @@ public final class VnPayUtil {
             return hashResult.toString();
 
         } catch (GeneralSecurityException exception) {
-            throw new IllegalStateException("Cannot create VNPAY signature", exception);
+            throw new IllegalStateException("Không thể tạo chữ ký VNPAY", exception);
         }
     }
 

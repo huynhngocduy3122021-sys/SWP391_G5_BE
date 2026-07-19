@@ -7,10 +7,10 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
-import Parking.Model.MonthlyTicketRequest;
 import Parking.Service.PaymentService;
 import Parking.Service.MonthlyTicketRequestService;
 import Parking.enums.MonthlyTicketRequestStatus;
+import Parking.dto.request.ApproveMonthlyTicketRequest;
 import Parking.dto.request.SubmitMonthlyTicketRequest;
 import Parking.dto.response.MonthlyTicketRequestResponse;
 import Parking.web.ClientIpResolver;
@@ -55,9 +55,11 @@ public class MonthlyTicketRequestController {
 
     @PutMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<MonthlyTicketRequestResponse> approve(@PathVariable Long id) {
+    public ResponseEntity<MonthlyTicketRequestResponse> approve(
+            @PathVariable Long id,
+            @Valid @RequestBody ApproveMonthlyTicketRequest request) {
         return ResponseEntity.ok(requestService.toResponse(
-                requestService.updateStatus(id, MonthlyTicketRequestStatus.APPROVED)));
+                requestService.approveRequest(id, request.getParkingCardId())));
     }
 
     @PutMapping("/{id}/reject")

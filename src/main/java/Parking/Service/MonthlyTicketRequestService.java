@@ -20,9 +20,12 @@ import Parking.Repository.PricePolicyRepository;
 import Parking.Repository.ParkingBranchRepository;
 import Parking.Repository.MonthlyTicketRepository;
 import Parking.Repository.ParkingCardRepository;
+import Parking.Repository.ParkingSessionRepository;
 import Parking.enums.MonthlyTicketRequestStatus;
 import Parking.enums.MonthlyTicketStatus;
 import Parking.enums.ParkingCardStatus;
+import Parking.enums.ParkingCardType;
+import Parking.enums.ParkingSessionStatus;
 import Parking.enums.PaymentStatus;
 import Parking.dto.request.SubmitMonthlyTicketRequest;
 import Parking.dto.response.MonthlyTicketRequestResponse;
@@ -40,6 +43,7 @@ public class MonthlyTicketRequestService {
     private final ParkingBranchRepository branchRepo;
     private final MonthlyTicketRepository monthlyTicketRepo;
     private final ParkingCardRepository parkingCardRepo;
+    private final ParkingSessionRepository parkingSessionRepo;
     private final CurrentUserService currentUserService;
     private final Parking.Repository.UserRepository userRepo;
 
@@ -52,11 +56,11 @@ public class MonthlyTicketRequestService {
     public MonthlyTicketRequest submitRequest(SubmitMonthlyTicketRequest req) {
         User authenticatedUser = currentUserService.getCurrentUser();
         if (authenticatedUser == null) {
-            throw new ResourceNotFoundException("User not found");
+            throw new ResourceNotFoundException("Không tìm thấy người dùng");
         }
 
         User user = userRepo.findByIdForUpdate(authenticatedUser.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         if (requestRepo.existsOpenRequestByUser(
                 user.getUserId(), OPEN_REQUEST_STATUSES)) {
@@ -67,7 +71,7 @@ public class MonthlyTicketRequestService {
         }
 
         Vehicle vehicle = vehicleRepo.findById(req.getVehicleId())
-                .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phương tiện"));
 
         if (monthlyTicketRepo.existsActiveTicketByVehicle(
                 vehicle.getVehiclesId(), LocalDateTime.now())) {
@@ -77,9 +81,9 @@ public class MonthlyTicketRequestService {
         }
 
         PricePolicy policy = policyRepo.findById(req.getPolicyId())
-                .orElseThrow(() -> new ResourceNotFoundException("Policy not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy gói dịch vụ"));
         ParkingBranch branch = branchRepo.findById(req.getBranchId())
-                .orElseThrow(() -> new ResourceNotFoundException("Branch not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chi nhánh"));
 
         if (vehicle.getUser() == null || !vehicle.getUser().getUserId().equals(user.getUserId())) {
             throw new ForbiddenOperationException("Phương tiện không thuộc tài khoản hiện tại");
@@ -117,7 +121,7 @@ public class MonthlyTicketRequestService {
     public List<MonthlyTicketRequestResponse> getMyRequests() {
         User user = currentUserService.getCurrentUser();
         if (user == null) {
-            throw new ResourceNotFoundException("User not found");
+            throw new ResourceNotFoundException("Không tìm thấy người dùng");
         }
         return requestRepo.findByUserUserId(user.getUserId()).stream()
                 .map(this::toResponse)
@@ -178,6 +182,12 @@ public class MonthlyTicketRequestService {
         MonthlyTicketRequestResponse.RenewalSummary renewalSummary = renewalTicket == null ? null
                 : MonthlyTicketRequestResponse.RenewalSummary.builder()
                     .ticketId(renewalTicket.getTicketId())
+                    .parkingCardId(renewalTicket.getParkingCard() == null
+                            ? null
+                            : renewalTicket.getParkingCard().getParkingCardId())
+                    .cardCode(renewalTicket.getParkingCard() == null
+                            ? null
+                            : renewalTicket.getParkingCard().getCardCode())
                     .startDate(renewalTicket.getStartDate())
                     .endDate(renewalTicket.getEndDate())
                     .status(renewalTicket.getStatus() == null ? null : renewalTicket.getStatus().name())
@@ -199,7 +209,27 @@ public class MonthlyTicketRequestService {
 
     @Transactional
     public MonthlyTicketRequest updateStatus(Long id, MonthlyTicketRequestStatus status) {
-        MonthlyTicketRequest req = requestRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Request not found"));
+        if (status == MonthlyTicketRequestStatus.APPROVED) {
+            throw new InvalidTicketStateException(
+                    "Vui lòng sử dụng API duyệt và chọn thẻ giữ xe còn trống."
+            );
+        }
+        return updateStatusInternal(id, status, null);
+    }
+
+    @Transactional
+    public MonthlyTicketRequest approveRequest(Long id, Long parkingCardId) {
+        if (parkingCardId == null) {
+            throw new InvalidTicketStateException("Phải chọn thẻ giữ xe khi duyệt yêu cầu.");
+        }
+        return updateStatusInternal(id, MonthlyTicketRequestStatus.APPROVED, parkingCardId);
+    }
+
+    private MonthlyTicketRequest updateStatusInternal(
+            Long id,
+            MonthlyTicketRequestStatus status,
+            Long parkingCardId) {
+        MonthlyTicketRequest req = requestRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy yêu cầu"));
         
         if (status == MonthlyTicketRequestStatus.APPROVED) {
             if (req.getStatus() != MonthlyTicketRequestStatus.PENDING_APPROVAL) {
@@ -230,10 +260,6 @@ public class MonthlyTicketRequestService {
                 if (!currentPolicy.getPricePolicyId().equals(policy.getPricePolicyId())) {
                     throw new InvalidTicketStateException("Không thể duyệt: gói gia hạn không trùng với gói hiện tại của vé.");
                 }
-            } else {
-                oldTicket = monthlyTicketRepo
-                        .findFirstByVehicleVehiclesIdOrderByEndDateDesc(req.getVehicle().getVehiclesId())
-                        .orElse(null);
             }
             
             ParkingCard card = null;
@@ -242,6 +268,12 @@ public class MonthlyTicketRequestService {
             LocalDateTime endDate = now.plusMonths(1);
             
             if (oldTicket != null) {
+                if (oldTicket.getParkingCard() == null
+                        || !oldTicket.getParkingCard().getParkingCardId().equals(parkingCardId)) {
+                    throw new InvalidTicketStateException(
+                            "Gia hạn phải sử dụng thẻ giữ xe hiện tại của vé."
+                    );
+                }
                 LocalDateTime baseDate = oldTicket.getEndDate().isAfter(now)
                         ? oldTicket.getEndDate()
                         : now;
@@ -250,10 +282,37 @@ public class MonthlyTicketRequestService {
                 oldTicket.setPricePolicy(policy);
                 monthlyTicketRepo.save(oldTicket);
             } else {
-                card = parkingCardRepo.findFirstAvailableMonthlyCard(req.getParkingBranch().getParkingBranchId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thẻ giữ xe loại tháng còn trống tại chi nhánh " + req.getParkingBranch().getBranchName()));
+                card = parkingCardRepo.findByParkingCardId(parkingCardId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thẻ giữ xe đã chọn."));
+
+                if (card.getParkingBranch() == null
+                        || !card.getParkingBranch().getParkingBranchId()
+                                .equals(req.getParkingBranch().getParkingBranchId())) {
+                    throw new InvalidTicketStateException(
+                            "Thẻ giữ xe đã chọn không thuộc chi nhánh của yêu cầu."
+                    );
+                }
+                if (card.getType() != ParkingCardType.MONTHLY) {
+                    throw new InvalidTicketStateException("Chỉ được chọn thẻ loại MONTHLY.");
+                }
+                if (card.getStatus() != ParkingCardStatus.AVAILABLE) {
+                    throw new InvalidTicketStateException("Thẻ giữ xe đã chọn hiện không khả dụng.");
+                }
+                if (monthlyTicketRepo.existsActiveTicketByCard(card.getParkingCardId(), now)) {
+                    throw new InvalidTicketStateException(
+                            "Thẻ giữ xe đã được liên kết với một vé tháng còn hiệu lực."
+                    );
+                }
+                if (parkingSessionRepo.existsByParkingCardParkingCardIdAndStatus(
+                        card.getParkingCardId(), ParkingSessionStatus.ACTIVE)) {
+                    throw new InvalidTicketStateException(
+                            "Thẻ giữ xe đang có phiên gửi xe hoạt động."
+                    );
+                }
                 
-                card.setStatus(ParkingCardStatus.IN_USE);
+                // Việc cấp vé chỉ liên kết thẻ với thuê bao. IN_USE chỉ được
+                // dùng khi xe thực sự đang có phiên gửi xe hoạt động.
+                card.setStatus(ParkingCardStatus.AVAILABLE);
                 parkingCardRepo.save(card);
                 
                 MonthlyTicket newTicket = new MonthlyTicket();

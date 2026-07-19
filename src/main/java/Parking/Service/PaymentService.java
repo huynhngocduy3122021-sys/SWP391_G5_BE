@@ -57,7 +57,7 @@ public class PaymentService {
             Payment existingPayment = paymentRepository.findByParkingSessionParkingSessionId(parkingSession.getParkingSessionId())
                     .orElse(null);
             if (existingPayment != null && existingPayment.getPaymentStatus() == PaymentStatus.PAID) {
-                throw new ParkingSessionException("Parking session has already been paid");
+                throw new ParkingSessionException("Phiên gửi xe đã được thanh toán");
             }
             // Tái sử dụng bản ghi cũ chưa thanh toán thành công
             payment = existingPayment;
@@ -71,7 +71,7 @@ public class PaymentService {
         Long vehicleTypeId = parkingSession.getVehicle().getVehicleType().getVehicleTypeId();
 
         PricePolicy pricePolicy = pricePolicyRepository.findFirstActiveHourlyPolicy(vehicleTypeId)
-                    .orElseThrow(() -> new ParkingSessionException("Active price policy not found"));
+                    .orElseThrow(() -> new ParkingSessionException("Không tìm thấy chính sách giá đang hoạt động"));
 
         LocalDateTime checkOutTime = (time != null) ? time : LocalDateTime.now();
         // b3: tính phí
@@ -226,19 +226,19 @@ public class PaymentService {
 
     public BigDecimal caculateParkingFee(LocalDateTime checkInTime, LocalDateTime checkOutTime, PricePolicy pricePolicy) {
         if (checkInTime == null) {
-            throw new ParkingSessionException("Check-in time is missing");
+            throw new ParkingSessionException("Thiếu thời gian xe vào");
         }
 
         if (pricePolicy.getBasePrice() == null || pricePolicy.getExtraHourPrice() == null || pricePolicy.getBaseDurationMinutes() == null) {
-            throw new ParkingSessionException("Price policy is invalid");
+            throw new ParkingSessionException("Chính sách giá không hợp lệ");
         }
 
         if (pricePolicy.getBaseDurationMinutes() <= 0) {
-            throw new ParkingSessionException("Base duration must be greater than zero");
+            throw new ParkingSessionException("Thời lượng cơ bản phải lớn hơn 0");
         }
 
         if (pricePolicy.getBasePrice().compareTo(BigDecimal.ZERO) < 0 || pricePolicy.getExtraHourPrice().compareTo(BigDecimal.ZERO) < 0) {
-            throw new ParkingSessionException("Parking price cannot be negative");
+            throw new ParkingSessionException("Phí gửi xe không được là số âm");
         }
 
         long totalMinutes = Duration.between(checkInTime, checkOutTime).toMinutes();
@@ -390,7 +390,7 @@ public class PaymentService {
         try {
             if (!vnPayService.verifySignature(params)) {
                 response.put("RspCode", "97");
-                response.put("Message", "Invalid signature");
+                response.put("Message", "Chữ ký không hợp lệ");
                 return response;
             }
 
@@ -409,7 +409,7 @@ public class PaymentService {
             Payment payment = paymentRepository.findByTransactionRefForUpdate(txnRef).orElse(null);
             if (payment == null) {
                 response.put("RspCode", "01");
-                response.put("Message", "Order not found");
+                response.put("Message", "Không tìm thấy giao dịch");
                 return response;
             }
 
@@ -417,13 +417,13 @@ public class PaymentService {
             BigDecimal receivedAmount = vnPayService.convertVnPayAmount(vnpAmountStr);
             if (expectedAmount.compareTo(receivedAmount) != 0) {
                 response.put("RspCode", "04");
-                response.put("Message", "Invalid amount");
+                response.put("Message", "Số tiền không hợp lệ");
                 return response;
             }
 
             if (payment.getPaymentStatus() == PaymentStatus.PAID || payment.getPaymentStatus() == PaymentStatus.FAILED) {
                 response.put("RspCode", "02");
-                response.put("Message", "Order already confirmed");
+                response.put("Message", "Giao dịch đã được xác nhận");
                 return response;
             }
 
@@ -463,7 +463,7 @@ public class PaymentService {
 
         } catch (Exception e) {
             response.put("RspCode", "99");
-            response.put("Message", "Unknown error: " + e.getMessage());
+            response.put("Message", "Lỗi không xác định: " + e.getMessage());
         }
 
         return response;
