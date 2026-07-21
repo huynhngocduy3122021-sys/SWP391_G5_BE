@@ -24,6 +24,7 @@ public class ParkingFloorService {
 
     //create parkingFLoor
     @Transactional
+    // TẤN ANH TÚ NOTE: Tạo tầng mới, kiểm tra chi nhánh hoạt động và số tầng không được trùng lặp.
     public ParkingFloorResponse createParkingFloor(
             CreateParkingFloorRequest request
     ) {

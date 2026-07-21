@@ -11,6 +11,8 @@ public class BranchScopeService {
     @Autowired
     private CurrentUserService currentUserService;
 
+    // TẤN ANH TÚ NOTE: Giới hạn dữ liệu theo chi nhánh. MANAGER/STAFF chỉ được phép truy cập
+    // dữ liệu thuộc chi nhánh mình quản lý. ADMIN được quyền xem toàn bộ bãi xe.
     public Long resolveReadableBranchId(Long requestedBranchId) {
         User user = currentUserService.getCurrentUser();
 
@@ -21,6 +23,7 @@ public class BranchScopeService {
         if (user.getUserRole() == UserRole.MANAGER || user.getUserRole() == UserRole.STAFF) {
             Long userBranchId = requireUserBranchId(user);
 
+            // TẤN ANH TÚ NOTE: Ngăn chặn MANAGER/STAFF đọc dữ liệu của chi nhánh khác
             if (requestedBranchId != null && !requestedBranchId.equals(userBranchId)) {
                 throw new RuntimeException("Bạn không có quyền truy cập chi nhánh này");
             }
@@ -31,6 +34,8 @@ public class BranchScopeService {
         throw new RuntimeException("Bạn không có quyền truy cập chức năng này");
     }
 
+    // TẤN ANH TÚ NOTE: Chặn thao tác ghi/sửa dữ liệu trái phép giữa các chi nhánh.
+    // Nếu nhân viên chi nhánh A cố tình thao tác trên tài nguyên chi nhánh B sẽ bị chặn đứng tại đây.
     public void assertSameBranch(Long targetBranchId) {
         User user = currentUserService.getCurrentUser();
 

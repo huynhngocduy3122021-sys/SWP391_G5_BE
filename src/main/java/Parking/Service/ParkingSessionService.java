@@ -97,6 +97,7 @@ public class ParkingSessionService {
         Long barnchId = parkingCard.getParkingBranch().getParkingBranchId();
         
         try {
+            // TẤN ANH TÚ NOTE: Chặn nhân viên chi nhánh khác thực hiện check-in xe vãng lai trái phép.
             branchScopeService.assertSameBranch(barnchId);
         } catch (RuntimeException e) {
             if (e.getMessage().contains("không có quyền")) {
@@ -209,6 +210,7 @@ public class ParkingSessionService {
                         .orElseThrow(() -> new ParkingSessionException("Không tìm thấy phiên gửi xe đang hoạt động"));
             
             try {
+                // TẤN ANH TÚ NOTE: Chặn nhân viên chi nhánh khác thực hiện check-out cho phiên gửi xe này.
                 branchScopeService.assertSameBranch(parkingSession.getParkingBranch().getParkingBranchId());
             } catch (RuntimeException e) {
                 if (e.getMessage().contains("không có quyền")) {
@@ -297,6 +299,7 @@ public class ParkingSessionService {
         if (currentUser.getUserRole() == UserRole.USER) {
             parkingSessions = parkingSessionRepository.findAllByUserId(currentUser.getUserId());
         } else {
+            // TẤN ANH TÚ NOTE: Giới hạn danh sách phiên gửi xe hiển thị theo chi nhánh của nhân viên.
             Long branchId = branchScopeService.resolveReadableBranchId(null);
             parkingSessions = parkingSessionRepository.findAllByBranchId(branchId);
         }
@@ -446,6 +449,7 @@ public class ParkingSessionService {
         ParkingBranch parkingBranch = booking.getParkingBranch();
         
         try {
+            // TẤN ANH TÚ NOTE: Chặn nhân viên chi nhánh khác check-in xe đã đặt trước của chi nhánh này.
             branchScopeService.assertSameBranch(parkingBranch.getParkingBranchId());
         } catch (RuntimeException e) {
             if (e.getMessage().contains("không có quyền")) {

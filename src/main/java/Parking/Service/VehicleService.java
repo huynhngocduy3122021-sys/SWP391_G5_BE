@@ -26,6 +26,7 @@ public class VehicleService {
     private final UserRepository userRepository;
 
     @Transactional
+    // TẤN ANH TÚ NOTE: Đăng ký xe mới, chuẩn hóa biển số, gán chủ sở hữu (User) hoặc để trống đối với xe vãng lai (GUEST).
     public VehicleResponse createVehicle(CreateVehicleRequest request) {
         String licensePlate = request.getLicensePlate().trim();
         if (vehicleRepository.existsByLicensePlateIgnoreCase(licensePlate)) {
@@ -95,6 +96,7 @@ public class VehicleService {
     }
 
     @Transactional
+    // TẤN ANH TÚ NOTE: Thực hiện xóa mềm (Soft Delete) lật cờ deleted để bảo toàn tính nhất quán dữ liệu khóa ngoại.
     public VehicleResponse deleteVehicle(Long id) {
         Vehicle vehicle = findVehicle(id);
         vehicle.setDeleted(!vehicle.isDeleted());

@@ -29,6 +29,7 @@ public class ParkingBranchService {
 
     @Transactional
     // ham tao branch
+    // TẤN ANH TÚ NOTE: Tạo chi nhánh bãi xe mới với tên chi nhánh độc nhất (case-insensitive) và kích hoạt trạng thái mặc định.
     public ParkingBranchResponse createParkingBranch(CreateParkingBranchRequest request) {
         String branchName = request.getBranchName().trim();
 

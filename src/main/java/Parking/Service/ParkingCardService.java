@@ -42,6 +42,7 @@ public class ParkingCardService {
         }
 
         // Validate branch scope
+        // TẤN ANH TÚ NOTE: Chặn nhân viên chi nhánh khác thêm mới thẻ giữ xe cho chi nhánh này.
         branchScopeService.assertSameBranch(parkingBranch.getParkingBranchId());
 
         ParkingCard parkingCard = new ParkingCard();
@@ -57,6 +58,7 @@ public class ParkingCardService {
 
     @Transactional(readOnly = true)
     public List<ParkingCardResponse> getAllParkingCards(Long branchId) {
+        // TẤN ANH TÚ NOTE: Giới hạn danh sách thẻ hiển thị theo chi nhánh của nhân viên.
         Long resolvedBranchId = branchScopeService.resolveReadableBranchId(branchId);
         List<ParkingCard> cards;
         if (resolvedBranchId == null) {
@@ -72,6 +74,7 @@ public class ParkingCardService {
     @Transactional(readOnly = true)
     public ParkingCardResponse getParkingCardById(Long id) {
         ParkingCard parkingCard = findParkingCard(id);
+        // TẤN ANH TÚ NOTE: Chặn nhân viên chi nhánh khác xem chi tiết thẻ giữ xe của chi nhánh này.
         branchScopeService.assertSameBranch(parkingCard.getParkingBranch().getParkingBranchId());
         return convertToResponse(parkingCard);
     }
@@ -81,6 +84,7 @@ public class ParkingCardService {
         ParkingCard parkingCard = findParkingCard(id);
         
         // Validate branch scope of existing card
+        // TẤN ANH TÚ NOTE: Chặn nhân viên chi nhánh khác sửa đổi thẻ giữ xe của chi nhánh này.
         branchScopeService.assertSameBranch(parkingCard.getParkingBranch().getParkingBranchId());
 
         if (request.getCardCode() != null && !request.getCardCode().isBlank()) {
@@ -98,6 +102,7 @@ public class ParkingCardService {
                 throw new ParkingSessionException("Chi nhánh bãi xe đang ngừng hoạt động");
             }
             // Validate branch scope of new branch
+            // TẤN ANH TÚ NOTE: Chặn nhân viên chi nhánh khác di chuyển thẻ xe sang chi nhánh của họ trái phép.
             branchScopeService.assertSameBranch(parkingBranch.getParkingBranchId());
             parkingCard.setParkingBranch(parkingBranch);
         }
@@ -116,6 +121,7 @@ public class ParkingCardService {
     @Transactional
     public void deleteParkingCard(Long id) {
         ParkingCard parkingCard = findParkingCard(id);
+        // TẤN ANH TÚ NOTE: Chặn nhân viên chi nhánh khác xóa thẻ giữ xe của chi nhánh này.
         branchScopeService.assertSameBranch(parkingCard.getParkingBranch().getParkingBranchId());
         parkingCardRepository.delete(parkingCard);
     }
