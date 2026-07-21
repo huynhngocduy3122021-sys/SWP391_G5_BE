@@ -33,6 +33,16 @@ import lombok.RequiredArgsConstructor;
  * Cho phép khách hàng chọn trước chi nhánh, loại xe, giờ đến và giữ chỗ.
  */
 @Service
+/**
+ * @param bookingRepository
+ * @param userRepository
+ * @param parkingBranchRepository
+ * @param vehicleTypeRepository
+ * @param vehicleRepository
+ * @param parkingSessionRepository
+ * @param branchScopeService
+ * @param parkingZoneRepository
+ */
 @RequiredArgsConstructor
 public class BookingService {
 
