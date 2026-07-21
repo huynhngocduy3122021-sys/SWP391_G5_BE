@@ -44,7 +44,10 @@ public class BookingService {
         // 1. Lấy thông tin user hiện tại từ Security Context
         User user = getCurrentUser();
 
-        // 2. Chống Race Condition bằng cách Lock chi nhánh khi đếm chỗ trống và tạo booking
+        // 2. Chống Race Condition bằng cách Lock chi nhánh khi đếm chỗ trống và tạo
+        // booking
+        // TẤN ANH TÚ NOTE: Áp dụng khóa bi quan Pessimistic Write Lock để đồng bộ dữ
+        // liệu đếm chỗ đỗ thời gian thực.
         ParkingBranch branch = parkingBranchRepository.findAndLockByParkingBranchId(request.getParkingBranchId())
                 .orElseThrow(() -> new BookingException("Chi nhánh bãi xe không tồn tại"));
 
@@ -59,7 +62,8 @@ public class BookingService {
         // Rule 2.1: Chỉ cho phép booking xe CAR hoặc ELECTRIC_CAR
         String typeName = vehicleType.getTypeName();
         if (!"CAR".equalsIgnoreCase(typeName) && !"ELECTRIC_CAR".equalsIgnoreCase(typeName)) {
-            throw new BookingException("Chức năng đặt chỗ trước chỉ áp dụng cho Ô tô và Ô tô điện. Xe máy/Xe máy điện không được phép đặt trước.");
+            throw new BookingException(
+                    "Chức năng đặt chỗ trước chỉ áp dụng cho Ô tô và Ô tô điện. Xe máy/Xe máy điện không được phép đặt trước.");
         }
 
         // 4. Ràng buộc về thời gian đặt chỗ (Rule 2.3)
@@ -79,8 +83,10 @@ public class BookingService {
                     newVehicle.setLicensePlate(licensePlate);
                     newVehicle.setVehicleType(vehicleType);
                     newVehicle.setUser(user);
-                    newVehicle.setVehicleColor(request.getVehicleColor() != null ? request.getVehicleColor().trim() : null);
-                    newVehicle.setVehicleBrand(request.getVehicleBrand() != null ? request.getVehicleBrand().trim() : null);
+                    newVehicle.setVehicleColor(
+                            request.getVehicleColor() != null ? request.getVehicleColor().trim() : null);
+                    newVehicle.setVehicleBrand(
+                            request.getVehicleBrand() != null ? request.getVehicleBrand().trim() : null);
                     newVehicle.setVehicleSource(Parking.enums.VehicleSource.GUEST);
                     newVehicle.setDeleted(false);
                     return vehicleRepository.save(newVehicle);
@@ -92,11 +98,13 @@ public class BookingService {
 
         // Cập nhật thông tin màu xe / hiệu xe nếu chưa có
         boolean needsUpdate = false;
-        if ((vehicle.getVehicleColor() == null || vehicle.getVehicleColor().isBlank()) && request.getVehicleColor() != null && !request.getVehicleColor().isBlank()) {
+        if ((vehicle.getVehicleColor() == null || vehicle.getVehicleColor().isBlank())
+                && request.getVehicleColor() != null && !request.getVehicleColor().isBlank()) {
             vehicle.setVehicleColor(request.getVehicleColor().trim());
             needsUpdate = true;
         }
-        if ((vehicle.getVehicleBrand() == null || vehicle.getVehicleBrand().isBlank()) && request.getVehicleBrand() != null && !request.getVehicleBrand().isBlank()) {
+        if ((vehicle.getVehicleBrand() == null || vehicle.getVehicleBrand().isBlank())
+                && request.getVehicleBrand() != null && !request.getVehicleBrand().isBlank()) {
             vehicle.setVehicleBrand(request.getVehicleBrand().trim());
             needsUpdate = true;
         }
@@ -104,34 +112,42 @@ public class BookingService {
             vehicleRepository.save(vehicle);
         }
 
-        // 6. Kiểm tra giới hạn số lượng booking active của user (tối đa 3 booking hoạt động)
-        long activeBookingsCount = bookingRepository.countByUserUserIdAndStatusIn(user.getUserId(), 
+        // 6. Kiểm tra giới hạn số lượng booking active của user (tối đa 3 booking hoạt
+        // động)
+        long activeBookingsCount = bookingRepository.countByUserUserIdAndStatusIn(user.getUserId(),
                 List.of(BookingStatus.CONFIRMED, BookingStatus.PENDING));
         if (activeBookingsCount >= 3) {
-            throw new BookingException("Mỗi tài khoản người dùng chỉ được có tối đa 3 đặt chỗ đang hoạt động. Vui lòng hạn chế đặt chỗ quá nhiều.");
+            throw new BookingException(
+                    "Mỗi tài khoản người dùng chỉ được có tối đa 3 đặt chỗ đang hoạt động. Vui lòng hạn chế đặt chỗ quá nhiều.");
         }
 
-        boolean vehicleHasActive = bookingRepository.existsByVehicleVehiclesIdAndStatusIn(vehicle.getVehiclesId(), 
+        boolean vehicleHasActive = bookingRepository.existsByVehicleVehiclesIdAndStatusIn(vehicle.getVehiclesId(),
                 List.of(BookingStatus.CONFIRMED, BookingStatus.PENDING));
         if (vehicleHasActive) {
             throw new BookingException("Phương tiện này đã có một đặt chỗ đang hoạt động.");
         }
 
-        // 7. Kiểm tra dung lượng bãi đỗ thực tế bao gồm cả các booking CONFIRMED khác trong hold window (Rule 3)
-        Long totalCapacityLong = parkingZoneRepository.calculateTotalCapacity(branch.getParkingBranchId(), vehicleType.getVehicleTypeId());
+        // 7. Kiểm tra dung lượng bãi đỗ thực tế bao gồm cả các booking CONFIRMED khác
+        // trong hold window (Rule 3)
+        Long totalCapacityLong = parkingZoneRepository.calculateTotalCapacity(branch.getParkingBranchId(),
+                vehicleType.getVehicleTypeId());
         int totalCapacity = totalCapacityLong != null ? totalCapacityLong.intValue() : 0;
         if (totalCapacity <= 0) {
-            throw new BookingException("Chi nhánh bãi xe này không hỗ trợ đỗ xe hoặc không có khu vực hoạt động cho loại xe " + vehicleType.getDescription());
+            throw new BookingException(
+                    "Chi nhánh bãi xe này không hỗ trợ đỗ xe hoặc không có khu vực hoạt động cho loại xe "
+                            + vehicleType.getDescription());
         }
 
-        long activeSessions = parkingSessionRepository.countByParkingBranchParkingBranchIdAndVehicleVehicleTypeVehicleTypeIdAndStatus(
-                branch.getParkingBranchId(), vehicleType.getVehicleTypeId(), ParkingSessionStatus.ACTIVE);
+        long activeSessions = parkingSessionRepository
+                .countByParkingBranchParkingBranchIdAndVehicleVehicleTypeVehicleTypeIdAndStatus(
+                        branch.getParkingBranchId(), vehicleType.getVehicleTypeId(), ParkingSessionStatus.ACTIVE);
 
         long activeBookings = bookingRepository.countActiveBookings(
                 branch.getParkingBranchId(), vehicleType.getVehicleTypeId(), now);
 
         if (activeSessions + activeBookings >= totalCapacity) {
-            throw new BookingException("Hết chỗ đỗ khả dụng cho loại xe này tại chi nhánh. Vui lòng chọn thời gian khác hoặc chi nhánh khác.");
+            throw new BookingException(
+                    "Hết chỗ đỗ khả dụng cho loại xe này tại chi nhánh. Vui lòng chọn thời gian khác hoặc chi nhánh khác.");
         }
 
         // Tạo Booking
@@ -171,6 +187,8 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<BookingResponse> getAllBookings() {
+        // TẤN ANH TÚ NOTE: Lọc động danh sách đặt chỗ theo chi nhánh phân công của
+        // Staff/Manager.
         Long branchId = branchScopeService.resolveReadableBranchId(null);
         return bookingRepository.findAllByBranchId(branchId)
                 .stream()
@@ -186,7 +204,7 @@ public class BookingService {
 
         // Kiểm tra quyền hủy (Chỉ chủ sở hữu hoặc ADMIN/STAFF/MANAGER mới được hủy)
         boolean isOwner = booking.getUser().getUserId().equals(user.getUserId());
-        boolean isPrivileged = "ADMIN".equalsIgnoreCase(user.getUserRole().name()) 
+        boolean isPrivileged = "ADMIN".equalsIgnoreCase(user.getUserRole().name())
                 || "MANAGER".equalsIgnoreCase(user.getUserRole().name())
                 || "STAFF".equalsIgnoreCase(user.getUserRole().name());
 
@@ -194,6 +212,8 @@ public class BookingService {
             if (!isPrivileged) {
                 throw new BookingException("Bạn không có quyền hủy đặt chỗ này.");
             }
+            // TẤN ANH TÚ NOTE: Chặn nhân viên chi nhánh khác tự ý hủy booking của chi nhánh
+            // này.
             branchScopeService.assertSameBranch(booking.getParkingBranch().getParkingBranchId());
         }
 
@@ -210,6 +230,10 @@ public class BookingService {
     }
 
     // Scheduler tự động quét dọn dẹp các booking quá hạn giữ chỗ (Rule 5.2)
+    // TẤN ANH TÚ NOTE: Định kỳ 5 phút chạy quét ngầm CSDL một lần. Hủy đặt chỗ quá
+    // giờ hẹn, giải phóng chỗ
+    // đỗ trống, cộng điểm phạt vi phạm và tự động khóa tài khoản người dùng nếu vi
+    // phạm >= 3 lần.
     @Scheduled(cron = "0 */5 * * * *") // Chạy 5 phút 1 lần
     @Transactional
     public void cleanupExpiredBookings() {
@@ -249,7 +273,8 @@ public class BookingService {
 
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
             throw new BookingException("Người dùng chưa được xác thực");
         }
         return (User) authentication.getPrincipal();
@@ -269,7 +294,8 @@ public class BookingService {
                 .vehicleBrand(booking.getVehicle().getVehicleBrand())
                 .vehicleTypeId(booking.getVehicleType().getVehicleTypeId())
                 .vehicleTypeName(booking.getVehicleType().getTypeName())
-                .parkingSessionId(booking.getParkingSession() != null ? booking.getParkingSession().getParkingSessionId() : null)
+                .parkingSessionId(
+                        booking.getParkingSession() != null ? booking.getParkingSession().getParkingSessionId() : null)
                 .expectedArrivalTime(booking.getExpectedArrivalTime())
                 .holdUntil(booking.getHoldUntil())
                 .status(booking.getStatus().name())

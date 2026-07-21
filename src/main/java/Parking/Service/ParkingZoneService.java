@@ -27,6 +27,7 @@ public class ParkingZoneService {
     private final ParkingFloorRepository parkingFloorRepository;
 
     @Transactional
+    // TẤN ANH TÚ NOTE: Tạo phân khu đỗ xe liên kết 1-1 với tầng đỗ, cấu hình sức chứa (capacity) cho loại phương tiện.
     public ParkingZoneResponse createParkingZone(CreateParkingZoneRequest request) {
         ParkingFloor parkingFloor = findFloor(request.getParkingFloorId());
 

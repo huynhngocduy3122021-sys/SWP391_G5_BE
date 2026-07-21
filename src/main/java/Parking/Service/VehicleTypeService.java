@@ -12,6 +12,7 @@ import java.util.List;
 public class VehicleTypeService {
     private final VehicleTypeRepository vehicleTypeRepository;
 
+    // TẤN ANH TÚ NOTE: Tạo mới loại phương tiện phục vụ cấu hình biểu phí, phân khu và kiểm tra quyền đặt chỗ.
     public VehicleType createVehicleType(CreateVehicleTypeRequest request) {
         VehicleType vehicleType = new VehicleType();
         vehicleType.setTypeName(request.getTypeName());

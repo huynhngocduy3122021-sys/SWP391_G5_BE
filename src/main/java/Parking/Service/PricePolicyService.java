@@ -16,6 +16,7 @@ public class PricePolicyService {
      private final PricePolicyRepository pricePolicyRepository;
     private final VehicleTypeRepository vehicleTypeRepository;
 
+    // TẤN ANH TÚ NOTE: Tạo mới chính sách giá (giá cơ bản, giá phụ trội, block thời gian) cho loại phương tiện.
     public PricePolicy createPricePolicy(CreatePricePolicyRequest request) {
         VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy loại phương tiện"));
