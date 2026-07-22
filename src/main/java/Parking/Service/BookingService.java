@@ -44,13 +44,11 @@ public class BookingService {
         // 1. Lấy thông tin user hiện tại từ Security Context
         User user = getCurrentUser();
 
-        // 2. Chống Race Condition bằng cách Lock chi nhánh khi đếm chỗ trống và tạo
+        // 2. Chống Race Condition bằng cách Lock chi nhánh khi đếm chỗ trống và tao
         // booking
-        // TẤN ANH TÚ NOTE: Áp dụng khóa bi quan Pessimistic Write Lock để đồng bộ dữ
-        // liệu đếm chỗ đỗ thời gian thực.
         ParkingBranch branch = parkingBranchRepository.findAndLockByParkingBranchId(request.getParkingBranchId())
                 .orElseThrow(() -> new BookingException("Chi nhánh bãi xe không tồn tại"));
-
+        // Nếu chi nhánh không Active thì không cho phép booking
         if (!branch.isActive()) {
             throw new BookingException("Chi nhánh bãi xe hiện đang tạm đóng");
         }
@@ -76,6 +74,7 @@ public class BookingService {
         }
 
         // 5. Kiểm tra biển số xe và đăng ký/gán xe (Rule 2.2)
+        // 85-87: khách nhập dư thì xóa khoảng trắng, vầ không nhập thì để null
         String licensePlate = request.getLicensePlate().trim().toUpperCase();
         Vehicle vehicle = vehicleRepository.findByLicensePlateIgnoreCase(licensePlate)
                 .orElseGet(() -> {
@@ -87,11 +86,12 @@ public class BookingService {
                             request.getVehicleColor() != null ? request.getVehicleColor().trim() : null);
                     newVehicle.setVehicleBrand(
                             request.getVehicleBrand() != null ? request.getVehicleBrand().trim() : null);
-                    newVehicle.setVehicleSource(Parking.enums.VehicleSource.GUEST);
-                    newVehicle.setDeleted(false);
+                    newVehicle.setVehicleSource(Parking.enums.VehicleSource.GUEST); // đánh giấu là khách vãng lai
+                    newVehicle.setDeleted(false); // Đảm bảo xe ở trạng thái hoạt động bình thường.
                     return vehicleRepository.save(newVehicle);
                 });
 
+        // Nếu xe của người dùng booking trùng
         if (vehicle.getUser() != null && !vehicle.getUser().getUserId().equals(user.getUserId())) {
             throw new BookingException("Phương tiện này đã được đăng ký bởi người dùng khác.");
         }
@@ -187,8 +187,7 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<BookingResponse> getAllBookings() {
-        // TẤN ANH TÚ NOTE: Lọc động danh sách đặt chỗ theo chi nhánh phân công của
-        // Staff/Manager.
+        // Admin xem được tất cả, Staff/Manager chỉ xem được chi nhánh của mình
         Long branchId = branchScopeService.resolveReadableBranchId(null);
         return bookingRepository.findAllByBranchId(branchId)
                 .stream()
@@ -212,8 +211,7 @@ public class BookingService {
             if (!isPrivileged) {
                 throw new BookingException("Bạn không có quyền hủy đặt chỗ này.");
             }
-            // TẤN ANH TÚ NOTE: Chặn nhân viên chi nhánh khác tự ý hủy booking của chi nhánh
-            // này.
+            // Chặn nhân viên chi nhánh khác tự ý hủy booking của chi nhánh này.
             branchScopeService.assertSameBranch(booking.getParkingBranch().getParkingBranchId());
         }
 
@@ -230,8 +228,6 @@ public class BookingService {
     }
 
     // Scheduler tự động quét dọn dẹp các booking quá hạn giữ chỗ (Rule 5.2)
-    // TẤN ANH TÚ NOTE: Định kỳ 5 phút chạy quét ngầm CSDL một lần. Hủy đặt chỗ quá
-    // giờ hẹn, giải phóng chỗ
     // đỗ trống, cộng điểm phạt vi phạm và tự động khóa tài khoản người dùng nếu vi
     // phạm >= 3 lần.
     @Scheduled(cron = "0 */5 * * * *") // Chạy 5 phút 1 lần
