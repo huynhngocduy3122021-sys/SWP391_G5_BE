@@ -25,8 +25,7 @@ public class VehicleService {
     private final VehicleTypeRepository vehicleTypeRepository;
     private final UserRepository userRepository;
 
-    @Transactional
-    // TẤN ANH TÚ NOTE: Đăng ký xe mới, chuẩn hóa biển số, gán chủ sở hữu (User) hoặc để trống đối với xe vãng lai (GUEST).
+    // Đăng ký xe mới, chuẩn hóa biển số, gán chủ sở hữu (User) hoặc để trống đối với xe vãng lai (GUEST)
     public VehicleResponse createVehicle(CreateVehicleRequest request) {
         String licensePlate = request.getLicensePlate().trim();
         if (vehicleRepository.existsByLicensePlateIgnoreCase(licensePlate)) {
@@ -50,6 +49,7 @@ public class VehicleService {
         return convertToResponse(vehicleRepository.save(vehicle));
     }
 
+    // Lấy danh sách toàn bộ xe trong hệ thống
     @Transactional(readOnly = true)
     public List<VehicleResponse> getAllVehicles() {
         return vehicleRepository.findAll()
@@ -58,11 +58,13 @@ public class VehicleService {
                 .toList();
     }
 
+    // Lấy thông tin chi tiết của xe theo ID
     @Transactional(readOnly = true)
     public VehicleResponse getVehicleById(Long id) {
         return convertToResponse(findVehicle(id));
     }
 
+    // Cập nhật thông tin xe (biển số, màu sắc, hãng xe, loại xe, chủ sở hữu)
     @Transactional
     public VehicleResponse updateVehicle(Long id, UpdateVehicleRequest request) {
         Vehicle vehicle = findVehicle(id);
@@ -95,19 +97,21 @@ public class VehicleService {
         return convertToResponse(vehicleRepository.save(vehicle));
     }
 
+    // Thực hiện xóa mềm (Soft Delete) lật cờ deleted để bảo toàn tính nhất quán dữ liệu khóa ngoại
     @Transactional
-    // TẤN ANH TÚ NOTE: Thực hiện xóa mềm (Soft Delete) lật cờ deleted để bảo toàn tính nhất quán dữ liệu khóa ngoại.
     public VehicleResponse deleteVehicle(Long id) {
         Vehicle vehicle = findVehicle(id);
         vehicle.setDeleted(!vehicle.isDeleted());
         return convertToResponse(vehicleRepository.save(vehicle));
     }
 
+    // Tìm thông tin xe theo ID, ném lỗi nếu không tìm thấy
     private Vehicle findVehicle(Long id) {
         return vehicleRepository.findById(id)
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy xe"));
     }
 
+    // Chuyển đổi đối tượng Entity Vehicle sang DTO VehicleResponse
     private VehicleResponse convertToResponse(Vehicle vehicle) {
         User owner = vehicle.getUser();
         VehicleType type = vehicle.getVehicleType();
