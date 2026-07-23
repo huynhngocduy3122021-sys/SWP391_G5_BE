@@ -27,9 +27,8 @@ public class ParkingBranchService {
     private final ParkingSessionRepository parkingSessionRepository;
     private final BookingRepository bookingRepository;
 
+    // Tạo chi nhánh bãi xe mới với tên chi nhánh độc nhất (case-insensitive) và kích hoạt trạng thái mặc định
     @Transactional
-    // ham tao branch
-    // TẤN ANH TÚ NOTE: Tạo chi nhánh bãi xe mới với tên chi nhánh độc nhất (case-insensitive) và kích hoạt trạng thái mặc định.
     public ParkingBranchResponse createParkingBranch(CreateParkingBranchRequest request) {
         String branchName = request.getBranchName().trim();
 
@@ -47,7 +46,8 @@ public class ParkingBranchService {
 
         return convertBranchResponse(parkingBranchRepository.save(parkingBranch));
     }
-    // ham lay tat ca
+
+    // Lấy danh sách tất cả các chi nhánh bãi xe trong hệ thống
     @Transactional(readOnly = true)
     public List<ParkingBranchResponse> getAllParkingBranches() {
         return parkingBranchRepository.findAll()
@@ -55,12 +55,14 @@ public class ParkingBranchService {
                 .map(this::convertBranchResponse)
                 .toList();
     }
-   @Transactional(readOnly = true)
-   // ham lay theo id
+
+    // Lấy thông tin chi tiết chi nhánh bãi xe theo ID
+    @Transactional(readOnly = true)
     public ParkingBranchResponse getParkingBranchById(Long id) {
         return convertBranchResponse(findBranch(id));
     }
 
+    // Cập nhật thông tin chi nhánh bãi xe (tên, địa chỉ, số điện thoại, mô tả)
     @Transactional
     public ParkingBranchResponse updateParkingBranch(Long id,UpdateParkingBranchRequest request) {
         ParkingBranch parkingBranch = findBranch(id);
@@ -85,6 +87,7 @@ public class ParkingBranchService {
         return convertBranchResponse(parkingBranchRepository.save(parkingBranch));
     }
 
+    // Cập nhật trạng thái hoạt động (kích hoạt/khóa) của chi nhánh bãi xe
     @Transactional
     public ParkingBranchResponse updateStatus(Long id,boolean active) {
         ParkingBranch parkingBranch = findBranch(id);
@@ -92,11 +95,13 @@ public class ParkingBranchService {
         return convertBranchResponse(parkingBranchRepository.save(parkingBranch));
     }
 
+    // Tìm kiếm chi nhánh bãi xe theo ID, ném lỗi nếu không tìm thấy
     private ParkingBranch findBranch(Long id) {
         return parkingBranchRepository.findById(id)
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy chi nhánh bãi xe"));
     }
 
+    // Chuyển đổi đối tượng Entity ParkingBranch sang DTO ParkingBranchResponse, tính toán sức chứa thực tế
     private ParkingBranchResponse convertBranchResponse(ParkingBranch parkingBranch) {
         Long branchId = parkingBranch.getParkingBranchId();
         Long totalCapacityLong = parkingZoneRepository.calculateTotalCapacityByBranch(branchId);
@@ -122,6 +127,7 @@ public class ParkingBranchService {
                 .build();
     }
 
+    // Chuẩn hóa dữ liệu văn bản tùy chọn (loại bỏ khoảng trắng thừa, chuyển thành null nếu rỗng)
     private String normalizeOptional(String value) {
         if (value == null || value.isBlank()) {
             return null;

@@ -27,25 +27,31 @@ public class VehicleService {
 
     // Đăng ký xe mới, chuẩn hóa biển số, gán chủ sở hữu (User) hoặc để trống đối với xe vãng lai (GUEST)
     public VehicleResponse createVehicle(CreateVehicleRequest request) {
+        // Chuẩn hóa biển số xe bằng cách xóa khoảng trắng thừa ở hai đầu
         String licensePlate = request.getLicensePlate().trim();
+        // Kiểm tra xem biển số xe đã tồn tại trong hệ thống chưa
         if (vehicleRepository.existsByLicensePlateIgnoreCase(licensePlate)) {
             throw new ParkingSessionException("Biển số xe đã tồn tại");
         }
 
+        // Tìm thông tin loại xe theo ID được gửi lên
         VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy loại xe"));
 
+        // Tạo đối tượng thực thể xe mới và gán các thông tin cơ bản
         Vehicle vehicle = new Vehicle();
         vehicle.setLicensePlate(licensePlate);
         vehicle.setVehicleColor(request.getVehicleColor());
         vehicle.setVehicleBrand(request.getVehicleBrand());
         vehicle.setVehicleType(vehicleType);
+        // Nếu có ID người dùng đi kèm, thực hiện tìm kiếm và liên kết chủ sở hữu cho xe
         if (request.getUserId() != null) {
             User user = userRepository.findById(request.getUserId())
                     .orElseThrow(() -> new ParkingSessionException("Không tìm thấy người dùng"));
             vehicle.setUser(user);
         }
 
+        // Lưu thông tin xe vào cơ sở dữ liệu và trả về kết quả dạng response DTO
         return convertToResponse(vehicleRepository.save(vehicle));
     }
 
@@ -67,8 +73,10 @@ public class VehicleService {
     // Cập nhật thông tin xe (biển số, màu sắc, hãng xe, loại xe, chủ sở hữu)
     @Transactional
     public VehicleResponse updateVehicle(Long id, UpdateVehicleRequest request) {
+        // Tìm thông tin xe hiện tại trong hệ thống theo ID
         Vehicle vehicle = findVehicle(id);
 
+        // Cập nhật biển số xe nếu có thay đổi và kiểm tra trùng lặp biển số mới
         if (request.getLicensePlate() != null && !request.getLicensePlate().isBlank()) {
             String cleaned = request.getLicensePlate().trim();
             if (!vehicle.getLicensePlate().equalsIgnoreCase(cleaned) && vehicleRepository.existsByLicensePlateIgnoreCase(cleaned)) {
@@ -77,31 +85,39 @@ public class VehicleService {
             vehicle.setLicensePlate(cleaned);
         }
 
+        // Cập nhật màu sắc xe nếu được cung cấp
         if (request.getVehicleColor() != null) {
             vehicle.setVehicleColor(request.getVehicleColor());
         }
+        // Cập nhật thương hiệu xe nếu được cung cấp
         if (request.getVehicleBrand() != null) {
             vehicle.setVehicleBrand(request.getVehicleBrand());
         }
+        // Cập nhật loại xe mới nếu được cung cấp
         if (request.getVehicleTypeId() != null) {
             VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
                     .orElseThrow(() -> new ParkingSessionException("Không tìm thấy loại xe"));
             vehicle.setVehicleType(vehicleType);
         }
+        // Cập nhật thông tin chủ xe mới nếu được cung cấp
         if (request.getUserId() != null) {
             User user = userRepository.findById(request.getUserId())
                     .orElseThrow(() -> new ParkingSessionException("Không tìm thấy người dùng"));
             vehicle.setUser(user);
         }
 
+        // Lưu thông tin cập nhật vào CSDL và trả về kết quả dạng response DTO
         return convertToResponse(vehicleRepository.save(vehicle));
     }
 
     // Thực hiện xóa mềm (Soft Delete) lật cờ deleted để bảo toàn tính nhất quán dữ liệu khóa ngoại
     @Transactional
     public VehicleResponse deleteVehicle(Long id) {
+        // Tìm thông tin xe cần xóa theo ID
         Vehicle vehicle = findVehicle(id);
+        // Đảo ngược trạng thái cờ xóa (kích hoạt/hủy kích hoạt xe)
         vehicle.setDeleted(!vehicle.isDeleted());
+        // Lưu thay đổi vào CSDL và trả về kết quả
         return convertToResponse(vehicleRepository.save(vehicle));
     }
 
