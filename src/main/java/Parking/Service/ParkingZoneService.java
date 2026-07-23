@@ -26,8 +26,8 @@ public class ParkingZoneService {
     private final VehicleTypeRepository vehicleTypeRepository;
     private final ParkingFloorRepository parkingFloorRepository;
 
+    // Tạo phân khu đỗ xe liên kết 1-1 với tầng đỗ, cấu hình sức chứa (capacity) cho loại phương tiện
     @Transactional
-    // TẤN ANH TÚ NOTE: Tạo phân khu đỗ xe liên kết 1-1 với tầng đỗ, cấu hình sức chứa (capacity) cho loại phương tiện.
     public ParkingZoneResponse createParkingZone(CreateParkingZoneRequest request) {
         ParkingFloor parkingFloor = findFloor(request.getParkingFloorId());
 
@@ -63,6 +63,7 @@ public class ParkingZoneService {
         return convertToParkingZone(parkingZoneRepository.save(parkingZone));
     }
 
+    // Lấy danh sách toàn bộ các khu vực đỗ xe trong hệ thống
     @Transactional(readOnly = true)
     public List<ParkingZoneResponse> getAllParkingZones() {
         return parkingZoneRepository.findAll()
@@ -71,6 +72,7 @@ public class ParkingZoneService {
                 .toList();
     }
 
+    // Lấy danh sách các khu vực đỗ xe thuộc một chi nhánh cụ thể
     @Transactional(readOnly = true)
     public List<ParkingZoneResponse> getZonesByBranch(
             Long parkingBranchId
@@ -81,11 +83,13 @@ public class ParkingZoneService {
                 .toList();
     }
 
+    // Lấy thông tin chi tiết khu vực đỗ xe theo ID
     @Transactional(readOnly = true)
     public ParkingZoneResponse getParkingZoneById(Long id) {
         return convertToParkingZone(findZone(id));
     }
 
+    // Cập nhật thông tin khu vực đỗ xe (tên phân khu, sức chứa, tầng đỗ, loại phương tiện)
     @Transactional
     public ParkingZoneResponse updateParkingZone(Long id,UpdateParkingZoneRequest request) {
         ParkingZone parkingZone = findZone(id);
@@ -110,6 +114,7 @@ public class ParkingZoneService {
         return convertToParkingZone(parkingZoneRepository.save(parkingZone));
     }
 
+    // Cập nhật trạng thái hoạt động (kích hoạt/khóa) của khu vực đỗ xe
     @Transactional
     public ParkingZoneResponse updateStatus(Long id,boolean active) {
         ParkingZone parkingZone = findZone(id);
@@ -119,21 +124,25 @@ public class ParkingZoneService {
         return convertToParkingZone(parkingZoneRepository.save(parkingZone));
     }
 
+    // Tìm kiếm tầng đỗ xe theo ID, ném lỗi nếu không tìm thấy
     private ParkingFloor findFloor(Long id) {
         return parkingFloorRepository.findById(id)
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy tầng đỗ xe"));
     }
 
+    // Tìm kiếm loại phương tiện theo ID, ném lỗi nếu không tìm thấy
     private VehicleType findVehicleType(Long id) {
         return vehicleTypeRepository.findById(id)
                 .orElseThrow(() ->new ParkingSessionException("Không tìm thấy loại phương tiện"));
     }
 
+    // Tìm kiếm khu vực đỗ xe theo ID, ném lỗi nếu không tìm thấy
     private ParkingZone findZone(Long id) {
         return parkingZoneRepository.findById(id)
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy khu vực đỗ xe"));
     }
 
+    // Chuyển đổi đối tượng Entity ParkingZone sang DTO ParkingZoneResponse
     private ParkingZoneResponse convertToParkingZone(ParkingZone parkingZone) {
         ParkingFloor floor = parkingZone.getParkingFloor();
 
