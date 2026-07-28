@@ -356,7 +356,7 @@ Phương án đơn giản, an toàn nhất là tạo incident trước rồi upl
 Khi thêm/xóa ảnh nên ghi `IncidentLog`:
 
 ```text
-actionType = IMAGE_ADDED
+actionType = UPLOAD_IMAGE
 note = "Đã thêm 3 ảnh bằng chứng"
 changedBy
 changedAt
@@ -365,9 +365,15 @@ changedAt
 Khi xóa:
 
 ```text
-actionType = IMAGE_REMOVED
+actionType = UPLOAD_IMAGE
 note = "Đã xóa ảnh bằng chứng #123"
 ```
+
+Hệ thống hiện dùng chung `UPLOAD_IMAGE` cho thay đổi liên quan tới ảnh để tương
+thích với CHECK constraint của `incident_logs.action_type`; nội dung
+`description` phân biệt thao tác thêm hay xóa. Nếu sau này muốn tách thành
+`IMAGE_ADDED` và `IMAGE_REMOVED`, phải migration CHECK constraint trong database
+trước khi triển khai enum Java mới.
 
 Không lưu URL chứa thông tin nhạy cảm vào `note` nếu log được hiển thị rộng rãi.
 
@@ -537,4 +543,3 @@ Do đó không thể giả định mọi ảnh sự cố đều là ảnh biển
 8. Ngừng nhận `imageUrl/publicId` từ `CreateIncidentRequest`.
 9. Thêm endpoint xóa ảnh nếu nghiệp vụ cần.
 10. Chạy test phân quyền, upload lỗi và kiểm tra không gọi OCR.
-
