@@ -28,6 +28,4 @@ public class CreateVehicleRequest {
     @NotNull(message = "ID loại phương tiện là bắt buộc")
     @Positive(message = "ID loại phương tiện phải lớn hơn 0")
     private Long vehicleTypeId;
-
-    private Long userId;
 }

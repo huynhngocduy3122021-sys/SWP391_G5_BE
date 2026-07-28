@@ -1,7 +1,9 @@
 package Parking.Service;
 
 import java.util.List;
+import java.util.Optional;
 
+import Parking.Util.LicensePlateNormalizer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,27 +26,57 @@ public class VehicleService {
     private final VehicleRepository vehicleRepository;
     private final VehicleTypeRepository vehicleTypeRepository;
     private final UserRepository userRepository;
+    private final CurrentUserService currentUserService;
 
     @Transactional
     public VehicleResponse createVehicle(CreateVehicleRequest request) {
-        String licensePlate = request.getLicensePlate().trim();
-        if (vehicleRepository.existsByLicensePlateIgnoreCase(licensePlate)) {
-            throw new ParkingSessionException("Biển số xe đã tồn tại");
-        }
+        String licensePlate = LicensePlateNormalizer.normalize(request.getLicensePlate());
+        User currentUser = currentUserService.getCurrentUser();
 
-        VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
+        VehicleType requestedType = vehicleTypeRepository.findById(request.getVehicleTypeId())
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy loại xe"));
+
+        Optional<Vehicle> existingOpt = vehicleRepository.findByLicensePlateForUpdate(licensePlate);
+
+        if (existingOpt.isPresent()) {
+            Vehicle existing = existingOpt.get();
+
+            if (existing.getUser() != null) {
+                if (existing.getUser().getUserId().equals(currentUser.getUserId())) {
+                    throw new ParkingSessionException("Biển số xe đã được đăng ký trong tài khoản của bạn");
+                }
+                throw new ParkingSessionException("Biển số xe đã được đăng ký bởi tài khoản khác");
+            }
+
+            if (existing.getVehicleSource() != VehicleSource.GUEST) {
+                throw new ParkingSessionException("Biển số xe đã tồn tại và cần được nhân viên xác minh");
+            }
+
+            if (!existing.getVehicleType().getVehicleTypeId().equals(requestedType.getVehicleTypeId())) {
+                throw new ParkingSessionException("Loại phương tiện không khớp với dữ liệu xe đã có");
+            }
+
+            existing.setUser(currentUser);
+            existing.setVehicleSource(VehicleSource.REGISTER);
+            existing.setDeleted(false);
+
+            if (existing.getVehicleColor() == null) {
+                existing.setVehicleColor(request.getVehicleColor());
+            }
+            if (existing.getVehicleBrand() == null) {
+                existing.setVehicleBrand(request.getVehicleBrand());
+            }
+
+            return convertToResponse(vehicleRepository.save(existing));
+        }
 
         Vehicle vehicle = new Vehicle();
         vehicle.setLicensePlate(licensePlate);
         vehicle.setVehicleColor(request.getVehicleColor());
         vehicle.setVehicleBrand(request.getVehicleBrand());
-        vehicle.setVehicleType(vehicleType);
-        if (request.getUserId() != null) {
-            User user = userRepository.findById(request.getUserId())
-                    .orElseThrow(() -> new ParkingSessionException("Không tìm thấy người dùng"));
-            vehicle.setUser(user);
-        }
+        vehicle.setVehicleType(requestedType);
+        vehicle.setUser(currentUser);
+        vehicle.setVehicleSource(VehicleSource.REGISTER);
 
         return convertToResponse(vehicleRepository.save(vehicle));
     }
@@ -67,7 +99,7 @@ public class VehicleService {
         Vehicle vehicle = findVehicle(id);
 
         if (request.getLicensePlate() != null && !request.getLicensePlate().isBlank()) {
-            String cleaned = request.getLicensePlate().trim();
+            String cleaned = LicensePlateNormalizer.normalize(request.getLicensePlate());
             if (!vehicle.getLicensePlate().equalsIgnoreCase(cleaned) && vehicleRepository.existsByLicensePlateIgnoreCase(cleaned)) {
                 throw new ParkingSessionException("Biển số xe đã tồn tại");
             }

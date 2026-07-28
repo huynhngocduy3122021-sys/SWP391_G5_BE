@@ -372,12 +372,7 @@ public class ParkingSessionService {
      * bởi khoảng trắng hoặc sự khác nhau giữa chữ hoa và chữ thường.
      */
     private String normalizeLicensePlate(String licensePlate) {
-        return licensePlate
-            .trim()
-            // Regex "\\s+" khớp với một hoặc nhiều ký tự khoảng trắng ở bất kỳ vị trí nào
-            // (dấu cách, tab, xuống dòng,...); thay bằng chuỗi rỗng để loại bỏ chúng.
-            .replaceAll("\\s+", "")
-            .toUpperCase();
+        return Parking.Util.LicensePlateNormalizer.normalize(licensePlate);
     }
 
     private String normalizeCardCode(String cardCode) {
