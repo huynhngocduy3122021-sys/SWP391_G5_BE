@@ -87,7 +87,9 @@ public class IncidentImageService {
             log.setChangedAt(LocalDateTime.now());
             log.setOldStatus(incident.getStatus());
             log.setNewStatus(incident.getStatus());
-            log.setActionType(IncidentLogAction.IMAGE_ADDED);
+            // Giữ giá trị tương thích với CHECK constraint hiện có của
+            // incident_logs.action_type. Description bên dưới phân biệt thao tác thêm ảnh.
+            log.setActionType(IncidentLogAction.UPLOAD_IMAGE);
             log.setDescription("Đã thêm " + files.size() + " ảnh bằng chứng");
             incident.addLog(log);
 
@@ -154,7 +156,9 @@ public class IncidentImageService {
         log.setChangedAt(LocalDateTime.now());
         log.setOldStatus(incident.getStatus());
         log.setNewStatus(incident.getStatus());
-        log.setActionType(IncidentLogAction.IMAGE_REMOVED);
+        // Database hiện chỉ cho phép tập action type cũ, trong đó UPLOAD_IMAGE
+        // đại diện cho các thay đổi liên quan tới ảnh. Description phân biệt thao tác xóa.
+        log.setActionType(IncidentLogAction.UPLOAD_IMAGE);
         log.setDescription("Đã xóa ảnh bằng chứng #" + imageId);
         incident.addLog(log);
     }
