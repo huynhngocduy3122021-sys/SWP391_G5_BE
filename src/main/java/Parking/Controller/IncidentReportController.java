@@ -24,6 +24,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import java.time.LocalDateTime;
 import java.util.List;
+import Parking.Service.IncidentImageService;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
@@ -39,7 +40,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 public class IncidentReportController {
 
     private final IncidentReportService incidentReportService;
-    private final Parking.Service.IncidentImageService incidentImageService;
+    private final IncidentImageService incidentImageService;
 
     /**
      * Người dùng (hoặc nhân viên) tạo một báo cáo sự cố chung.

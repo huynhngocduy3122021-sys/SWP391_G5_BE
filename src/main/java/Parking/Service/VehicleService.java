@@ -29,6 +29,7 @@ public class VehicleService {
     private final CurrentUserService currentUserService;
 
     // Đăng ký xe mới, chuẩn hóa biển số, gán chủ sở hữu (User) hoặc để trống đối với xe vãng lai (GUEST)
+    @Transactional
     public VehicleResponse createVehicle(CreateVehicleRequest request) {
         String licensePlate = LicensePlateNormalizer.normalize(request.getLicensePlate());
         User currentUser = currentUserService.getCurrentUser();
