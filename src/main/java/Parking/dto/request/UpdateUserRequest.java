@@ -9,14 +9,14 @@ import jakarta.validation.constraints.Email;
 @Getter
 public class UpdateUserRequest {
     
-   @NotBlank(message = "Full name is required")
+   @NotBlank(message = "Họ và tên là bắt buộc")
     private String userFullName;
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
+    @NotBlank(message = "Email là bắt buộc")
+    @Email(message = "Định dạng email không hợp lệ")
     private String userEmail;
-    @NotBlank(message = "Password is required")
-    @NotBlank(message = "Phone number is required")
+    @NotBlank(message = "Mật khẩu là bắt buộc")
+    @NotBlank(message = "Số điện thoại là bắt buộc")
     private String userPhone;
-    @NotBlank(message = "Address is required")  
+    @NotBlank(message = "Địa chỉ là bắt buộc")  
     private String userAddress;
 }

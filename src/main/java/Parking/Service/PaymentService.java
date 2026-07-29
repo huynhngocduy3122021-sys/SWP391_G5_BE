@@ -69,7 +69,7 @@ public class PaymentService {
             Payment existingPayment = paymentRepository.findByParkingSessionParkingSessionId(parkingSession.getParkingSessionId())
                     .orElse(null);
             if (existingPayment != null && existingPayment.getPaymentStatus() == PaymentStatus.PAID) {
-                throw new ParkingSessionException("Parking session has already been paid");
+                throw new ParkingSessionException("Phiên gửi xe đã được thanh toán");
             }
             // Tái sử dụng bản ghi cũ chưa thanh toán thành công
             payment = existingPayment;
@@ -83,7 +83,7 @@ public class PaymentService {
         Long vehicleTypeId = parkingSession.getVehicle().getVehicleType().getVehicleTypeId();
 
         PricePolicy pricePolicy = pricePolicyRepository.findFirstActiveHourlyPolicy(vehicleTypeId)
-                    .orElseThrow(() -> new ParkingSessionException("Active price policy not found"));
+                    .orElseThrow(() -> new ParkingSessionException("Không tìm thấy chính sách giá đang hoạt động"));
 
         LocalDateTime checkOutTime = (time != null) ? time : LocalDateTime.now();
         // b3: tính phí
@@ -212,7 +212,7 @@ public class PaymentService {
         MonthlyTicketRequest request = monthlyTicketRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy yêu cầu thẻ tháng"));
 
-        if (request.getStatus() != 0) {
+        if (request.getStatus() != Parking.enums.MonthlyTicketRequestStatus.PENDING_PAYMENT) {
             throw new ParkingSessionException("Yêu cầu này không ở trạng thái chờ thanh toán");
         }
 
@@ -238,19 +238,19 @@ public class PaymentService {
 
     public BigDecimal caculateParkingFee(LocalDateTime checkInTime, LocalDateTime checkOutTime, PricePolicy pricePolicy) {
         if (checkInTime == null) {
-            throw new ParkingSessionException("Check-in time is missing");
+            throw new ParkingSessionException("Thiếu thời gian xe vào");
         }
 
         if (pricePolicy.getBasePrice() == null || pricePolicy.getExtraHourPrice() == null || pricePolicy.getBaseDurationMinutes() == null) {
-            throw new ParkingSessionException("Price policy is invalid");
+            throw new ParkingSessionException("Chính sách giá không hợp lệ");
         }
 
         if (pricePolicy.getBaseDurationMinutes() <= 0) {
-            throw new ParkingSessionException("Base duration must be greater than zero");
+            throw new ParkingSessionException("Thời lượng cơ bản phải lớn hơn 0");
         }
 
         if (pricePolicy.getBasePrice().compareTo(BigDecimal.ZERO) < 0 || pricePolicy.getExtraHourPrice().compareTo(BigDecimal.ZERO) < 0) {
-            throw new ParkingSessionException("Parking price cannot be negative");
+            throw new ParkingSessionException("Phí gửi xe không được là số âm");
         }
 
         long totalMinutes = Duration.between(checkInTime, checkOutTime).toMinutes();
@@ -306,18 +306,34 @@ public class PaymentService {
         Payment payment = paymentRepository.findByTransactionRefForUpdate(txnRef)
                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy thông tin thanh toán: " + txnRef));
 
+        ParkingSession parkingSession = payment.getParkingSession();
+        MonthlyTicketRequest monthlyRequest = payment.getMonthlyTicketRequest();
+
+        String paymentType;
+        if (parkingSession != null) {
+            paymentType = "PARKING_SESSION";
+        } else if (monthlyRequest != null) {
+            paymentType = "MONTHLY_TICKET";
+        } else {
+            throw new ParkingSessionException("Giao dịch không gắn với đối tượng thanh toán");
+        }
+
         if (payment.getPaymentStatus() == PaymentStatus.PAID) {
-            return VnpayReturnResponse.builder()
-                    .validSignature(true)
-                    .success(true)
-                    .transactionRef(txnRef)
-                    .vnpTransactionNo(payment.getVnpTransactionNo())
-                    .responseCode(payment.getResponseCode())
-                    .message("Thanh toán đã được xác nhận thành công trước đó")
-                    .build();
+            return buildVnPayReturnResponse(payment, paymentType, true, "Thanh toán đã được xác nhận thành công trước đó", txnRef, payment.getVnpTransactionNo(), payment.getResponseCode());
         }
 
         boolean isSuccess = "00".equals(responseCode);
+        if (isSuccess) {
+            String vnpAmountStr = params.get("vnp_Amount");
+            if (vnpAmountStr != null) {
+                BigDecimal expectedAmount = payment.getAmount();
+                BigDecimal receivedAmount = vnPayService.convertVnPayAmount(vnpAmountStr);
+                if (expectedAmount.compareTo(receivedAmount) != 0) {
+                    isSuccess = false;
+                    responseCode = "04";
+                }
+            }
+        }
         payment.setVnpTransactionNo(vnpTxnNo);
         payment.setBankCode(bankCode);
         payment.setResponseCode(responseCode);
@@ -338,29 +354,50 @@ public class PaymentService {
                 }
                 parkingSessionRepository.save(session);
             }
+            
+            MonthlyTicketRequest mtr = payment.getMonthlyTicketRequest();
+            if (mtr != null && mtr.getStatus() != null && mtr.getStatus() == Parking.enums.MonthlyTicketRequestStatus.PENDING_PAYMENT) {
+                mtr.setStatus(Parking.enums.MonthlyTicketRequestStatus.PENDING_APPROVAL); // PENDING_APPROVAL
+                monthlyTicketRequestRepository.save(mtr);
+            }
             paymentRepository.save(payment);
 
-            return VnpayReturnResponse.builder()
-                    .validSignature(true)
-                    .success(true)
-                    .transactionRef(txnRef)
-                    .vnpTransactionNo(vnpTxnNo)
-                    .responseCode(responseCode)
-                    .message("Thanh toán thành công. Phiên gửi xe đã kết thúc.")
-                    .build();
+            return buildVnPayReturnResponse(payment, paymentType, true, "Thanh toán thành công. Phiên gửi xe đã kết thúc.", txnRef, vnpTxnNo, responseCode);
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);
             paymentRepository.save(payment);
 
-            return VnpayReturnResponse.builder()
-                    .validSignature(true)
-                    .success(false)
-                    .transactionRef(txnRef)
-                    .vnpTransactionNo(vnpTxnNo)
-                    .responseCode(responseCode)
-                    .message("Thanh toán thất bại.")
-                    .build();
+            return buildVnPayReturnResponse(payment, paymentType, false, "Thanh toán thất bại.", txnRef, vnpTxnNo, responseCode);
         }
+    }
+
+    private VnpayReturnResponse buildVnPayReturnResponse(Payment payment, String paymentType, boolean isSuccess, String message, String txnRef, String vnpTxnNo, String responseCode) {
+        VnpayReturnResponse.VnpayReturnResponseBuilder responseBuilder = VnpayReturnResponse.builder()
+                .validSignature(true)
+                .success(isSuccess)
+                .transactionRef(txnRef)
+                .vnpTransactionNo(vnpTxnNo)
+                .responseCode(responseCode)
+                .paymentType(paymentType);
+
+        MonthlyTicketRequest monthlyRequest = payment.getMonthlyTicketRequest();
+        if (monthlyRequest != null) {
+            responseBuilder.requestId(monthlyRequest.getId());
+
+            if (monthlyRequest.getVehicle() != null) {
+                responseBuilder.vehicleId(monthlyRequest.getVehicle().getVehiclesId());
+                responseBuilder.licensePlate(monthlyRequest.getVehicle().getLicensePlate());
+            }
+
+            if (monthlyRequest.getPricePolicy() != null) {
+                responseBuilder.policyId(monthlyRequest.getPricePolicy().getPricePolicyId());
+                responseBuilder.policyName(monthlyRequest.getPricePolicy().getPolicyName());
+            }
+        }
+
+        return responseBuilder
+                .message(message)
+                .build();
     }
 
     @Transactional
@@ -369,7 +406,7 @@ public class PaymentService {
         try {
             if (!vnPayService.verifySignature(params)) {
                 response.put("RspCode", "97");
-                response.put("Message", "Invalid signature");
+                response.put("Message", "Chữ ký không hợp lệ");
                 return response;
             }
 
@@ -388,7 +425,7 @@ public class PaymentService {
             Payment payment = paymentRepository.findByTransactionRefForUpdate(txnRef).orElse(null);
             if (payment == null) {
                 response.put("RspCode", "01");
-                response.put("Message", "Order not found");
+                response.put("Message", "Không tìm thấy giao dịch");
                 return response;
             }
 
@@ -396,13 +433,13 @@ public class PaymentService {
             BigDecimal receivedAmount = vnPayService.convertVnPayAmount(vnpAmountStr);
             if (expectedAmount.compareTo(receivedAmount) != 0) {
                 response.put("RspCode", "04");
-                response.put("Message", "Invalid amount");
+                response.put("Message", "Số tiền không hợp lệ");
                 return response;
             }
 
             if (payment.getPaymentStatus() == PaymentStatus.PAID || payment.getPaymentStatus() == PaymentStatus.FAILED) {
                 response.put("RspCode", "02");
-                response.put("Message", "Order already confirmed");
+                response.put("Message", "Giao dịch đã được xác nhận");
                 return response;
             }
 
@@ -426,6 +463,12 @@ public class PaymentService {
                     }
                     parkingSessionRepository.save(session);
                 }
+                
+                MonthlyTicketRequest mtr = payment.getMonthlyTicketRequest();
+                if (mtr != null && mtr.getStatus() != null && mtr.getStatus() == Parking.enums.MonthlyTicketRequestStatus.PENDING_PAYMENT) {
+                    mtr.setStatus(Parking.enums.MonthlyTicketRequestStatus.PENDING_APPROVAL); // PENDING_APPROVAL
+                    monthlyTicketRequestRepository.save(mtr);
+                }
             } else {
                 payment.setPaymentStatus(PaymentStatus.FAILED);
             }
@@ -436,7 +479,7 @@ public class PaymentService {
 
         } catch (Exception e) {
             response.put("RspCode", "99");
-            response.put("Message", "Unknown error: " + e.getMessage());
+            response.put("Message", "Lỗi không xác định: " + e.getMessage());
         }
 
         return response;
@@ -459,7 +502,7 @@ public class PaymentService {
             MonthlyTicketRequest mtr = p.getMonthlyTicketRequest();
             if (mtr != null) {
                 builder.monthlyTicketRequestId(mtr.getId())
-                       .monthlyTicketRequestStatus(mtr.getStatus());
+                       .monthlyTicketRequestStatus(mtr.getStatus() != null ? mtr.getStatus().getCode() : null);
                 if (mtr.getPricePolicy() != null) {
                     builder.policyName(mtr.getPricePolicy().getPolicyName())
                            .policyBasePrice(mtr.getPricePolicy().getBasePrice());

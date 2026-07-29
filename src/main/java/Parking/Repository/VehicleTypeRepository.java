@@ -1,7 +1,5 @@
 package Parking.Repository;
 
-import java.util.function.LongSupplier;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import Parking.Model.VehicleType;

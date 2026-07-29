@@ -59,12 +59,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                             req -> req
                 
-                // 1. Cho phép API đăng ký / đăng nhập và các file tĩnh được truy cập tự do (permitAll)
+                // Cho phép API đăng ký / đăng nhập và xem dữ liệu công cộng
                 .requestMatchers("/", "/index.html", "/favicon.ico", "/style.css", "/app.js", "/api/auth/**", "/error").permitAll()
                 
                 // 2. Cho phép xem thông tin sơ đồ đỗ xe công cộng (không cần token) nhưng chỉ được dùng hàm GET
                 .requestMatchers(org.springframework.http.HttpMethod.GET, 
-                    "/api/parking/slots", 
                     "/api/parking-branches", 
                     "/api/parking-zones/**", 
                     "/api/vehicle-types", 

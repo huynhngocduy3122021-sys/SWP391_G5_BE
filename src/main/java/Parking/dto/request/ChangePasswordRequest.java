@@ -6,10 +6,10 @@ import lombok.Setter;
 @Getter
 @Setter 
 public class ChangePasswordRequest {
-    @NotBlank(message = "You need to enter your password")
+    @NotBlank(message = "Bạn cần nhập mật khẩu hiện tại")
     private String oldPassword;
-    @NotBlank(message = "You need to enter your new password")
+    @NotBlank(message = "Bạn cần nhập mật khẩu mới")
     private String newPassword;
-    @NotBlank(message = "You need to confirm password")
+    @NotBlank(message = "Bạn cần nhập xác nhận mật khẩu")
     private String confirmPassword;
 }

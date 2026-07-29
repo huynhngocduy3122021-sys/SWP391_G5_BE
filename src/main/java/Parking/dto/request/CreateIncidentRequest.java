@@ -30,12 +30,4 @@ public class CreateIncidentRequest {
 
     private IncidentPriority priority = IncidentPriority.MEDIUM;
 
-    private List<ImageDto> images; // List các ảnh đã upload trước đó
-
-    @Getter
-    @Setter
-    public static class ImageDto {
-        private String imageUrl;
-        private String publicId;
-    }
 }

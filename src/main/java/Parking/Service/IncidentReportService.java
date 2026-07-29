@@ -12,7 +12,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -116,17 +115,7 @@ public class IncidentReportService {
         report.setCreatedAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
 
-        // 4. Lưu ảnh hiện trường đính kèm
-        if (request.getImages() != null) {
-            for (CreateIncidentRequest.ImageDto imgDto : request.getImages()) {
-                IncidentImage img = new IncidentImage();
-                img.setImageUrl(imgDto.getImageUrl());
-                img.setPublicId(imgDto.getPublicId());
-                img.setUploadedBy(reporter);
-                img.setUploadedAt(LocalDateTime.now());
-                report.addImage(img);
-            }
-        }
+        // 4. (Đã chuyển xử lý ảnh sang luồng upload riêng biệt)
 
         // 5. Lưu vết nhật ký khởi tạo (Audit Log)
         IncidentLog initialLog = new IncidentLog();

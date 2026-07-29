@@ -122,7 +122,7 @@ public class AuthController {
     @Operation(summary = "Thay đổi mật khẩu")
     public ResponseEntity<String> changePassword(@PathVariable Long id, @RequestBody ChangePasswordRequest changePasswordRequest) {
         userService.updatePassword(id, changePasswordRequest);
-        return ResponseEntity.ok("Password changed successfully");
+        return ResponseEntity.ok("Đổi mật khẩu thành công");
     }
 
     /**
@@ -143,7 +143,7 @@ public class AuthController {
     @Operation(summary = "Xóa user", description = "Chức năng chỉ có admin")
     public ResponseEntity<String> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
-        return ResponseEntity.ok("User deleted successfully");
+        return ResponseEntity.ok("Xóa người dùng thành công");
     }
 
     /**

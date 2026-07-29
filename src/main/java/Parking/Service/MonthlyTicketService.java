@@ -6,9 +6,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import Parking.Model.User;
 import Parking.Model.MonthlyTicket;
+import Parking.Model.MonthlyTicketRequest;
 import Parking.Model.ParkingCard;
+import Parking.Model.PricePolicy;
 import Parking.Model.Vehicle;
 import Parking.Repository.MonthlyTicketRepository;
+import Parking.Repository.MonthlyTicketRequestRepository;
 import Parking.Repository.ParkingCardRepository;
 import Parking.Repository.VehicleRepository;
 import Parking.dto.request.CreateMonthlyTicketRequest;
@@ -25,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 public class MonthlyTicketService {
 
     private final MonthlyTicketRepository monthlyTicketRepository;
+    private final MonthlyTicketRequestRepository monthlyTicketRequestRepository;
     private final VehicleRepository vehicleRepository;
     private final ParkingCardRepository parkingCardRepository;
     private final BranchScopeService branchScopeService;
@@ -98,7 +102,7 @@ public class MonthlyTicketService {
         monthlyTicket.setGuestPhone(request.getGuestPhone());
         monthlyTicket.setStartDate(request.getStartDate());
         monthlyTicket.setEndDate(finalEndDate);
-        monthlyTicket.setStatus(request.getStatus());
+        monthlyTicket.setStatus(request.getStatus() != null ? Parking.enums.MonthlyTicketStatus.fromCode(request.getStatus()) : null);
 
         if (isEmployeeCard) {
             parkingCard.setType(ParkingCardType.EMPLOYEE);
@@ -173,7 +177,7 @@ public class MonthlyTicketService {
 
         java.time.LocalDateTime startDate = request.getStartDate() != null ? request.getStartDate() : monthlyTicket.getStartDate();
         java.time.LocalDateTime endDate = request.getEndDate() != null ? request.getEndDate() : monthlyTicket.getEndDate();
-        Integer status = request.getStatus() != null ? request.getStatus() : monthlyTicket.getStatus();
+        Integer status = request.getStatus() != null ? request.getStatus() : (monthlyTicket.getStatus() != null ? monthlyTicket.getStatus().getCode() : null);
 
         if (isEmployeeCard) {
             User employee = vehicle.getUser();
@@ -218,7 +222,7 @@ public class MonthlyTicketService {
 
         monthlyTicket.setStartDate(startDate);
         monthlyTicket.setEndDate(endDate);
-        monthlyTicket.setStatus(status);
+        monthlyTicket.setStatus(status != null ? Parking.enums.MonthlyTicketStatus.fromCode(status) : null);
 
         if (isEmployeeCard) {
             parkingCard.setType(ParkingCardType.EMPLOYEE);
@@ -242,9 +246,31 @@ public class MonthlyTicketService {
     }
 
     private MonthlyTicketResponse convertToResponse(MonthlyTicket monthlyTicket) {
+        PricePolicy pricePolicy = monthlyTicket.getPricePolicy();
+        MonthlyTicketRequest request = monthlyTicket.getMonthlyTicketRequest();
+
+        // Tương thích dữ liệu vé cũ được cấp trước khi monthly_ticket có
+        // price_policy_id/monthly_ticket_request_id. Chỉ lấy request đã thanh
+        // toán của đúng xe, đúng chi nhánh và được tạo trước thời điểm cấp vé.
+        if (pricePolicy == null) {
+            MonthlyTicketRequest issuedRequest = request != null
+                    ? request
+                    : monthlyTicketRequestRepository.findBestIssuedRequestForTicket(
+                        monthlyTicket.getVehicle().getVehiclesId(),
+                        monthlyTicket.getParkingCard().getParkingBranch().getParkingBranchId(),
+                        monthlyTicket.getCreatedAt()
+                    ).orElse(null);
+
+            if (issuedRequest != null) {
+                request = issuedRequest;
+                pricePolicy = issuedRequest.getPricePolicy();
+            }
+        }
+
         return MonthlyTicketResponse.builder()
                 .ticketId(monthlyTicket.getTicketId())
                 .vehicleId(monthlyTicket.getVehicle().getVehiclesId())
+                .vehicleTypeId(monthlyTicket.getVehicle().getVehicleType() != null ? monthlyTicket.getVehicle().getVehicleType().getVehicleTypeId() : null)
                 .licensePlate(monthlyTicket.getVehicle().getLicensePlate())
                 .parkingCardId(monthlyTicket.getParkingCard().getParkingCardId())
                 .cardCode(monthlyTicket.getParkingCard().getCardCode())
@@ -254,8 +280,16 @@ public class MonthlyTicketService {
                 .endDate(monthlyTicket.getEndDate())
                 .parkingBranchId(monthlyTicket.getParkingCard().getParkingBranch().getParkingBranchId())
                 .parkingBranchName(monthlyTicket.getParkingCard().getParkingBranch().getBranchName())
-                .status(monthlyTicket.getStatus())
+                .status(monthlyTicket.getStatus() != null ? monthlyTicket.getStatus().getCode() : null)
                 .createdAt(monthlyTicket.getCreatedAt())
+                .pricePolicyId(pricePolicy != null ? pricePolicy.getPricePolicyId() : null)
+                .pricePolicy(pricePolicy != null ? MonthlyTicketResponse.PricePolicySummary.builder()
+                        .pricePolicyId(pricePolicy.getPricePolicyId())
+                        .policyName(pricePolicy.getPolicyName())
+                        .vehicleTypeId(pricePolicy.getVehicleType() != null ? pricePolicy.getVehicleType().getVehicleTypeId() : null)
+                        .vehicleTypeName(pricePolicy.getVehicleType() != null ? pricePolicy.getVehicleType().getTypeName() : null)
+                        .build() : null)
+                .monthlyTicketRequestId(request != null ? request.getId() : null)
                 .build();
     }
 }

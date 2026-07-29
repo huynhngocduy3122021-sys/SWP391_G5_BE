@@ -109,10 +109,7 @@ public class VnPayService {
                 "vn"
         );
 
-        params.put(
-                "vnp_ReturnUrl",
-                vnPayConfig.getReturnUrl()
-        );
+        params.put("vnp_ReturnUrl", vnPayConfig.getReturnUrl());
 
         params.put(
                 "vnp_IpAddr",
@@ -270,7 +267,7 @@ public class VnPayService {
         if (amount == null
                 || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException(
-                    "Payment amount must be greater than zero"
+                    "Số tiền thanh toán phải lớn hơn 0"
             );
         }
 
@@ -291,7 +288,7 @@ public class VnPayService {
         if (vnPayAmount == null
                 || vnPayAmount.isBlank()) {
             throw new IllegalArgumentException(
-                    "VNPAY amount is required"
+                    "Số tiền thanh toán VNPAY là bắt buộc"
             );
         }
 
@@ -307,7 +304,7 @@ public class VnPayService {
                  | NumberFormatException exception) {
 
             throw new IllegalArgumentException(
-                    "Invalid VNPAY amount: "
+                    "Số tiền thanh toán VNPAY không hợp lệ: "
                             + vnPayAmount,
                     exception
             );
@@ -348,8 +345,7 @@ public class VnPayService {
     private void validateConfiguration() {
         if (!vnPayConfig.isConfigured()) {
             throw new IllegalStateException(
-                    "VNPAY Merchant Sandbox "
-                    + "chưa được cấu hình đầy đủ"
+                    "Môi trường thử nghiệm VNPAY chưa được cấu hình đầy đủ"
             );
         }
     }
@@ -359,7 +355,7 @@ public class VnPayService {
     ) {
         if (payment == null) {
             throw new IllegalArgumentException(
-                    "Payment cannot be null"
+                    "Thông tin thanh toán không được để trống"
             );
         }
 
@@ -367,7 +363,7 @@ public class VnPayService {
                 || payment.getAmount()
                 .compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException(
-                    "Payment amount must be greater than zero"
+                    "Số tiền thanh toán phải lớn hơn 0"
             );
         }
 
@@ -375,7 +371,7 @@ public class VnPayService {
                 || payment.getTransactionRef()
                 .isBlank()) {
             throw new IllegalArgumentException(
-                    "Payment transactionRef is required"
+                    "Mã tham chiếu giao dịch thanh toán là bắt buộc"
             );
         }
 
@@ -384,7 +380,7 @@ public class VnPayService {
 
         if (!hasSession && !hasMonthlyTicket) {
             throw new IllegalArgumentException(
-                    "Payment must be linked to either a parking session or a monthly ticket request"
+                    "Thanh toán phải được liên kết với phiên gửi xe hoặc yêu cầu vé tháng"
             );
         }
 
@@ -392,8 +388,7 @@ public class VnPayService {
                 .getMonthlyTicketRequest()
                 .getId() == null) {
             throw new IllegalArgumentException(
-                    "Monthly ticket request must be saved "
-                    + "before creating VNPAY URL"
+                    "Yêu cầu vé tháng phải được lưu trước khi tạo URL thanh toán VNPAY"
             );
         }
     }

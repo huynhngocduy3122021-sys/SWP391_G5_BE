@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -38,6 +39,22 @@ public class MonthlyTicket {
     @JoinColumn(name = "parking_card_id", nullable = false)
     private ParkingCard parkingCard;
 
+    @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @JoinColumn(name = "price_policy_id")
+    private PricePolicy pricePolicy;
+
+    /**
+     * Yêu cầu đã trực tiếp phát hành vé này.
+     *
+     * Không suy ra quan hệ phát hành bằng vehicleId vì một xe có thể có nhiều
+     * lần mua/gia hạn khác nhau.
+     */
+    @OneToOne
+    @JoinColumn(name = "monthly_ticket_request_id", unique = true)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private MonthlyTicketRequest monthlyTicketRequest;
+
+
     @Column(name = "guest_name", columnDefinition = "NVARCHAR(255)")
     private String guestName; // Tên khách hàng (Nếu mua hộ hoặc vãng lai)
 
@@ -51,7 +68,8 @@ public class MonthlyTicket {
     private LocalDateTime endDate; // Ngày hết hạn vé tháng
 
     @Column(name = "status", nullable = false)
-    private Integer status; // Trạng thái vé: 1 = Đang hoạt động, 0 = Hết hạn hoặc bị khóa
+    @jakarta.persistence.Convert(converter = Parking.enums.MonthlyTicketStatusConverter.class)
+    private Parking.enums.MonthlyTicketStatus status; // 1 = Active, 0 = Expired/Locked
 
     @Column(name = "created_at", nullable = true, updatable = false)
     private LocalDateTime createdAt; // Ngày tạo vé

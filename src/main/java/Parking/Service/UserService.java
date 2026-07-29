@@ -57,11 +57,11 @@ public class UserService implements UserDetailsService  {
     public UserResponse register(UserRequest registerRequest) {
         // Kiểm tra xem email đã tồn tại hay chưa
         if (userRepository.existsByUserEmail(registerRequest.getUserEmail())) {
-            throw new AuthenticationException("Email already exists");
+            throw new AuthenticationException("Email đã tồn tại");
         }
         // Kiểm tra xem số điện thoại đã tồn tại hay chưa
         if (userRepository.existsByUserPhone(registerRequest.getUserPhone())) {
-            throw new AuthenticationException("Phone number already exists");
+            throw new AuthenticationException("Số điện thoại đã tồn tại");
         }
         // Mã hóa mật khẩu trước khi lưu vào database
         registerRequest.setUserPassword(passwordEncoder.encode(registerRequest.getUserPassword()));
@@ -83,10 +83,10 @@ public class UserService implements UserDetailsService  {
      */
     public UserResponse adminCreateUser(Parking.dto.request.AdminCreateUserRequest request) {
         if (userRepository.existsByUserEmail(request.getUserEmail())) {
-            throw new AuthenticationException("Email already exists");
+            throw new AuthenticationException("Email đã tồn tại");
         }
         if (userRepository.existsByUserPhone(request.getUserPhone())) {
-            throw new AuthenticationException("Phone number already exists");
+            throw new AuthenticationException("Số điện thoại đã tồn tại");
         }
         
         User newUser = modelMapper.map(request, User.class);
@@ -108,14 +108,14 @@ public class UserService implements UserDetailsService  {
      */
     public UserResponse createStaff(StaffCreateRequest request) {
         if (userRepository.existsByUserEmail(request.getUserEmail())) {
-            throw new AuthenticationException("Email already exists");
+            throw new AuthenticationException("Email đã tồn tại");
         }
         if (userRepository.existsByUserPhone(request.getUserPhone())) {
-            throw new AuthenticationException("Phone number already exists");
+            throw new AuthenticationException("Số điện thoại đã tồn tại");
         }
         
         ParkingBranch branch = parkingBranchRepository.findById(request.getParkingBranchId())
-                .orElseThrow(() -> new AuthenticationException("Parking branch not found"));
+                .orElseThrow(() -> new AuthenticationException("Không tìm thấy chi nhánh bãi xe"));
 
         User newStaff = new User();
         newStaff.setUserFullName(request.getUserFullName());
@@ -141,14 +141,14 @@ public class UserService implements UserDetailsService  {
      */
     public UserResponse createManager(ManagerCreateRequest request) {
         if (userRepository.existsByUserEmail(request.getUserEmail())) {
-            throw new AuthenticationException("Email already exists");
+            throw new AuthenticationException("Email đã tồn tại");
         }
         if (userRepository.existsByUserPhone(request.getUserPhone())) {
-            throw new AuthenticationException("Phone number already exists");
+            throw new AuthenticationException("Số điện thoại đã tồn tại");
         }
         
         ParkingBranch branch = parkingBranchRepository.findById(request.getParkingBranchId())
-                .orElseThrow(() -> new AuthenticationException("Parking branch not found"));
+                .orElseThrow(() -> new AuthenticationException("Không tìm thấy chi nhánh bãi xe"));
 
         User newManager = new User();
         newManager.setUserFullName(request.getUserFullName());
@@ -227,7 +227,7 @@ public class UserService implements UserDetailsService  {
             user = userRepository.findByUserPhone(identifier);
         }
         if (user == null) {
-            throw new org.springframework.security.core.userdetails.UsernameNotFoundException("User not found with identifier: " + identifier);
+            throw new org.springframework.security.core.userdetails.UsernameNotFoundException("Không tìm thấy người dùng với thông tin định danh: " + identifier);
         }
         return user;
     }
@@ -276,10 +276,10 @@ public class UserService implements UserDetailsService  {
      */
     public UserResponse getUserById(Long userId) {
         User user = userRepository.findById(userId)
-                                  .orElseThrow(() -> new AuthenticationException("User not found"));
+                                  .orElseThrow(() -> new AuthenticationException("Không tìm thấy người dùng"));
 
         if(user.isDeleted()) {
-            throw new AuthenticationException("User is deleted");
+            throw new AuthenticationException("Tài khoản người dùng đã bị xóa");
         } else {
             return convertToResponse(user);
         }
@@ -296,7 +296,7 @@ public class UserService implements UserDetailsService  {
      */
     public UserResponse updateUser(Long userId, UpdateUserRequest userRequest) { // Tìm người dùng cần cập nhật theo ID, nếu không tìm thấy thì quăng ra lỗi (RuntimeException)
         User user = userRepository.findById(userId)
-                                  .orElseThrow(() -> new AuthenticationException("User not found"));
+                                  .orElseThrow(() -> new AuthenticationException("Không tìm thấy người dùng"));
                                  
             if(userRequest.getUserFullName() != null && !userRequest.getUserFullName().isBlank()) {
                 user.setUserFullName(userRequest.getUserFullName());
@@ -329,18 +329,18 @@ public class UserService implements UserDetailsService  {
      */
     public UserResponse updatePassword(Long userId, ChangePasswordRequest changePasswordRequest) {
         User user = userRepository.findById(userId)
-                                  .orElseThrow(() -> new AuthenticationException("User not found"));
+                                  .orElseThrow(() -> new AuthenticationException("Không tìm thấy người dùng"));
         // kiểm tra mật khẩu cũ có đúng không   
         if(!passwordEncoder.matches(changePasswordRequest.getOldPassword(), user.getUserPassword())) {
-            throw new AuthenticationException("Old password is incorrect");
+            throw new AuthenticationException("Mật khẩu cũ không chính xác");
         }
         // kiểm tra mật khẩu mới có trùng với mật khẩu cũ không
         if(passwordEncoder.matches(changePasswordRequest.getNewPassword(), user.getUserPassword())) {
-            throw new AuthenticationException("New password must be different from old password");
+            throw new AuthenticationException("Mật khẩu mới phải khác mật khẩu cũ");
         }
         // kiểm tra mật khẩu mới và xác nhận mật khẩu có khớp nhau không
         if(!changePasswordRequest.getNewPassword().equals(changePasswordRequest.getConfirmPassword())) {
-            throw new AuthenticationException("New password and confirm password do not match");
+            throw new AuthenticationException("Mật khẩu mới và xác nhận mật khẩu không khớp");
         }
         // mã hóa mật khẩu mới và lưu vào database
         user.setUserPassword(passwordEncoder.encode(changePasswordRequest.getNewPassword()));
@@ -357,7 +357,7 @@ public class UserService implements UserDetailsService  {
      */
     public UserResponse deleteUser(Long userId) {
         User user = userRepository.findById(userId)
-                                  .orElseThrow(() -> new AuthenticationException("User not found"));
+                                  .orElseThrow(() -> new AuthenticationException("Không tìm thấy người dùng"));
                                 
        
          // tạm thời cho hàm này để chuyển đổi giữa tài khoảng xoá hay chưa xoá (demo)

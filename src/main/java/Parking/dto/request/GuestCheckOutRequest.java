@@ -13,11 +13,11 @@ import lombok.Setter;
 @Setter
 public class GuestCheckOutRequest {
 
-    @NotBlank(message = "Card code is required")
-    @Size(min = 3, max = 50, message = "Card code must be between 3 and 50 characters")
+    @NotBlank(message = "Mã thẻ là bắt buộc")
+    @Size(min = 3, max = 50, message = "Mã thẻ phải có từ 3 đến 50 ký tự")
     @Pattern(
             regexp = "^[A-Za-z0-9\\-_]+$",
-            message = "Card code can only contain letters, numbers, '-' or '_'"
+            message = "Mã thẻ chỉ được chứa chữ cái, chữ số, dấu '-' hoặc dấu '_'"
     )
      private String cardCode;
 

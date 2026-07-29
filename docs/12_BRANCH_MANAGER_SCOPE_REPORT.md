@@ -235,7 +235,7 @@ Trong `SecurityConfig`, chi nen public:
 
 - `/api/auth/**`
 - Swagger neu can test
-- API public that su, vi du `GET /api/parking/slots`
+- API public that su, vi du `GET /api/parking-branches` hoac `GET /api/vehicle-types`
 - VNPay callback/return/ipn neu can public
 
 Khong nen `permitAll` cac API quan ly:

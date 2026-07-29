@@ -3,6 +3,7 @@ package Parking.Controller;
 import Parking.Service.IncidentReportService;
 import Parking.dto.request.*;
 import Parking.dto.response.IncidentReportResponse;
+import Parking.dto.response.IncidentImageResponse;
 import Parking.enums.IncidentPriority;
 import Parking.enums.IncidentStatus;
 import Parking.enums.IncidentType;
@@ -18,7 +19,11 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
@@ -34,6 +39,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 public class IncidentReportController {
 
     private final IncidentReportService incidentReportService;
+    private final Parking.Service.IncidentImageService incidentImageService;
 
     /**
      * Người dùng (hoặc nhân viên) tạo một báo cáo sự cố chung.
@@ -146,5 +152,41 @@ public class IncidentReportController {
     @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<IncidentReportResponse> getReportById(@PathVariable Long id) {
         return ResponseEntity.ok(incidentReportService.getReportById(id));
+    }
+
+    @PostMapping(
+        value = "/{id}/images",
+        consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    @Operation(summary = "Upload ảnh bằng chứng cho báo cáo sự cố")
+    @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<IncidentImageResponse>> uploadIncidentImages(
+            @PathVariable Long id,
+            @RequestPart("files") List<MultipartFile> files
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(incidentImageService.uploadImages(id, files));
+    }
+
+    @GetMapping("/{id}/images")
+    @Operation(summary = "Lấy danh sách ảnh của sự cố")
+    @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<IncidentImageResponse>> getIncidentImages(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(
+                incidentImageService.getImages(id)
+        );
+    }
+
+    @DeleteMapping("/{id}/images/{imageId}")
+    @Operation(summary = "Xóa ảnh của sự cố")
+    @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<Void> deleteIncidentImage(
+            @PathVariable Long id,
+            @PathVariable Long imageId
+    ) {
+        incidentImageService.deleteImage(id, imageId);
+        return ResponseEntity.noContent().build();
     }
 }

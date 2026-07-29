@@ -18,11 +18,23 @@ import lombok.Setter;
 @Builder
 public class MonthlyTicketResponse {
 
+    @Getter
+    @Setter
+    @Builder
+    public static class PricePolicySummary {
+        private Long pricePolicyId;
+        private String policyName;
+        private Long vehicleTypeId;
+        private String vehicleTypeName;
+    }
+
     // Mã định danh duy nhất của vé tháng trong cơ sở dữ liệu
     private Long ticketId;
 
     // Mã định danh của xe được đăng ký tương ứng với vé này
     private Long vehicleId;
+
+    private Long vehicleTypeId;
 
     // Biển số xe của chiếc xe đã đăng ký vé
     private String licensePlate;
@@ -50,6 +62,12 @@ public class MonthlyTicketResponse {
 
     // Tên của chi nhánh bãi đỗ xe
     private String parkingBranchName;
+
+    private Long pricePolicyId;
+
+    private PricePolicySummary pricePolicy;
+
+    private Long monthlyTicketRequestId;
 
     private Integer status; // 1 = Active, 0 = Expired/Locked
 

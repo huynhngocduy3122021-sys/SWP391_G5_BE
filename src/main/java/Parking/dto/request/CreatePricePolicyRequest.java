@@ -12,25 +12,25 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CreatePricePolicyRequest {
-    @NotBlank(message = "Policy name is required")
-    @Size(max = 255, message = "Policy name must not exceed 255 characters")
+    @NotBlank(message = "Tên chính sách giá là bắt buộc")
+    @Size(max = 255, message = "Tên chính sách giá không được vượt quá 255 ký tự")
     private String policyName;
 
-    @NotNull(message = "Base price is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Base price must be greater than 0")
+    @NotNull(message = "Giá cơ bản là bắt buộc")
+    @DecimalMin(value = "0.0", inclusive = false, message = "Giá cơ bản phải lớn hơn 0")
     private BigDecimal basePrice;
 
-    @NotNull(message = "Base duration minutes is required")
-    @Positive(message = "Base duration minutes must be greater than 0")
+    @NotNull(message = "Thời lượng cơ bản là bắt buộc")
+    @Positive(message = "Thời lượng cơ bản phải lớn hơn 0 phút")
     private Integer baseDurationMinutes;
 
-    @NotNull(message = "Extra hour price is required")
-    @DecimalMin(value = "0.0", inclusive = true, message = "Extra hour price must be greater than or equal to 0")
+    @NotNull(message = "Giá mỗi giờ phát sinh là bắt buộc")
+    @DecimalMin(value = "0.0", inclusive = true, message = "Giá mỗi giờ phát sinh phải lớn hơn hoặc bằng 0")
     private BigDecimal extraHourPrice;
 
     private Integer extraDurationMinutes = 60;
 
-    @NotNull(message = "Vehicle type id is required")
-    @Positive(message = "Vehicle type id must be greater than 0")
+    @NotNull(message = "ID loại phương tiện là bắt buộc")
+    @Positive(message = "ID loại phương tiện phải lớn hơn 0")
     private Long vehicleTypeId;
 }

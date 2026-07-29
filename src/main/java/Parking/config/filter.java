@@ -59,7 +59,6 @@ public class filter extends OncePerRequestFilter {
 
     // Danh sách các API lấy dữ liệu công khai (Chỉ hỗ trợ phương thức GET)
     private final List<String> PUBLIC_GET_ENDPOINTS = List.of(
-                "/api/parking/slots", // Xem số lượng chỗ trống
                 "/api/parking-branches", // Xem danh sách chi nhánh
                 "/api/parking-zones/**", // Xem khu vực
                 "/api/vehicle-types", // Xem loại xe
@@ -119,7 +118,7 @@ public class filter extends OncePerRequestFilter {
             String token = getToken(request);
             if(token == null) {
                 // Không có token -> Báo lỗi 401
-                resolver.resolveException(request , response , null , new AuthenticationException("Empty token!"));
+                resolver.resolveException(request , response , null , new AuthenticationException("Token không được để trống!"));
                 return;
             }
             
@@ -129,7 +128,7 @@ public class filter extends OncePerRequestFilter {
                 // Giải mã Token để lấy ra thông tin người dùng
                 member = tokenService.extractToken(token);
                 if (member == null) {
-                    resolver.resolveException(request , response , null , new AuthenticationException("User not found!"));
+                    resolver.resolveException(request , response , null , new AuthenticationException("Không tìm thấy người dùng!"));
                     return;
                 }
                 
@@ -140,14 +139,14 @@ public class filter extends OncePerRequestFilter {
                 }
             } catch (ExpiredJwtException expiredJwtException) {
                 // Lỗi 1: Token đã hết hạn thời gian sử dụng
-                resolver.resolveException(request , response , null , new AuthenticationException("Expired token!"));
+                resolver.resolveException(request , response , null , new AuthenticationException("Token đã hết hạn!"));
                 return;
             } catch (MalformedJwtException malformedJwtException) {
                 // Lỗi 2: Token bị sai định dạng (có thể do hacker sửa đổi)
-                resolver.resolveException(request, response, null, new AuthenticationException("Invalid token!"));
+                resolver.resolveException(request, response, null, new AuthenticationException("Token không hợp lệ!"));
                 return;
             } catch (Exception exception) {
-                resolver.resolveException(request, response, null, new AuthenticationException("Authentication failed: " + exception.getMessage()));
+                resolver.resolveException(request, response, null, new AuthenticationException("Xác thực thất bại: " + exception.getMessage()));
                 return;
             }
             

@@ -28,7 +28,7 @@ public class MonthlyTicketRequest {
     // Ai là người nộp đơn?
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"password", "roles", "staffList", "tokens", "vehicles", "bookings"})
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"userPassword", "password", "roles", "staffList", "tokens", "vehicles", "bookings", "authorities", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "username"})
     private User user;
 
     // Đăng ký gói giá nào? (Ví dụ: Gói xe máy 1 tháng 150k)
@@ -43,7 +43,8 @@ public class MonthlyTicketRequest {
     private ParkingBranch parkingBranch;
 
     @Column(nullable = false)
-    private Integer status; // Trạng thái đơn: 0 = Đang chờ duyệt (Pending), 1 = Đã duyệt (Approved), 2 = Bị từ chối (Rejected)
+    @jakarta.persistence.Convert(converter = Parking.enums.MonthlyTicketRequestStatusConverter.class)
+    private Parking.enums.MonthlyTicketRequestStatus status; // 0 = PENDING_PAYMENT, 1 = PENDING_APPROVAL, 2 = APPROVED, -1 = REJECTED, -2 = EXPIRED
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -51,4 +52,9 @@ public class MonthlyTicketRequest {
     @OneToOne(mappedBy = "monthlyTicketRequest", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @com.fasterxml.jackson.annotation.JsonIgnoreProperties("monthlyTicketRequest")
     private Payment payment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "renewal_of_ticket_id")
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"vehicle", "parkingCard"})
+    private MonthlyTicket renewalOfTicket;
 }

@@ -9,17 +9,17 @@ import lombok.Setter;
 @Setter
 public class CreateParkingBranchRequest {
 
-    @NotBlank(message = "Branch name is required")
-    @Size(max = 255, message = "Branch name must not exceed 255 characters")
+    @NotBlank(message = "Tên chi nhánh là bắt buộc")
+    @Size(max = 255, message = "Tên chi nhánh không được vượt quá 255 ký tự")
     private String branchName;
 
-    @NotBlank(message = "Address is required")
-    @Size(max = 500, message = "Address must not exceed 500 characters")
+    @NotBlank(message = "Địa chỉ là bắt buộc")
+    @Size(max = 500, message = "Địa chỉ không được vượt quá 500 ký tự")
     private String address;
 
-    @Size(max = 20, message = "Phone number must not exceed 20 characters")
+    @Size(max = 20, message = "Số điện thoại không được vượt quá 20 ký tự")
     private String phoneNumber;
 
-    @Size(max = 500, message = "Description must not exceed 500 characters")
+    @Size(max = 500, message = "Mô tả không được vượt quá 500 ký tự")
     private String description;
 }

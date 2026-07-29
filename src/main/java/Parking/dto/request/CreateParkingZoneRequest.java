@@ -11,17 +11,17 @@ import lombok.Setter;
 @Setter
 
 public class CreateParkingZoneRequest {
-    @NotBlank(message = "Zone name is required")
+    @NotBlank(message = "Tên khu vực đỗ xe là bắt buộc")
     @Size(max = 100)
     private String zoneName;
 
-    @NotNull(message = "Capacity is required")
-    @Positive(message = "Capacity must be greater than 0")
+    @NotNull(message = "Sức chứa là bắt buộc")
+    @Positive(message = "Sức chứa phải lớn hơn 0")
     private Integer capacity;
 
-    @NotNull(message = "Parking floor id is required")
+    @NotNull(message = "ID tầng đỗ xe là bắt buộc")
     private Long parkingFloorId;
 
-    @NotNull(message = "Vehicle type id is required")
+    @NotNull(message = "ID loại phương tiện là bắt buộc")
     private Long vehicleTypeId;
 }

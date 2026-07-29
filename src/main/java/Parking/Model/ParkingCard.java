@@ -1,6 +1,5 @@
 package Parking.Model;
 
-import org.hibernate.annotations.ManyToAny;
 
 import Parking.enums.ParkingCardStatus;
 import Parking.enums.ParkingCardType;

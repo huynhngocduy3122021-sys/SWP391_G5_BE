@@ -1,11 +1,8 @@
 package Parking.Controller;
 
 import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -18,13 +15,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import Parking.Service.PaymentService;
 import Parking.dto.response.VnpayReturnResponse;
+import Parking.web.PaymentRedirectUrlBuilder;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 
 @RestController
 @SecurityRequirement(name = "api_key")
@@ -34,9 +27,7 @@ import java.nio.charset.StandardCharsets;
 public class PaymentController {
 
     private final PaymentService paymentService;
-
-    @Value("${app.frontend.url:http://localhost:5173}")
-    private String frontendUrl;
+    private final PaymentRedirectUrlBuilder paymentRedirectUrlBuilder;
 
     @GetMapping("/vnpay-return")
     @Operation(summary = "VnPay Redirect Return URL Callback")
@@ -46,7 +37,6 @@ public class PaymentController {
     ) {
         VnpayReturnResponse response = paymentService.handleVnPayCallback(params);
         
-        // Phân biệt request từ Axios (frontend API call) và request từ Trình duyệt (redirect)
         boolean isAjax = acceptHeader.contains("application/json") || 
                          acceptHeader.contains("application/javascript") ||
                          (acceptHeader.contains("*/*") && !acceptHeader.contains("text/html"));
@@ -54,59 +44,10 @@ public class PaymentController {
         if (isAjax) {
             return ResponseEntity.ok(response);
         }
-
-        // Xác định trang đích dựa trên loại thanh toán
-        // PARKING_SESSION: redirect về trang Staff Exit (truyền raw VNPay params để FE Staff tự xử lý)
-        // MONTHLY_TICKET: redirect về trang User Dashboard
-        String targetPath;
-        String queryString;
         
-        if ("PARKING_SESSION".equals(response.getPaymentType())) {
-            // Staff checkout: redirect về /staff/exit kèm raw VNPay params để GateOutPanel xử lý
-            targetPath = "/staff/exit";
-            StringBuilder sb = new StringBuilder();
-            for (Map.Entry<String, String> entry : params.entrySet()) {
-                if (sb.length() > 0) sb.append("&");
-                sb.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8))
-                  .append("=")
-                  .append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
-            }
-            queryString = sb.toString();
-        } else {
-            // Monthly ticket payment: redirect về /user-dashboard kèm thông tin kết quả
-            targetPath = "/user-dashboard";
-            
-            String extraParams = "";
-            if (response.getLicensePlate() != null) {
-                extraParams += "&licensePlate=" + URLEncoder.encode(response.getLicensePlate(), StandardCharsets.UTF_8);
-            }
-            if (response.getVehicleId() != null) {
-                extraParams += "&vehicleId=" + response.getVehicleId();
-            }
-            if (response.getPolicyName() != null) {
-                extraParams += "&policyName=" + URLEncoder.encode(response.getPolicyName(), StandardCharsets.UTF_8);
-            }
-            if (response.getPolicyId() != null) {
-                extraParams += "&policyId=" + response.getPolicyId();
-            }
-
-            queryString = "success=" + response.isSuccess()
-                    + (response.getPaymentType() != null ? "&paymentType=" + response.getPaymentType() : "")
-                    + (response.getTransactionRef() != null ? "&transactionRef=" + response.getTransactionRef() : "")
-                    + (response.getRequestId() != null ? "&requestId=" + response.getRequestId() : "")
-                    + "&message=" + URLEncoder.encode(response.getMessage() != null ? response.getMessage() : "", StandardCharsets.UTF_8)
-                    + extraParams;
-        }
-        
-        // Chuẩn hóa frontendUrl để tránh dấu / kép
-        String normalizedFrontendUrl = frontendUrl.endsWith("/")
-                ? frontendUrl.substring(0, frontendUrl.length() - 1)
-                : frontendUrl;
-        
-        String redirectUrl = normalizedFrontendUrl + targetPath + "?" + queryString;
+        URI redirectUri = paymentRedirectUrlBuilder.buildRedirectUri(response);
                 
-        // Trả về HTTP 302 Redirect để trình duyệt tự động chuyển hướng về trang frontend
-        return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(redirectUrl)).build();
+        return ResponseEntity.status(HttpStatus.FOUND).location(redirectUri).build();
     }
 
     @GetMapping("/vnpay-ipn")

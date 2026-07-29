@@ -9,22 +9,22 @@ import lombok.Setter;
 @Setter
 public class CreateMonthlyTicketRequest {
 
-    @NotNull(message = "Vehicle ID is required")
+    @NotNull(message = "ID phương tiện là bắt buộc")
     private Long vehicleId;
 
-    @NotNull(message = "Parking Card ID is required")
+    @NotNull(message = "ID thẻ giữ xe là bắt buộc")
     private Long parkingCardId;
 
     private String guestName;
 
     private String guestPhone;
 
-    @NotNull(message = "Start date is required")
+    @NotNull(message = "Ngày bắt đầu là bắt buộc")
     private LocalDateTime startDate;
 
-    @NotNull(message = "End date is required")
+    @NotNull(message = "Ngày kết thúc là bắt buộc")
     private LocalDateTime endDate;
 
-    @NotNull(message = "Status is required")
+    @NotNull(message = "Trạng thái là bắt buộc")
     private Integer status; // 1 = Active, 0 = Expired/Locked
 }
