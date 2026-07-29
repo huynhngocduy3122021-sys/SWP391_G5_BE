@@ -96,6 +96,14 @@ public class BookingService {
             throw new BookingException("Phương tiện này đã được đăng ký bởi người dùng khác.");
         }
 
+        // Không tin cậy vehicleTypeId từ request khi biển số đã tồn tại. Nếu không
+        // đối chiếu, xe máy có thể gửi vehicleTypeId của ô tô để vượt qua Rule 2.1.
+        if (vehicle.getVehicleType() == null
+                || !vehicle.getVehicleType().getVehicleTypeId().equals(vehicleType.getVehicleTypeId())) {
+            throw new BookingException(
+                    "Loại phương tiện không khớp với thông tin xe đã đăng ký. Vui lòng chọn đúng loại phương tiện.");
+        }
+
         // Cập nhật thông tin màu xe / hiệu xe nếu chưa có
         boolean needsUpdate = false;
         if ((vehicle.getVehicleColor() == null || vehicle.getVehicleColor().isBlank())
