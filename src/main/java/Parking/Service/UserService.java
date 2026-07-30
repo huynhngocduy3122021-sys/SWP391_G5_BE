@@ -28,13 +28,9 @@ import Parking.Model.ParkingBranch;
 import Parking.dto.request.StaffCreateRequest;
 import Parking.dto.request.ManagerCreateRequest;
 import Parking.enums.UserRole;
-import Parking.dto.request.VerifyOtpRequest;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.Map;
 
 @Service
 public class UserService implements UserDetailsService  {
-    private final Map<String, String> otpCache = new ConcurrentHashMap<>();
     @Autowired
     private  UserRepository userRepository; // gọi repository để thao tác với database
     @Autowired
@@ -196,22 +192,12 @@ public class UserService implements UserDetailsService  {
 
             User user = (User) authentication.getPrincipal();
 
-            // Tạo mã OTP ngẫu nhiên 6 chữ số
-            String randomOtp = String.format("%06d", new java.util.Random().nextInt(999999));
-            
-            // Lưu OTP vào bộ nhớ tạm
-            otpCache.put(loginRequest.getIdentifier(), randomOtp);
-            
-            // In ra Console để dễ dàng lấy mã test (Vì chưa gắn chức năng gửi Email)
-            System.out.println("=================================================");
-            System.out.println("🔔 MÃ OTP CỦA TÀI KHOẢN " + loginRequest.getIdentifier() + " LÀ: " + randomOtp);
-            System.out.println("=================================================");
+            UserResponse userResponse = convertToResponse(user);
 
-            // Thay vì trả về token ngay, ta chỉ trả về thông tin cơ bản
-            UserResponse userResponse = new UserResponse();
-            userResponse.setUserEmail(user.getUserEmail());
-            userResponse.setUserPhone(user.getUserPhone());
-            return userResponse; // Token = null -> Yêu cầu OTP
+            String token = tokenService.generateToken(user);
+            userResponse.setToken(token);
+
+            return userResponse;
 
         } catch (LockedException e) {
             throw new AuthenticationException("Tài khoản của bạn đã bị đình chỉ do vi phạm quy định đặt giữ chỗ quá 3 lần.");
@@ -413,33 +399,6 @@ public class UserService implements UserDetailsService  {
         user.setUserPassword(passwordEncoder.encode(resetPasswordRequest.getNewPassword()));
         User updatedUser = userRepository.save(user);
         return convertToResponse(updatedUser);
-    }
-
-    /**
-     * Xác thực mã OTP và cấp JWT Token
-     */
-    public UserResponse verifyOtp(VerifyOtpRequest request) {
-        String identifier = request.getIdentifier();
-        String otp = request.getOtp();
-        
-        String cachedOtp = otpCache.get(identifier);
-        if (cachedOtp != null && cachedOtp.equals(otp)) {
-            otpCache.remove(identifier);
-            // Lấy thông tin user và tạo token
-            User user = userRepository.findByUserEmail(identifier);
-            if (user == null) {
-                user = userRepository.findByUserPhone(identifier);
-            }
-            if (user == null) {
-                throw new AuthenticationException("Không tìm thấy người dùng");
-            }
-            UserResponse userResponse = convertToResponse(user);
-            String token = tokenService.generateToken(user);
-            userResponse.setToken(token);
-            return userResponse;
-        } else {
-            throw new AuthenticationException("Mã OTP không chính xác hoặc đã hết hạn");
-        }
     }
 
 }
