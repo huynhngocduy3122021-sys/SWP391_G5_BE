@@ -20,8 +20,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
+import java.util.ArrayList;
 import java.time.LocalDateTime;
 import java.util.List;
 import Parking.Service.IncidentImageService;
@@ -163,8 +165,11 @@ public class IncidentReportController {
     @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<IncidentImageResponse>> uploadIncidentImages(
             @PathVariable Long id,
-            @RequestPart("files") List<MultipartFile> files
+            MultipartHttpServletRequest request
     ) {
+        List<MultipartFile> files = new ArrayList<>();
+        request.getMultiFileMap().values().forEach(files::addAll);
+
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(incidentImageService.uploadImages(id, files));
     }

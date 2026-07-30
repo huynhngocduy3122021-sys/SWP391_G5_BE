@@ -27,19 +27,13 @@ public class VnPayService {
     public boolean isAvailable() {
         return vnPayConfig.isConfigured();
     }
-    // ta URL thanh toans VNpay
-     public String createPaymentUrl(
-            Payment payment,
-            String clientIp
-    ) {
+    // tao URL thanh toan VNPay
+    public String createPaymentUrl(Payment payment, String clientIp) {
         validateConfiguration();
         validatePayment(payment);
 
-        LocalDateTime createdAt =
-                LocalDateTime.now(VIETNAM_ZONE);
-
-        LocalDateTime expiresAt =
-                payment.getPaymentExpiresAt();
+        LocalDateTime createdAt = LocalDateTime.now(VIETNAM_ZONE);
+        LocalDateTime expiresAt = payment.getPaymentExpiresAt();
 
         /*
          * Nếu PaymentService chưa đặt thời gian hết hạn
@@ -50,23 +44,11 @@ public class VnPayService {
             payment.setPaymentExpiresAt(expiresAt);
         }
 
-        Map<String, String> params =
-                new HashMap<>();
+        Map<String, String> params = new HashMap<>();
 
-        params.put(
-                "vnp_Version",
-                "2.1.0"
-        );
-
-        params.put(
-                "vnp_Command",
-                "pay"
-        );
-
-        params.put(
-                "vnp_TmnCode",
-                vnPayConfig.getTmnCode()
-        );
+        params.put("vnp_Version", "2.1.0");
+        params.put("vnp_Command", "pay");
+        params.put("vnp_TmnCode", vnPayConfig.getTmnCode());
 
         /*
          * VNPAY yêu cầu amount nhân 100.
@@ -74,20 +56,9 @@ public class VnPayService {
          * Ví dụ:
          * 10.000 VND → 1.000.000
          */
-        params.put(
-                "vnp_Amount",
-                convertAmount(payment.getAmount())
-        );
-
-        params.put(
-                "vnp_CurrCode",
-                "VND"
-        );
-
-        params.put(
-                "vnp_TxnRef",
-                payment.getTransactionRef()
-        );
+        params.put("vnp_Amount", convertAmount(payment.getAmount()));
+        params.put("vnp_CurrCode", "VND");
+        params.put("vnp_TxnRef", payment.getTransactionRef());
 
         /*
          * Nên dùng tiếng Việt không dấu,
@@ -99,32 +70,12 @@ public class VnPayService {
 
         params.put("vnp_OrderInfo", orderInfo);
 
-        params.put(
-                "vnp_OrderType",
-                "other"
-        );
-
-        params.put(
-                "vnp_Locale",
-                "vn"
-        );
-
+        params.put("vnp_OrderType", "other");
+        params.put("vnp_Locale", "vn");
         params.put("vnp_ReturnUrl", vnPayConfig.getReturnUrl());
-
-        params.put(
-                "vnp_IpAddr",
-                normalizeIpAddress(clientIp)
-        );
-
-        params.put(
-                "vnp_CreateDate",
-                createdAt.format(VNPAY_DATE_FORMAT)
-        );
-
-        params.put(
-                "vnp_ExpireDate",
-                expiresAt.format(VNPAY_DATE_FORMAT)
-        );
+        params.put("vnp_IpAddr", normalizeIpAddress(clientIp));
+        params.put("vnp_CreateDate", createdAt.format(VNPAY_DATE_FORMAT));
+        params.put("vnp_ExpireDate", expiresAt.format(VNPAY_DATE_FORMAT));
 
         /*
          * Không thêm vnp_BankCode.
@@ -140,17 +91,12 @@ public class VnPayService {
          * 2. URL encode key và value.
          * 3. Ghép thành query string.
          */
-        String queryString =
-                VnPayUtil.buildQueryString(params);
+        String queryString = VnPayUtil.buildQueryString(params);
 
         /*
          * Ký toàn bộ query string bằng HashSecret.
          */
-        String secureHash =
-                VnPayUtil.hmacSHA512(
-                        vnPayConfig.getHashSecret(),
-                        queryString
-                );
+        String secureHash = VnPayUtil.hmacSHA512(vnPayConfig.getHashSecret(), queryString);
 
         return vnPayConfig.getPayUrl()
                 + "?"
@@ -162,23 +108,18 @@ public class VnPayService {
     /**
      * Kiểm tra chữ ký Return URL hoặc IPN.
      */
-    public boolean verifySignature(
-            Map<String, String> originalParams
-    ) {
+    public boolean verifySignature(Map<String, String> originalParams) {
         if (!vnPayConfig.isConfigured()) {
             return false;
         }
 
-        if (originalParams == null
-                || originalParams.isEmpty()) {
+        if (originalParams == null || originalParams.isEmpty()) {
             return false;
         }
 
-        String receivedSecureHash =
-                originalParams.get("vnp_SecureHash");
+        String receivedSecureHash = originalParams.get("vnp_SecureHash");
 
-        if (receivedSecureHash == null
-                || receivedSecureHash.isBlank()) {
+        if (receivedSecureHash == null || receivedSecureHash.isBlank()) {
             return false;
         }
 
@@ -186,17 +127,14 @@ public class VnPayService {
          * Tạo bản sao để không làm thay đổi
          * Map nhận từ Controller.
          */
-        Map<String, String> paramsToVerify =
-                new HashMap<>();
+        Map<String, String> paramsToVerify = new HashMap<>();
 
-        for (Map.Entry<String, String> entry
-                : originalParams.entrySet()) {
+        for (Map.Entry<String, String> entry : originalParams.entrySet()) {
 
             String key = entry.getKey();
             String value = entry.getValue();
 
-            if (key == null
-                    || !key.startsWith("vnp_")) {
+            if (key == null || !key.startsWith("vnp_")) {
                 continue;
             }
 
@@ -204,8 +142,7 @@ public class VnPayService {
              * Hai trường này không tham gia
              * vào dữ liệu dùng để kiểm tra checksum.
              */
-            if ("vnp_SecureHash".equals(key)
-                    || "vnp_SecureHashType".equals(key)) {
+            if ("vnp_SecureHash".equals(key) || "vnp_SecureHashType".equals(key)) {
                 continue;
             }
 
@@ -216,44 +153,27 @@ public class VnPayService {
             paramsToVerify.put(key, value);
         }
 
-        String hashData =
-                VnPayUtil.buildQueryString(
-                        paramsToVerify
-                );
+        String hashData = VnPayUtil.buildQueryString(paramsToVerify);
+        String expectedSecureHash = VnPayUtil.hmacSHA512(vnPayConfig.getHashSecret(), hashData);
 
-        String expectedSecureHash =
-                VnPayUtil.hmacSHA512(
-                        vnPayConfig.getHashSecret(),
-                        hashData
-                );
-
-        return VnPayUtil.secureHashEquals(
-                expectedSecureHash,
-                receivedSecureHash
-        );
+        return VnPayUtil.secureHashEquals(expectedSecureHash, receivedSecureHash);
     }
 
     /**
      * Kiểm tra callback có đúng Merchant của mình không.
      */
-    public boolean isCorrectTmnCode(
-            Map<String, String> params
-    ) {
-        if (!vnPayConfig.isConfigured()
-                || params == null) {
+    public boolean isCorrectTmnCode(Map<String, String> params) {
+        if (!vnPayConfig.isConfigured() || params == null) {
             return false;
         }
 
-        String receivedTmnCode =
-                params.get("vnp_TmnCode");
+        String receivedTmnCode = params.get("vnp_TmnCode");
 
         if (receivedTmnCode == null) {
             return false;
         }
 
-        return vnPayConfig
-                .getTmnCode()
-                .equals(receivedTmnCode);
+        return vnPayConfig.getTmnCode().equals(receivedTmnCode);
     }
 
     /**
@@ -261,14 +181,9 @@ public class VnPayService {
      *
      * 10.000 → 1.000.000
      */
-    public String convertAmount(
-            BigDecimal amount
-    ) {
-        if (amount == null
-                || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException(
-                    "Số tiền thanh toán phải lớn hơn 0"
-            );
+    public String convertAmount(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Số tiền thanh toán phải lớn hơn 0");
         }
 
         return amount
@@ -282,31 +197,17 @@ public class VnPayService {
      *
      * 1.000.000 → 10.000
      */
-    public BigDecimal convertVnPayAmount(
-            String vnPayAmount
-    ) {
-        if (vnPayAmount == null
-                || vnPayAmount.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Số tiền thanh toán VNPAY là bắt buộc"
-            );
+    public BigDecimal convertVnPayAmount(String vnPayAmount) {
+        if (vnPayAmount == null || vnPayAmount.isBlank()) {
+            throw new IllegalArgumentException("Số tiền thanh toán VNPAY là bắt buộc");
         }
 
         try {
             return new BigDecimal(vnPayAmount)
-                    .divide(
-                            BigDecimal.valueOf(100),
-                            0,
-                            RoundingMode.UNNECESSARY
-                    );
-
-        } catch (ArithmeticException
-                 | NumberFormatException exception) {
-
+                    .divide(BigDecimal.valueOf(100), 0, RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException | NumberFormatException exception) {
             throw new IllegalArgumentException(
-                    "Số tiền thanh toán VNPAY không hợp lệ: "
-                            + vnPayAmount,
-                    exception
+                    "Số tiền thanh toán VNPAY không hợp lệ: " + vnPayAmount, exception
             );
         }
     }
@@ -315,14 +216,10 @@ public class VnPayService {
      * Khi chạy local, request có thể trả IPv6 localhost.
      * VNPAY cần một địa chỉ IP hợp lệ.
      */
-    private String normalizeIpAddress(
-            String clientIp
-    ) {
-        if (clientIp == null
-                || clientIp.isBlank()
+    private String normalizeIpAddress(String clientIp) {
+        if (clientIp == null || clientIp.isBlank()
                 || "::1".equals(clientIp)
-                || "0:0:0:0:0:0:0:1"
-                    .equals(clientIp)) {
+                || "0:0:0:0:0:0:0:1".equals(clientIp)) {
             return "127.0.0.1";
         }
 
@@ -334,9 +231,7 @@ public class VnPayService {
          * Chỉ lấy IP đầu tiên.
          */
         if (clientIp.contains(",")) {
-            return clientIp
-                    .split(",")[0]
-                    .trim();
+            return clientIp.split(",")[0].trim();
         }
 
         return clientIp.trim();
@@ -344,52 +239,33 @@ public class VnPayService {
 
     private void validateConfiguration() {
         if (!vnPayConfig.isConfigured()) {
-            throw new IllegalStateException(
-                    "Môi trường thử nghiệm VNPAY chưa được cấu hình đầy đủ"
-            );
+            throw new IllegalStateException("Môi trường thử nghiệm VNPAY chưa được cấu hình đầy đủ");
         }
     }
 
-    private void validatePayment(
-            Payment payment
-    ) {
+    private void validatePayment(Payment payment) {
         if (payment == null) {
-            throw new IllegalArgumentException(
-                    "Thông tin thanh toán không được để trống"
-            );
+            throw new IllegalArgumentException("Thông tin thanh toán không được để trống");
         }
 
-        if (payment.getAmount() == null
-                || payment.getAmount()
-                .compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException(
-                    "Số tiền thanh toán phải lớn hơn 0"
-            );
+        if (payment.getAmount() == null || payment.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Số tiền thanh toán phải lớn hơn 0");
         }
 
-        if (payment.getTransactionRef() == null
-                || payment.getTransactionRef()
-                .isBlank()) {
-            throw new IllegalArgumentException(
-                    "Mã tham chiếu giao dịch thanh toán là bắt buộc"
-            );
+        if (payment.getTransactionRef() == null || payment.getTransactionRef().isBlank()) {
+            throw new IllegalArgumentException("Mã tham chiếu giao dịch thanh toán là bắt buộc");
         }
 
         boolean hasSession = payment.getParkingSession() != null && payment.getParkingSession().getParkingSessionId() != null;
         boolean hasMonthlyTicket = payment.getMonthlyTicketRequest() != null;
 
         if (!hasSession && !hasMonthlyTicket) {
-            throw new IllegalArgumentException(
-                    "Thanh toán phải được liên kết với phiên gửi xe hoặc yêu cầu vé tháng"
-            );
+            throw new IllegalArgumentException("Thanh toán phải được liên kết với phiên gửi xe hoặc yêu cầu vé tháng");
         }
 
-        if (payment.getMonthlyTicketRequest() != null && payment
-                .getMonthlyTicketRequest()
-                .getId() == null) {
-            throw new IllegalArgumentException(
-                    "Yêu cầu vé tháng phải được lưu trước khi tạo URL thanh toán VNPAY"
-            );
+        if (payment.getMonthlyTicketRequest() != null
+                && payment.getMonthlyTicketRequest().getId() == null) {
+            throw new IllegalArgumentException("Yêu cầu vé tháng phải được lưu trước khi tạo URL thanh toán VNPAY");
         }
     }
 }
