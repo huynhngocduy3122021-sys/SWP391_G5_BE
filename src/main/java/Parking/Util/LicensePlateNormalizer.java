@@ -1,6 +1,5 @@
 package Parking.Util;
 
-import java.util.Locale;
 
 public class LicensePlateNormalizer {
     public static String normalize(String value) {
@@ -9,6 +8,6 @@ public class LicensePlateNormalizer {
         }
         return value.trim()
                 .replaceAll("\\s+", "")
-                .toUpperCase(Locale.ROOT);
+                .toUpperCase();
     }
 }
