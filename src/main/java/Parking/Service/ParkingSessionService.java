@@ -10,7 +10,6 @@ import Parking.Repository.ParkingBranchRepository;
 import Parking.Repository.ParkingCardRepository;
 import Parking.Repository.ParkingSessionRepository;
 import Parking.Repository.ParkingZoneRepository;
-import Parking.Repository.PaymentRepository;
 import Parking.Repository.PricePolicyRepository;
 import Parking.Repository.VehicleRepository;
 import Parking.Repository.VehicleTypeRepository;
@@ -26,7 +25,6 @@ import Parking.dto.response.ParkingSessionResponse;
 import Parking.enums.ParkingCardStatus;
 import Parking.enums.ParkingSessionStatus;
 import Parking.enums.BookingStatus;
-import Parking.enums.PaymentStatus;
 import Parking.enums.VehicleSource;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -73,7 +71,6 @@ public class ParkingSessionService {
 
     private final PricePolicyRepository pricePolicyRepository;
     
-    private final PaymentRepository paymentRepository;
 
     private final PaymentService paymentService;
     private final BranchScopeService branchScopeService;
@@ -190,10 +187,10 @@ public class ParkingSessionService {
 
             parkingSession =parkingSessionRepository.save(parkingSession);
 
-            // b9.5 : check and link active booking
+            // b9.5 : check and link active booking luồng này chủ yếu sử lí trường hợp user đến mà không cung cấp code booking
             List<Booking> bookings = bookingRepository.findByVehicleLicensePlateIgnoreCaseAndStatus(licesePlate, BookingStatus.CONFIRMED);
             for (Booking b : bookings) {
-                if (!currentTime.isBefore(b.getExpectedArrivalTime().minusMinutes(15)) && !currentTime.isAfter(b.getHoldUntil())) {
+                if (!currentTime.isBefore(b.getExpectedArrivalTime().minusMinutes(60)) && !currentTime.isAfter(b.getHoldUntil())) {
                     b.setStatus(BookingStatus.COMPLETED);
                     b.setParkingSession(parkingSession);
                     b.setCompletedAt(currentTime);

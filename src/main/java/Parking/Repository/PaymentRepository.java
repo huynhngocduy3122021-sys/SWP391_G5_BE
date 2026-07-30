@@ -21,9 +21,9 @@ public interface PaymentRepository extends JpaRepository<Payment , Long> {
     );
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-                    SELECT payment
-                        FROM Payment payment
-                        WHERE payment.transactionRef = :transactionRef
-                    """)
+                SELECT payment
+                FROM Payment payment
+                WHERE payment.transactionRef = :transactionRef
+                 """)
         Optional<Payment> findByTransactionRefForUpdate(@Param("transactionRef")String transactionRef);
 } 
