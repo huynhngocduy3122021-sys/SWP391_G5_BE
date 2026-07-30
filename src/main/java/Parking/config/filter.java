@@ -45,6 +45,7 @@ public class filter extends OncePerRequestFilter {
                 "/style.css",
                 "/app.js",
                 "/api/auth/register", // Ai cũng đăng ký được
+                "/api/auth/verify-register-otp", // Xác thực OTP không cần token
                 "/api/auth/login", // Chưa đăng nhập thì mới cần gọi login
                 "/error",
                 "/swagger-ui/**",

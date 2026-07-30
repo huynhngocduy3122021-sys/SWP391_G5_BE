@@ -28,9 +28,14 @@ import Parking.Model.ParkingBranch;
 import Parking.dto.request.StaffCreateRequest;
 import Parking.dto.request.ManagerCreateRequest;
 import Parking.enums.UserRole;
+import Parking.dto.request.VerifyOtpRequest;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 @Service
 public class UserService implements UserDetailsService  {
+    private final Map<String, String> otpCache = new ConcurrentHashMap<>();
+    private final Map<String, UserRequest> pendingRegistrations = new ConcurrentHashMap<>();
     @Autowired
     private  UserRepository userRepository; // gọi repository để thao tác với database
     @Autowired
@@ -44,6 +49,8 @@ public class UserService implements UserDetailsService  {
     private ModelMapper modelMapper;
     @Autowired
     private TokenService tokenService;
+    @Autowired
+    private EmailService emailService;
     
     /**
      * Đăng ký tài khoản người dùng mới (thường là Customer).
@@ -63,13 +70,21 @@ public class UserService implements UserDetailsService  {
         if (userRepository.existsByUserPhone(registerRequest.getUserPhone())) {
             throw new AuthenticationException("Số điện thoại đã tồn tại");
         }
-        // Mã hóa mật khẩu trước khi lưu vào database
-        registerRequest.setUserPassword(passwordEncoder.encode(registerRequest.getUserPassword()));
-        // Tạo đối tượng User từ UserRequest
-        User newUser = modelMapper.map(registerRequest, User.class);
-        User savedUser = userRepository.save(newUser); // Lưu người dùng vào database
+
+        // Thay vì lưu vào DB, lưu tạm vào Map
+        pendingRegistrations.put(registerRequest.getUserEmail(), registerRequest);
         
-        return convertToResponse(savedUser);
+        // Tạo mã OTP ngẫu nhiên 6 chữ số
+        String randomOtp = String.format("%06d", new java.util.Random().nextInt(999999));
+        otpCache.put(registerRequest.getUserEmail(), randomOtp);
+        
+        // Gửi email chứa OTP cho người dùng
+        emailService.sendOtpEmail(registerRequest.getUserEmail(), randomOtp);
+
+        // Trả về email để Frontend biết yêu cầu OTP thành công
+        UserResponse userResponse = new UserResponse();
+        userResponse.setUserEmail(registerRequest.getUserEmail());
+        return userResponse;
     } 
 
     /**
@@ -191,12 +206,9 @@ public class UserService implements UserDetailsService  {
             );
 
             User user = (User) authentication.getPrincipal();
-
             UserResponse userResponse = convertToResponse(user);
-
             String token = tokenService.generateToken(user);
             userResponse.setToken(token);
-
             return userResponse;
 
         } catch (LockedException e) {
@@ -399,6 +411,35 @@ public class UserService implements UserDetailsService  {
         user.setUserPassword(passwordEncoder.encode(resetPasswordRequest.getNewPassword()));
         User updatedUser = userRepository.save(user);
         return convertToResponse(updatedUser);
+    }
+
+    /**
+     * Xác thực mã OTP để hoàn tất đăng ký tài khoản
+     */
+    public UserResponse verifyRegisterOtp(VerifyOtpRequest request) {
+        String identifier = request.getIdentifier(); // Email
+        String otp = request.getOtp();
+        
+        String cachedOtp = otpCache.get(identifier);
+        if (cachedOtp != null && cachedOtp.equals(otp)) {
+            otpCache.remove(identifier);
+            UserRequest registerRequest = pendingRegistrations.remove(identifier);
+            if (registerRequest == null) {
+                throw new AuthenticationException("Không tìm thấy thông tin đăng ký chờ xác nhận");
+            }
+            
+            // Mã hóa mật khẩu trước khi lưu vào database
+            registerRequest.setUserPassword(passwordEncoder.encode(registerRequest.getUserPassword()));
+            // Tạo đối tượng User từ UserRequest
+            User newUser = modelMapper.map(registerRequest, User.class);
+            // Gán role mặc định
+            newUser.setUserRole(UserRole.USER);
+            User savedUser = userRepository.save(newUser); // Lưu người dùng vào database
+            
+            return convertToResponse(savedUser);
+        } else {
+            throw new AuthenticationException("Mã OTP không chính xác hoặc đã hết hạn");
+        }
     }
 
 }
