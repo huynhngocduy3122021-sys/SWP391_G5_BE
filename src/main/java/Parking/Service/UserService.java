@@ -28,9 +28,13 @@ import Parking.Model.ParkingBranch;
 import Parking.dto.request.StaffCreateRequest;
 import Parking.dto.request.ManagerCreateRequest;
 import Parking.enums.UserRole;
+import Parking.dto.request.VerifyOtpRequest;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 @Service
 public class UserService implements UserDetailsService  {
+    private final Map<String, String> otpCache = new ConcurrentHashMap<>();
     @Autowired
     private  UserRepository userRepository; // gọi repository để thao tác với database
     @Autowired
@@ -192,12 +196,14 @@ public class UserService implements UserDetailsService  {
 
             User user = (User) authentication.getPrincipal();
 
-            UserResponse userResponse = convertToResponse(user);
+            // Lưu OTP vào bộ nhớ tạm (Mock)
+            otpCache.put(loginRequest.getIdentifier(), "123456");
 
-            String token = tokenService.generateToken(user);
-            userResponse.setToken(token);
-
-            return userResponse;
+            // Thay vì trả về token ngay, ta chỉ trả về thông tin cơ bản
+            UserResponse userResponse = new UserResponse();
+            userResponse.setUserEmail(user.getUserEmail());
+            userResponse.setUserPhone(user.getUserPhone());
+            return userResponse; // Token = null -> Yêu cầu OTP
 
         } catch (LockedException e) {
             throw new AuthenticationException("Tài khoản của bạn đã bị đình chỉ do vi phạm quy định đặt giữ chỗ quá 3 lần.");
@@ -399,6 +405,33 @@ public class UserService implements UserDetailsService  {
         user.setUserPassword(passwordEncoder.encode(resetPasswordRequest.getNewPassword()));
         User updatedUser = userRepository.save(user);
         return convertToResponse(updatedUser);
+    }
+
+    /**
+     * Xác thực mã OTP và cấp JWT Token
+     */
+    public UserResponse verifyOtp(VerifyOtpRequest request) {
+        String identifier = request.getIdentifier();
+        String otp = request.getOtp();
+        
+        String cachedOtp = otpCache.get(identifier);
+        if (cachedOtp != null && cachedOtp.equals(otp)) {
+            otpCache.remove(identifier);
+            // Lấy thông tin user và tạo token
+            User user = userRepository.findByUserEmail(identifier);
+            if (user == null) {
+                user = userRepository.findByUserPhone(identifier);
+            }
+            if (user == null) {
+                throw new AuthenticationException("Không tìm thấy người dùng");
+            }
+            UserResponse userResponse = convertToResponse(user);
+            String token = tokenService.generateToken(user);
+            userResponse.setToken(token);
+            return userResponse;
+        } else {
+            throw new AuthenticationException("Mã OTP không chính xác hoặc đã hết hạn");
+        }
     }
 
 }

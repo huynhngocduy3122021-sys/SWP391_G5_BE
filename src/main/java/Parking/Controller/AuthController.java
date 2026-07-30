@@ -19,6 +19,7 @@ import Parking.dto.request.LoginRequest;
 import Parking.dto.request.UpdateUserRequest;
 import Parking.dto.request.StaffCreateRequest;
 import Parking.dto.request.ManagerCreateRequest;
+import Parking.dto.request.VerifyOtpRequest;
 
 import java.util.List;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -69,6 +70,16 @@ public class AuthController {
     @Operation(summary = "Hàm dùng để login vào hệ thống")
     public ResponseEntity<UserResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         UserResponse userResponse = userService.login(loginRequest);
+        return ResponseEntity.ok(userResponse);
+    }
+    
+    /**
+     * Xác thực mã OTP sau khi đăng nhập thành công bước 1.
+     */
+    @PostMapping("/verify-otp")
+    @Operation(summary = "Xác thực OTP", description = "Dùng để nhập OTP và lấy token đăng nhập chính thức")
+    public ResponseEntity<UserResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        UserResponse userResponse = userService.verifyOtp(request);
         return ResponseEntity.ok(userResponse);
     }
     
