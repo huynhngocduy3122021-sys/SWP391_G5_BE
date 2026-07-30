@@ -196,8 +196,16 @@ public class UserService implements UserDetailsService  {
 
             User user = (User) authentication.getPrincipal();
 
-            // Lưu OTP vào bộ nhớ tạm (Mock)
-            otpCache.put(loginRequest.getIdentifier(), "123456");
+            // Tạo mã OTP ngẫu nhiên 6 chữ số
+            String randomOtp = String.format("%06d", new java.util.Random().nextInt(999999));
+            
+            // Lưu OTP vào bộ nhớ tạm
+            otpCache.put(loginRequest.getIdentifier(), randomOtp);
+            
+            // In ra Console để dễ dàng lấy mã test (Vì chưa gắn chức năng gửi Email)
+            System.out.println("=================================================");
+            System.out.println("🔔 MÃ OTP CỦA TÀI KHOẢN " + loginRequest.getIdentifier() + " LÀ: " + randomOtp);
+            System.out.println("=================================================");
 
             // Thay vì trả về token ngay, ta chỉ trả về thông tin cơ bản
             UserResponse userResponse = new UserResponse();
