@@ -81,6 +81,18 @@ public class MonthlyTicketRequestController {
                 requestService.approveRequest(id, request.getParkingCardId())));
     }
 
+    /**
+     * API: Cho phép chính người dùng đã tạo yêu cầu tự hủy yêu cầu của mình
+     * khi yêu cầu đang chờ thanh toán hoặc đang chờ Ban Quản Lý phê duyệt.
+     * Quyền truy cập: Bất kỳ ai đã đăng nhập (USER tự hủy yêu cầu của chính mình).
+     */
+    @PutMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<MonthlyTicketRequestResponse> cancelMyRequest(@PathVariable Long id) {
+        return ResponseEntity.ok(requestService.toResponse(
+                requestService.cancelMyRequest(id)));
+    }
+
     @PutMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<MonthlyTicketRequestResponse> reject(@PathVariable Long id) {

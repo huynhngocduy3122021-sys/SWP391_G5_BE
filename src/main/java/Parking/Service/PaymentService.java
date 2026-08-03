@@ -38,6 +38,9 @@ import lombok.RequiredArgsConstructor;
  * Bao gồm:
  * 1. Tính toán số tiền phải trả dựa trên số giờ gửi xe và bảng giá.
  * 2. Tạo link thanh toán VNPay (nếu khách chọn VNPay).
+ * 3. Nhận phản hồi từ VNPay để cập nhật trạng thái thanh toán thành CÔNG hoặc
+ * THẤT BẠI.
+=======
  * 3. Nhận phản hồi từ VNPay để cập nhật trạng thái thanh toán thành CÔNG hoặc THẤT BẠI.
  */
 @Service
@@ -57,16 +60,22 @@ public class PaymentService {
     /**
      * Nghiệp vụ: Xử lý thanh toán khi khách lấy xe ra.
      * Hàm này sẽ tính toán tổng tiền (gồm tiền gửi xe + tiền phạt nếu có).
+     * Nếu chọn VNPay thì sinh ra URL thanh toán. Nếu chọn Tiền mặt thì hoàn thành
+     * luôn.
+=======
      * Nếu chọn VNPay thì sinh ra URL thanh toán. Nếu chọn Tiền mặt thì hoàn thành luôn.
      */
     @Transactional
-    public GuestCheckOutResponse processCheckOutPayment(ParkingSession parkingSession, PaymentMethod paymentMethod, String clientIp, Boolean lostCard, LocalDateTime time) {
+    public GuestCheckOutResponse processCheckOutPayment(ParkingSession parkingSession, PaymentMethod paymentMethod,
+            String clientIp, Boolean lostCard, LocalDateTime time) {
         // b1: kiểm tra chưa thanh toán
-        boolean paymentExists = paymentRepository.existsByParkingSessionParkingSessionId(parkingSession.getParkingSessionId());
+        boolean paymentExists = paymentRepository
+                .existsByParkingSessionParkingSessionId(parkingSession.getParkingSessionId());
         Payment payment;
 
         if (paymentExists) {
-            Payment existingPayment = paymentRepository.findByParkingSessionParkingSessionId(parkingSession.getParkingSessionId())
+            Payment existingPayment = paymentRepository
+                    .findByParkingSessionParkingSessionId(parkingSession.getParkingSessionId())
                     .orElse(null);
             if (existingPayment != null && existingPayment.getPaymentStatus() == PaymentStatus.PAID) {
                 throw new ParkingSessionException("Phiên gửi xe đã được thanh toán");
@@ -83,22 +92,22 @@ public class PaymentService {
         Long vehicleTypeId = parkingSession.getVehicle().getVehicleType().getVehicleTypeId();
 
         PricePolicy pricePolicy = pricePolicyRepository.findFirstActiveHourlyPolicy(vehicleTypeId)
-                    .orElseThrow(() -> new ParkingSessionException("Không tìm thấy chính sách giá đang hoạt động"));
+                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy chính sách giá đang hoạt động"));
 
         LocalDateTime checkOutTime = (time != null) ? time : LocalDateTime.now();
         // b3: tính phí
         BigDecimal parkingFee;
         BigDecimal penaltyFee = (lostCard != null && lostCard) ? new BigDecimal("50000") : BigDecimal.ZERO;
-        
+
         boolean isMonthlyTicketActive = false;
         if (parkingSession.getParkingCard().getType() == ParkingCardType.MONTHLY) {
             isMonthlyTicketActive = monthlyTicketRepository.existsActiveTicketByCard(
                     parkingSession.getParkingCard().getParkingCardId(),
-                    checkOutTime
-            );
+                    checkOutTime);
         }
 
-        if (isMonthlyTicketActive || (parkingSession.getParkingCard().getCardCode() != null && parkingSession.getParkingCard().getCardCode().toUpperCase().startsWith("EMP-"))) {
+        if (isMonthlyTicketActive || (parkingSession.getParkingCard().getCardCode() != null
+                && parkingSession.getParkingCard().getCardCode().toUpperCase().startsWith("EMP-"))) {
             parkingFee = BigDecimal.ZERO;
         } else {
             parkingFee = caculateParkingFee(parkingSession.getCheckInTime(), checkOutTime, pricePolicy);
@@ -114,7 +123,7 @@ public class PaymentService {
         // b4: cập nhật thông tin payment
         payment.setAmount(totalAmount);
         payment.setPaymentMethod(paymentMethod);
-        
+
         // Tạo transactionRef mới cho mỗi lượt checkout
         String txnRef = "TXN_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
         payment.setTransactionRef(txnRef);
@@ -216,18 +225,25 @@ public class PaymentService {
             throw new ParkingSessionException("Yêu cầu này không ở trạng thái chờ thanh toán");
         }
 
-        // Tạo bản ghi Payment
-        Payment payment = new Payment();
+        // Mỗi yêu cầu thẻ tháng chỉ có duy nhất 1 bản ghi Payment (ràng buộc unique ở
+        // DB).
+        // Nếu đã tồn tại (ví dụ lần bấm "Thanh toán" trước đó chưa hoàn tất), tái sử
+        // dụng
+        // và làm mới lại bản ghi đó thay vì insert mới để tránh lỗi trùng khóa.
+        Payment payment = paymentRepository.findByMonthlyTicketRequestId(requestId)
+                .orElseGet(Payment::new);
         payment.setMonthlyTicketRequest(request);
-        
+
         BigDecimal amount = request.getPricePolicy().getBasePrice();
         payment.setAmount(amount);
         payment.setPaymentMethod(PaymentMethod.VNPAY);
-        
+
         String txnRef = "TXN_MT_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
         payment.setTransactionRef(txnRef);
         payment.setPaymentStatus(PaymentStatus.PENDING);
-        
+        payment.setResponseCode(null);
+        payment.setPaidAt(null);
+
         LocalDateTime expiresAt = LocalDateTime.now(VIETNAM_ZONE).plusMinutes(15);
         payment.setPaymentExpiresAt(expiresAt);
 
@@ -236,12 +252,14 @@ public class PaymentService {
         return vnPayService.createPaymentUrl(payment, clientIp);
     }
 
-    public BigDecimal caculateParkingFee(LocalDateTime checkInTime, LocalDateTime checkOutTime, PricePolicy pricePolicy) {
+    public BigDecimal caculateParkingFee(LocalDateTime checkInTime, LocalDateTime checkOutTime,
+            PricePolicy pricePolicy) {
         if (checkInTime == null) {
             throw new ParkingSessionException("Thiếu thời gian xe vào");
         }
 
-        if (pricePolicy.getBasePrice() == null || pricePolicy.getExtraHourPrice() == null || pricePolicy.getBaseDurationMinutes() == null) {
+        if (pricePolicy.getBasePrice() == null || pricePolicy.getExtraHourPrice() == null
+                || pricePolicy.getBaseDurationMinutes() == null) {
             throw new ParkingSessionException("Chính sách giá không hợp lệ");
         }
 
@@ -249,20 +267,23 @@ public class PaymentService {
             throw new ParkingSessionException("Thời lượng cơ bản phải lớn hơn 0");
         }
 
-        if (pricePolicy.getBasePrice().compareTo(BigDecimal.ZERO) < 0 || pricePolicy.getExtraHourPrice().compareTo(BigDecimal.ZERO) < 0) {
+        if (pricePolicy.getBasePrice().compareTo(BigDecimal.ZERO) < 0
+                || pricePolicy.getExtraHourPrice().compareTo(BigDecimal.ZERO) < 0) {
             throw new ParkingSessionException("Phí gửi xe không được là số âm");
         }
 
         long totalMinutes = Duration.between(checkInTime, checkOutTime).toMinutes();
         totalMinutes = Math.max(totalMinutes, 0); // tránh trượng hợp bị null
 
-        BigDecimal fee; 
+        BigDecimal fee;
         if (totalMinutes <= pricePolicy.getBaseDurationMinutes()) {
             fee = pricePolicy.getBasePrice().setScale(2, RoundingMode.HALF_UP);
         } else {
             long extraMinutes = totalMinutes - pricePolicy.getBaseDurationMinutes();
-            int extraBlockMinutes = pricePolicy.getExtraDurationMinutes() != null && pricePolicy.getExtraDurationMinutes() > 0 
-                    ? pricePolicy.getExtraDurationMinutes() : 60;
+            int extraBlockMinutes = pricePolicy.getExtraDurationMinutes() != null
+                    && pricePolicy.getExtraDurationMinutes() > 0
+                            ? pricePolicy.getExtraDurationMinutes()
+                            : 60;
             long extraBlocks = (long) Math.ceil(extraMinutes / (double) extraBlockMinutes);
             BigDecimal extraAmount = pricePolicy.getExtraHourPrice().multiply(BigDecimal.valueOf(extraBlocks));
             fee = pricePolicy.getBasePrice().add(extraAmount).setScale(2, RoundingMode.HALF_UP);
@@ -276,6 +297,11 @@ public class PaymentService {
     }
 
     /**
+     * Hàm này được gọi khi khách hàng thanh toán xong trên web VNPay và bị chuyển
+     * hướng (Redirect) trả về Web của chúng ta.
+     * Nhiệm vụ là đọc các tham số VNPay gửi kèm trên URL để xem thanh toán thành
+     * công hay chưa.
+=======
      * Hàm này được gọi khi khách hàng thanh toán xong trên web VNPay và bị chuyển hướng (Redirect) trả về Web của chúng ta.
      * Nhiệm vụ là đọc các tham số VNPay gửi kèm trên URL để xem thanh toán thành công hay chưa.
      */
@@ -319,7 +345,9 @@ public class PaymentService {
         }
 
         if (payment.getPaymentStatus() == PaymentStatus.PAID) {
-            return buildVnPayReturnResponse(payment, paymentType, true, "Thanh toán đã được xác nhận thành công trước đó", txnRef, payment.getVnpTransactionNo(), payment.getResponseCode());
+            return buildVnPayReturnResponse(payment, paymentType, true,
+                    "Thanh toán đã được xác nhận thành công trước đó", txnRef, payment.getVnpTransactionNo(),
+                    payment.getResponseCode());
         }
 
         boolean isSuccess = "00".equals(responseCode);
@@ -346,7 +374,7 @@ public class PaymentService {
 
             if (session != null) {
                 session.setStatus(ParkingSessionStatus.COMPLETED);
-                
+
                 ParkingCard card = session.getParkingCard();
                 if (card != null && card.getStatus() != ParkingCardStatus.LOST) {
                     card.setStatus(ParkingCardStatus.AVAILABLE);
@@ -354,24 +382,28 @@ public class PaymentService {
                 }
                 parkingSessionRepository.save(session);
             }
-            
+
             MonthlyTicketRequest mtr = payment.getMonthlyTicketRequest();
-            if (mtr != null && mtr.getStatus() != null && mtr.getStatus() == Parking.enums.MonthlyTicketRequestStatus.PENDING_PAYMENT) {
+            if (mtr != null && mtr.getStatus() != null
+                    && mtr.getStatus() == Parking.enums.MonthlyTicketRequestStatus.PENDING_PAYMENT) {
                 mtr.setStatus(Parking.enums.MonthlyTicketRequestStatus.PENDING_APPROVAL); // PENDING_APPROVAL
                 monthlyTicketRequestRepository.save(mtr);
             }
             paymentRepository.save(payment);
 
-            return buildVnPayReturnResponse(payment, paymentType, true, "Thanh toán thành công. Phiên gửi xe đã kết thúc.", txnRef, vnpTxnNo, responseCode);
+            return buildVnPayReturnResponse(payment, paymentType, true,
+                    "Thanh toán thành công. Phiên gửi xe đã kết thúc.", txnRef, vnpTxnNo, responseCode);
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);
             paymentRepository.save(payment);
 
-            return buildVnPayReturnResponse(payment, paymentType, false, "Thanh toán thất bại.", txnRef, vnpTxnNo, responseCode);
+            return buildVnPayReturnResponse(payment, paymentType, false, "Thanh toán thất bại.", txnRef, vnpTxnNo,
+                    responseCode);
         }
     }
 
-    private VnpayReturnResponse buildVnPayReturnResponse(Payment payment, String paymentType, boolean isSuccess, String message, String txnRef, String vnpTxnNo, String responseCode) {
+    private VnpayReturnResponse buildVnPayReturnResponse(Payment payment, String paymentType, boolean isSuccess,
+            String message, String txnRef, String vnpTxnNo, String responseCode) {
         VnpayReturnResponse.VnpayReturnResponseBuilder responseBuilder = VnpayReturnResponse.builder()
                 .validSignature(true)
                 .success(isSuccess)
@@ -437,7 +469,8 @@ public class PaymentService {
                 return response;
             }
 
-            if (payment.getPaymentStatus() == PaymentStatus.PAID || payment.getPaymentStatus() == PaymentStatus.FAILED) {
+            if (payment.getPaymentStatus() == PaymentStatus.PAID
+                    || payment.getPaymentStatus() == PaymentStatus.FAILED) {
                 response.put("RspCode", "02");
                 response.put("Message", "Giao dịch đã được xác nhận");
                 return response;
@@ -447,7 +480,7 @@ public class PaymentService {
             payment.setVnpTransactionNo(vnpTxnNo);
             payment.setBankCode(bankCode);
             payment.setResponseCode(responseCode);
-            
+
             ParkingSession session = payment.getParkingSession();
 
             if (isSuccess) {
@@ -463,9 +496,10 @@ public class PaymentService {
                     }
                     parkingSessionRepository.save(session);
                 }
-                
+
                 MonthlyTicketRequest mtr = payment.getMonthlyTicketRequest();
-                if (mtr != null && mtr.getStatus() != null && mtr.getStatus() == Parking.enums.MonthlyTicketRequestStatus.PENDING_PAYMENT) {
+                if (mtr != null && mtr.getStatus() != null
+                        && mtr.getStatus() == Parking.enums.MonthlyTicketRequestStatus.PENDING_PAYMENT) {
                     mtr.setStatus(Parking.enums.MonthlyTicketRequestStatus.PENDING_APPROVAL); // PENDING_APPROVAL
                     monthlyTicketRequestRepository.save(mtr);
                 }
@@ -489,7 +523,8 @@ public class PaymentService {
     public java.util.List<Parking.dto.response.PaymentReportResponse> getAllPaymentsForReport() {
         java.util.List<Payment> payments = paymentRepository.findAll();
         return payments.stream().map(p -> {
-            Parking.dto.response.PaymentReportResponse.PaymentReportResponseBuilder builder = Parking.dto.response.PaymentReportResponse.builder()
+            Parking.dto.response.PaymentReportResponse.PaymentReportResponseBuilder builder = Parking.dto.response.PaymentReportResponse
+                    .builder()
                     .paymentId(p.getPaymentId())
                     .amount(p.getAmount())
                     .paymentMethod(p.getPaymentMethod() != null ? p.getPaymentMethod().name() : null)
@@ -502,14 +537,14 @@ public class PaymentService {
             MonthlyTicketRequest mtr = p.getMonthlyTicketRequest();
             if (mtr != null) {
                 builder.monthlyTicketRequestId(mtr.getId())
-                       .monthlyTicketRequestStatus(mtr.getStatus() != null ? mtr.getStatus().getCode() : null);
+                        .monthlyTicketRequestStatus(mtr.getStatus() != null ? mtr.getStatus().getCode() : null);
                 if (mtr.getPricePolicy() != null) {
                     builder.policyName(mtr.getPricePolicy().getPolicyName())
-                           .policyBasePrice(mtr.getPricePolicy().getBasePrice());
+                            .policyBasePrice(mtr.getPricePolicy().getBasePrice());
                 }
                 if (mtr.getParkingBranch() != null) {
                     builder.branchName(mtr.getParkingBranch().getBranchName())
-                           .branchId(mtr.getParkingBranch().getParkingBranchId());
+                            .branchId(mtr.getParkingBranch().getParkingBranchId());
                 }
                 if (mtr.getVehicle() != null) {
                     builder.vehicleLicensePlate(mtr.getVehicle().getLicensePlate());
@@ -523,7 +558,8 @@ public class PaymentService {
             ParkingSession ps = p.getParkingSession();
             if (ps != null) {
                 builder.parkingSessionId(ps.getParkingSessionId())
-                       .sessionBranchName(ps.getParkingBranch() != null ? ps.getParkingBranch().getBranchName() : null);
+                        .sessionBranchName(
+                                ps.getParkingBranch() != null ? ps.getParkingBranch().getBranchName() : null);
             }
 
             return builder.build();
