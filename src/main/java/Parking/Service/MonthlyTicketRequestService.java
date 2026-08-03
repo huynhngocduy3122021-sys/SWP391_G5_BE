@@ -49,8 +49,7 @@ public class MonthlyTicketRequestService {
 
     private static final List<MonthlyTicketRequestStatus> OPEN_REQUEST_STATUSES = List.of(
             MonthlyTicketRequestStatus.PENDING_PAYMENT,
-            MonthlyTicketRequestStatus.PENDING_APPROVAL
-    );
+            MonthlyTicketRequestStatus.PENDING_APPROVAL);
 
     @Transactional
     public MonthlyTicketRequest submitRequest(SubmitMonthlyTicketRequest req) {
@@ -66,8 +65,7 @@ public class MonthlyTicketRequestService {
                 user.getUserId(), OPEN_REQUEST_STATUSES)) {
             throw new InvalidTicketStateException(
                     "Bạn đang có yêu cầu thẻ tháng chưa hoàn tất. "
-                    + "Vui lòng thanh toán hoặc chờ quản lý xét duyệt."
-            );
+                            + "Vui lòng thanh toán hoặc chờ quản lý xét duyệt.");
         }
 
         Vehicle vehicle = vehicleRepo.findById(req.getVehicleId())
@@ -76,8 +74,7 @@ public class MonthlyTicketRequestService {
         if (monthlyTicketRepo.existsActiveTicketByVehicle(
                 vehicle.getVehiclesId(), LocalDateTime.now())) {
             throw new InvalidTicketStateException(
-                    "Phương tiện đã có vé tháng còn hiệu lực. Vui lòng sử dụng chức năng gia hạn."
-            );
+                    "Phương tiện đã có vé tháng còn hiệu lực. Vui lòng sử dụng chức năng gia hạn.");
         }
 
         PricePolicy policy = policyRepo.findById(req.getPolicyId())
@@ -95,7 +92,7 @@ public class MonthlyTicketRequestService {
             throw new InvalidTicketStateException("Gói dịch vụ đã ngừng hoạt động");
         }
         if (vehicle.getVehicleType() == null || policy.getVehicleType() == null ||
-            !vehicle.getVehicleType().getVehicleTypeId().equals(policy.getVehicleType().getVehicleTypeId())) {
+                !vehicle.getVehicleType().getVehicleTypeId().equals(policy.getVehicleType().getVehicleTypeId())) {
             throw new InvalidTicketStateException("Loại phương tiện không phù hợp với gói dịch vụ");
         }
 
@@ -106,7 +103,7 @@ public class MonthlyTicketRequestService {
         mtr.setParkingBranch(branch);
         mtr.setStatus(MonthlyTicketRequestStatus.PENDING_PAYMENT);
         mtr.setCreatedAt(LocalDateTime.now());
-        
+
         return requestRepo.save(mtr);
     }
 
@@ -138,60 +135,62 @@ public class MonthlyTicketRequestService {
 
         MonthlyTicketRequestResponse.VehicleSummary vehicleSummary = vehicle == null ? null
                 : MonthlyTicketRequestResponse.VehicleSummary.builder()
-                    .vehiclesId(vehicle.getVehiclesId())
-                    .licensePlate(vehicle.getLicensePlate())
-                    .vehicleColor(vehicle.getVehicleColor())
-                    .vehicleBrand(vehicle.getVehicleBrand())
-                    .vehicleTypeId(vehicle.getVehicleType() == null ? null : vehicle.getVehicleType().getVehicleTypeId())
-                    .vehicleTypeName(vehicle.getVehicleType() == null ? null : vehicle.getVehicleType().getTypeName())
-                    .build();
+                        .vehiclesId(vehicle.getVehiclesId())
+                        .licensePlate(vehicle.getLicensePlate())
+                        .vehicleColor(vehicle.getVehicleColor())
+                        .vehicleBrand(vehicle.getVehicleBrand())
+                        .vehicleTypeId(
+                                vehicle.getVehicleType() == null ? null : vehicle.getVehicleType().getVehicleTypeId())
+                        .vehicleTypeName(
+                                vehicle.getVehicleType() == null ? null : vehicle.getVehicleType().getTypeName())
+                        .build();
 
         MonthlyTicketRequestResponse.UserSummary userSummary = user == null ? null
                 : MonthlyTicketRequestResponse.UserSummary.builder()
-                    .userId(user.getUserId())
-                    .userFullName(user.getUserFullName())
-                    .userEmail(user.getUserEmail())
-                    .userPhone(user.getUserPhone())
-                    .build();
+                        .userId(user.getUserId())
+                        .userFullName(user.getUserFullName())
+                        .userEmail(user.getUserEmail())
+                        .userPhone(user.getUserPhone())
+                        .build();
 
         MonthlyTicketRequestResponse.PricePolicySummary policySummary = policy == null ? null
                 : MonthlyTicketRequestResponse.PricePolicySummary.builder()
-                    .pricePolicyId(policy.getPricePolicyId())
-                    .policyName(policy.getPolicyName())
-                    .basePrice(policy.getBasePrice())
-                    .build();
+                        .pricePolicyId(policy.getPricePolicyId())
+                        .policyName(policy.getPolicyName())
+                        .basePrice(policy.getBasePrice())
+                        .build();
 
         MonthlyTicketRequestResponse.ParkingBranchSummary branchSummary = branch == null ? null
                 : MonthlyTicketRequestResponse.ParkingBranchSummary.builder()
-                    .parkingBranchId(branch.getParkingBranchId())
-                    .branchName(branch.getBranchName())
-                    .build();
+                        .parkingBranchId(branch.getParkingBranchId())
+                        .branchName(branch.getBranchName())
+                        .build();
 
         MonthlyTicketRequestResponse.PaymentSummary paymentSummary = payment == null ? null
                 : MonthlyTicketRequestResponse.PaymentSummary.builder()
-                    .paymentId(payment.getPaymentId())
-                    .amount(payment.getAmount())
-                    .paymentMethod(payment.getPaymentMethod() == null ? null : payment.getPaymentMethod().name())
-                    .paymentStatus(payment.getPaymentStatus() == null ? null : payment.getPaymentStatus().name())
-                    .transactionRef(payment.getTransactionRef())
-                    .responseCode(payment.getResponseCode())
-                    .createdAt(payment.getCreatedAt())
-                    .paidAt(payment.getPaidAt())
-                    .build();
+                        .paymentId(payment.getPaymentId())
+                        .amount(payment.getAmount())
+                        .paymentMethod(payment.getPaymentMethod() == null ? null : payment.getPaymentMethod().name())
+                        .paymentStatus(payment.getPaymentStatus() == null ? null : payment.getPaymentStatus().name())
+                        .transactionRef(payment.getTransactionRef())
+                        .responseCode(payment.getResponseCode())
+                        .createdAt(payment.getCreatedAt())
+                        .paidAt(payment.getPaidAt())
+                        .build();
 
         MonthlyTicketRequestResponse.RenewalSummary renewalSummary = renewalTicket == null ? null
                 : MonthlyTicketRequestResponse.RenewalSummary.builder()
-                    .ticketId(renewalTicket.getTicketId())
-                    .parkingCardId(renewalTicket.getParkingCard() == null
-                            ? null
-                            : renewalTicket.getParkingCard().getParkingCardId())
-                    .cardCode(renewalTicket.getParkingCard() == null
-                            ? null
-                            : renewalTicket.getParkingCard().getCardCode())
-                    .startDate(renewalTicket.getStartDate())
-                    .endDate(renewalTicket.getEndDate())
-                    .status(renewalTicket.getStatus() == null ? null : renewalTicket.getStatus().name())
-                    .build();
+                        .ticketId(renewalTicket.getTicketId())
+                        .parkingCardId(renewalTicket.getParkingCard() == null
+                                ? null
+                                : renewalTicket.getParkingCard().getParkingCardId())
+                        .cardCode(renewalTicket.getParkingCard() == null
+                                ? null
+                                : renewalTicket.getParkingCard().getCardCode())
+                        .startDate(renewalTicket.getStartDate())
+                        .endDate(renewalTicket.getEndDate())
+                        .status(renewalTicket.getStatus() == null ? null : renewalTicket.getStatus().name())
+                        .build();
 
         return MonthlyTicketRequestResponse.builder()
                 .id(request.getId())
@@ -207,12 +206,40 @@ public class MonthlyTicketRequestService {
                 .build();
     }
 
+    /**
+     * API: Cho phép chính chủ yêu cầu tự hủy yêu cầu đăng ký/gia hạn vé tháng của
+     * mình
+     * khi yêu cầu đang ở trạng thái PENDING_PAYMENT (chờ thanh toán) hoặc
+     * PENDING_APPROVAL (đã thanh toán, chờ Ban Quản Lý duyệt).
+     */
+    @Transactional
+    public MonthlyTicketRequest cancelMyRequest(Long id) {
+        User authenticatedUser = currentUserService.getCurrentUser();
+        if (authenticatedUser == null) {
+            throw new ResourceNotFoundException("Không tìm thấy người dùng");
+        }
+
+        MonthlyTicketRequest req = requestRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy yêu cầu"));
+
+        if (req.getUser() == null || !req.getUser().getUserId().equals(authenticatedUser.getUserId())) {
+            throw new ForbiddenOperationException("Bạn không có quyền hủy yêu cầu này");
+        }
+
+        if (req.getStatus() != MonthlyTicketRequestStatus.PENDING_PAYMENT
+                && req.getStatus() != MonthlyTicketRequestStatus.PENDING_APPROVAL) {
+            throw new InvalidTicketStateException(
+                    "Chỉ có thể hủy yêu cầu đang chờ thanh toán hoặc chờ duyệt.");
+        }
+
+        return updateStatusInternal(id, MonthlyTicketRequestStatus.REJECTED, null);
+    }
+
     @Transactional
     public MonthlyTicketRequest updateStatus(Long id, MonthlyTicketRequestStatus status) {
         if (status == MonthlyTicketRequestStatus.APPROVED) {
             throw new InvalidTicketStateException(
-                    "Vui lòng sử dụng API duyệt và chọn thẻ giữ xe còn trống."
-            );
+                    "Vui lòng sử dụng API duyệt và chọn thẻ giữ xe còn trống.");
         }
         return updateStatusInternal(id, status, null);
     }
@@ -229,17 +256,18 @@ public class MonthlyTicketRequestService {
             Long id,
             MonthlyTicketRequestStatus status,
             Long parkingCardId) {
-        MonthlyTicketRequest req = requestRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy yêu cầu"));
-        
+        MonthlyTicketRequest req = requestRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy yêu cầu"));
+
         if (status == MonthlyTicketRequestStatus.APPROVED) {
             if (req.getStatus() != MonthlyTicketRequestStatus.PENDING_APPROVAL) {
                 throw new InvalidTicketStateException("Yêu cầu không ở trạng thái chờ duyệt.");
             }
-            
+
             Vehicle vehicle = req.getVehicle();
             PricePolicy policy = req.getPricePolicy();
             if (vehicle.getVehicleType() == null || policy.getVehicleType() == null ||
-                !vehicle.getVehicleType().getVehicleTypeId().equals(policy.getVehicleType().getVehicleTypeId())) {
+                    !vehicle.getVehicleType().getVehicleTypeId().equals(policy.getVehicleType().getVehicleTypeId())) {
                 throw new InvalidTicketStateException("Dữ liệu yêu cầu không hợp lệ: loại xe không khớp gói.");
             }
 
@@ -247,7 +275,7 @@ public class MonthlyTicketRequestService {
             if (payment == null || payment.getPaymentStatus() != PaymentStatus.PAID) {
                 throw new InvalidTicketStateException("Yêu cầu này chưa được thanh toán thành công.");
             }
-            
+
             MonthlyTicket oldTicket = req.getRenewalOfTicket();
             if (oldTicket != null) {
                 if (!oldTicket.getVehicle().getVehiclesId().equals(req.getVehicle().getVehiclesId())) {
@@ -255,24 +283,25 @@ public class MonthlyTicketRequestService {
                 }
                 PricePolicy currentPolicy = oldTicket.getPricePolicy();
                 if (currentPolicy == null || currentPolicy.getPricePolicyId() == null) {
-                    throw new InvalidTicketStateException("Không xác định được gói hiện tại của vé. Không thể duyệt gia hạn.");
+                    throw new InvalidTicketStateException(
+                            "Không xác định được gói hiện tại của vé. Không thể duyệt gia hạn.");
                 }
                 if (!currentPolicy.getPricePolicyId().equals(policy.getPricePolicyId())) {
-                    throw new InvalidTicketStateException("Không thể duyệt: gói gia hạn không trùng với gói hiện tại của vé.");
+                    throw new InvalidTicketStateException(
+                            "Không thể duyệt: gói gia hạn không trùng với gói hiện tại của vé.");
                 }
             }
-            
+
             ParkingCard card = null;
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime startDate = now;
             LocalDateTime endDate = now.plusMonths(1);
-            
+
             if (oldTicket != null) {
                 if (oldTicket.getParkingCard() == null
                         || !oldTicket.getParkingCard().getParkingCardId().equals(parkingCardId)) {
                     throw new InvalidTicketStateException(
-                            "Gia hạn phải sử dụng thẻ giữ xe hiện tại của vé."
-                    );
+                            "Gia hạn phải sử dụng thẻ giữ xe hiện tại của vé.");
                 }
                 LocalDateTime baseDate = oldTicket.getEndDate().isAfter(now)
                         ? oldTicket.getEndDate()
@@ -289,8 +318,7 @@ public class MonthlyTicketRequestService {
                         || !card.getParkingBranch().getParkingBranchId()
                                 .equals(req.getParkingBranch().getParkingBranchId())) {
                     throw new InvalidTicketStateException(
-                            "Thẻ giữ xe đã chọn không thuộc chi nhánh của yêu cầu."
-                    );
+                            "Thẻ giữ xe đã chọn không thuộc chi nhánh của yêu cầu.");
                 }
                 if (card.getType() != ParkingCardType.MONTHLY) {
                     throw new InvalidTicketStateException("Chỉ được chọn thẻ loại MONTHLY.");
@@ -300,21 +328,19 @@ public class MonthlyTicketRequestService {
                 }
                 if (monthlyTicketRepo.existsActiveTicketByCard(card.getParkingCardId(), now)) {
                     throw new InvalidTicketStateException(
-                            "Thẻ giữ xe đã được liên kết với một vé tháng còn hiệu lực."
-                    );
+                            "Thẻ giữ xe đã được liên kết với một vé tháng còn hiệu lực.");
                 }
                 if (parkingSessionRepo.existsByParkingCardParkingCardIdAndStatus(
                         card.getParkingCardId(), ParkingSessionStatus.ACTIVE)) {
                     throw new InvalidTicketStateException(
-                            "Thẻ giữ xe đang có phiên gửi xe hoạt động."
-                    );
+                            "Thẻ giữ xe đang có phiên gửi xe hoạt động.");
                 }
-                
+
                 // Việc cấp vé chỉ liên kết thẻ với thuê bao. IN_USE chỉ được
                 // dùng khi xe thực sự đang có phiên gửi xe hoạt động.
                 card.setStatus(ParkingCardStatus.AVAILABLE);
                 parkingCardRepo.save(card);
-                
+
                 MonthlyTicket newTicket = new MonthlyTicket();
                 newTicket.setVehicle(req.getVehicle());
                 newTicket.setParkingCard(card);
@@ -325,7 +351,7 @@ public class MonthlyTicketRequestService {
                 newTicket.setGuestPhone(req.getUser().getUserPhone());
                 newTicket.setMonthlyTicketRequest(req);
                 newTicket.setPricePolicy(req.getPricePolicy());
-                
+
                 monthlyTicketRepo.save(newTicket);
             }
         } else if (status == MonthlyTicketRequestStatus.REJECTED) {
@@ -338,11 +364,10 @@ public class MonthlyTicketRequestService {
             if (req.getStatus() != MonthlyTicketRequestStatus.PENDING_PAYMENT
                     && req.getStatus() != MonthlyTicketRequestStatus.PENDING_APPROVAL) {
                 throw new InvalidTicketStateException(
-                        "Chỉ có thể từ chối yêu cầu đang chờ thanh toán hoặc chờ duyệt."
-                );
+                        "Chỉ có thể từ chối yêu cầu đang chờ thanh toán hoặc chờ duyệt.");
             }
         }
-        
+
         req.setStatus(status);
         return requestRepo.save(req);
     }

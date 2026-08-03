@@ -10,20 +10,22 @@ import org.springframework.data.repository.query.Param;
 import Parking.Model.Payment;
 import jakarta.persistence.LockModeType;
 
-public interface PaymentRepository extends JpaRepository<Payment , Long> {
+public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
-    boolean existsByParkingSessionParkingSessionId(
-            Long parkingSessionId
-    );
+        boolean existsByParkingSessionParkingSessionId(
+                        Long parkingSessionId);
 
-    Optional<Payment> findByParkingSessionParkingSessionId(
-            Long parkingSessionId
-    );
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-                    SELECT payment
+        Optional<Payment> findByParkingSessionParkingSessionId(
+                        Long parkingSessionId);
+
+        Optional<Payment> findByMonthlyTicketRequestId(
+                        Long monthlyTicketRequestId);
+
+        @Lock(LockModeType.PESSIMISTIC_WRITE)
+        @Query("""
+                        SELECT payment
                         FROM Payment payment
                         WHERE payment.transactionRef = :transactionRef
-                    """)
-        Optional<Payment> findByTransactionRefForUpdate(@Param("transactionRef")String transactionRef);
-} 
+                         """)
+        Optional<Payment> findByTransactionRefForUpdate(@Param("transactionRef") String transactionRef);
+}
