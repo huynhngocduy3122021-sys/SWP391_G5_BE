@@ -1,42 +1,96 @@
-# 🚗 Parking Management System Backend
+# TÀI LIỆU TỔNG QUAN DỰ ÁN SWP391_G5_BE (HỆ THỐNG QUẢN LÝ BÃI ĐỖ XE)
 
-Chào mừng đến với mã nguồn Backend của dự án quản lý bãi đỗ xe thông minh. Hệ thống được xây dựng trên nền tảng **Spring Boot 3** và **SQL Server**, cung cấp trọn gói các API quản lý chi nhánh bãi xe, giám sát xe ra vào và tích hợp thanh toán điện tử VNPay.
-
----
-
-## 📖 Tài liệu hướng dẫn chi tiết (Documentation)
-
-Để giúp các thành viên trong nhóm nhanh chóng nắm bắt và vận hành dự án, vui lòng đọc các tài liệu hướng dẫn chi tiết dưới đây:
-
-* **[🏗️ Hướng dẫn Kiến trúc Dự án](file:///D:/Ki7/SWP391/Index/Index/docs/01_ARCHITECTURE.md):** Giải thích về cấu hình thư mục, mô hình 3 lớp, luồng dữ liệu (Data Flow) và các công nghệ sử dụng trong dự án.
-* **[🗄️ Thiết kế Cơ sở dữ liệu (ERD)](file:///D:/Ki7/SWP391/Index/Index/docs/02_DATABASE.md):** Xem sơ đồ quan hệ thực thể (Database ERD Diagram), mô tả chi tiết các bảng từ Tầng/Khu vực đỗ xe tới Thẻ gửi xe và Giao dịch thanh toán.
-* **[🔄 Luồng Nghiệp vụ chính](file:///D:/Ki7/SWP391/Index/Index/docs/03_WORKFLOWS.md):** Mô tả chi tiết bằng sơ đồ Sequence quy trình Check-in (xe vào), Check-out (xe ra & tính phí) và cơ chế tích hợp cổng VNPay Sandbox.
-* **[🛠️ Hướng dẫn Cài đặt & Khởi chạy (Local Setup)](file:///D:/Ki7/SWP391/Index/Index/docs/04_SETUP.md):** Hướng dẫn từng bước cấu hình SQL Server, dùng script `run.ps1` để nạp biến môi trường tự động, chạy cổng phụ ngrok và tài liệu kiểm thử trực quan Swagger UI.
+Đây là tài liệu giới thiệu tổng quan về cấu trúc, tính năng và công nghệ sử dụng trong backend dự án Hệ thống quản lý bãi đỗ xe (Parking Management System) được xây dựng bằng **Spring Boot**.
 
 ---
 
-### 📂 Tài liệu chi tiết các Hàm & Nghiệp vụ (Function Reference)
-
-* **[🚗 Lượt gửi xe (ParkingSessionService)](file:///D:/Ki7/SWP391/Index/Index/docs/05_FUNCTIONS_PARKING_SESSION.md):** Giải thích quy trình check-in xe vào, check-out xe ra, tìm kiếm và phân tích logic.
-* **[💳 Tính phí & Thanh toán VNPay (Payment & VNPay Services)](file:///D:/Ki7/SWP391/Index/Index/docs/06_FUNCTIONS_PAYMENT_VNPAY.md):** Xem cách tính giá vé gửi xe (làm tròn giờ Math.ceil), tạo cổng liên kết VNPay QR, và luồng gọi ngầm bảo mật IPN.
-* **[📷 Quản lý ảnh đỗ xe (VehicleImageService)](file:///D:/Ki7/SWP391/Index/Index/docs/07_FUNCTIONS_VEHICLE_IMAGES.md):** Giải thích cách lưu trữ ảnh lên mây Cloudinary và cơ chế tự động dọn dẹp ảnh rác khi rollback database.
-* **[🔐 Đăng ký, Đăng nhập & Mã hóa Token JWT (User & Token Services)](file:///D:/Ki7/SWP391/Index/Index/docs/07_FUNCTIONS_USER_AUTH.md):** Giải thích quy trình mã hóa mật khẩu BCrypt và cơ chế xác thực JWT của hệ thống.
-* **[🏢 Quản lý hạ tầng & Phương tiện (Other Services)](file:///D:/Ki7/SWP391/Index/Index/docs/08_FUNCTIONS_OTHER_SERVICES.md):** Hướng dẫn về các dịch vụ quản lý chi nhánh, tầng, phân khu đỗ xe, vị trí trống và thông tin xe đăng ký trước.
+## 1. MỤC TIÊU DỰ ÁN
+Dự án cung cấp một hệ thống API mạnh mẽ để quản lý toàn diện các hoạt động của một hoặc nhiều chi nhánh bãi đỗ xe, từ việc quản lý xe ra/vào, vé tháng, thanh toán, nhận diện biển số cho đến việc xử lý sự cố.
 
 ---
 
-## ⚡ Khởi chạy nhanh (Quick Start)
+## 2. CÔNG NGHỆ SỬ DỤNG
+* **Framework chính:** Spring Boot (Java)
+* **Kiến trúc:** RESTful API, MVC (Model-View-Controller)
+* **Bảo mật:** Spring Security, JWT (JSON Web Token) cho Authentication/Authorization.
+* **Cơ sở dữ liệu:** Thao tác qua Spring Data JPA / Hibernate.
+* **Tích hợp bên thứ 3:** Cloudinary (Lưu trữ hình ảnh/video), AI Nhận diện biển số xe (LPR - License Plate Recognition).
+* **Tài liệu API:** Swagger UI (OpenAPI 3).
 
-Dành cho những ai muốn chạy thử ngay dự án mà không cần đọc nhiều:
+---
 
-1. **Khởi tạo database:** Tạo database trống tên là `parking_system` trong SQL Server.
-2. **Khởi chạy Tunnel Ngrok (để test VNPay):**
-   ```bash
-   ngrok http 8081 --domain=bullpen-viewer-overfill.ngrok-free.dev
-   ```
-3. **Cấp quyền & Khởi động dự án:** Mở cửa sổ PowerShell trong thư mục này và chạy:
-   ```powershell
-   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-   .\run.ps1
-   ```
-4. **Kiểm tra API:** Truy cập [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html) để bắt đầu kiểm thử.
+## 3. CẤU TRÚC THƯ MỤC DỰ ÁN (src/main/java/Parking)
+
+Dự án áp dụng mô hình phân tầng tiêu chuẩn của Spring Boot:
+
+1. **`/config`**: Chứa các cấu hình của hệ thống.
+   * *Ví dụ:* `CloudinaryConfig` (Lưu trữ ảnh), cấu hình Security, cấu hình Swagger, v.v.
+   
+2. **`/Controller`**: Lớp ngoài cùng tiếp nhận các Request từ Frontend (React/Vue/Mobile).
+   * Chứa các endpoint API chia theo từng chức năng (User, Vehicle, Ticket...).
+   
+3. **`/Service`**: Lớp xử lý Logic nghiệp vụ (Business Logic).
+   * Tại đây dữ liệu từ Controller sẽ được kiểm tra, tính toán trước khi gọi xuống Database.
+
+4. **`/Repository`**: Lớp giao tiếp trực tiếp với cơ sở dữ liệu (Database).
+   * Kế thừa `JpaRepository` để thực hiện các thao tác CRUD (Thêm, sửa, xóa, tìm kiếm).
+   
+5. **`/Model`**: Chứa các Entity class map 1-1 với các bảng trong Database.
+   * Gồm các bảng như: `User`, `Vehicle`, `ParkingCard`, `MonthlyTicket`...
+   
+6. **`/dto` (Data Transfer Object)**: Chứa các class trung gian để vận chuyển dữ liệu.
+   * Giúp ẩn đi cấu trúc thực sự của Entity và chỉ trả về/nhận vào những dữ liệu Frontend cần. Chia làm `request` (nhận vào) và `response` (trả về).
+   
+7. **`/enums`**: Các biến hằng số, trạng thái (Ví dụ: `AVAILABLE`, `IN_USE`...).
+8. **`/exception`**: Xử lý lỗi tập trung, trả về các thông báo lỗi chuẩn cho Frontend.
+9. **`/Util`**: Các hàm tiện ích dùng chung (Ví dụ: format ngày tháng, mã hóa mật khẩu...).
+
+---
+
+## 4. CÁC TÍNH NĂNG & MODULE CHÍNH
+
+Dựa trên cấu trúc file, hệ thống bao gồm các Module chính sau:
+
+### 4.1. Quản lý Người dùng & Phân quyền (Auth & User)
+* Đăng ký, Đăng nhập (Authentication) bằng JWT (`AuthController`).
+* Phân quyền truy cập (Authorization) cho các role: `USER` (Khách), `STAFF` (Nhân viên), `MANAGER` (Quản lý), `ADMIN`.
+
+### 4.2. Quản lý Hạ tầng Bãi đỗ (Infrastructure)
+* Quản lý các chi nhánh bãi đỗ xe (`ParkingBranchController`).
+* Quản lý các tầng trong bãi đỗ (`ParkingFloorController`).
+* Quản lý các khu vực đỗ xe chuyên biệt (`ParkingZoneController`).
+
+### 4.3. Quản lý Xe & Hình ảnh (Vehicle)
+* Đăng ký phương tiện của khách hàng (`VehicleController`).
+* Phân loại phương tiện (Xe máy, Xe ô tô...) (`VehicleTypeController`).
+* Quản lý hình ảnh phương tiện, đồng bộ lên Cloudinary (`VehicleImageController`).
+
+### 4.4. Quản lý Vé & Thẻ giữ xe (Ticketing & Card)
+* Cấp phát và quản lý thẻ vật lý/thẻ từ (`ParkingCardController`).
+* Khách hàng gửi yêu cầu đăng ký vé tháng (`MonthlyTicketRequestController`).
+* Nhân viên duyệt/quản lý vé tháng (`MonthlyTicketController`).
+
+### 4.5. Quản lý Hoạt động Gửi xe (Operations)
+* **Phiên gửi xe (Parking Session):** Quản lý quy trình xe vào / xe ra (`ParkingSessionController`).
+* **Nhận diện biển số (LPR):** Tích hợp AI để đọc biển số tự động khi xe qua cổng (`LicensePlateRecognitionController`).
+* **Đặt chỗ trước (Booking):** Cho phép khách hàng đặt slot đậu xe trước (`BookingController`).
+
+### 4.6. Tài chính & Thanh toán (Finance)
+* Thiết lập chính sách giá cho từng loại xe, từng khung giờ (`PricePolicyController`).
+* Quản lý thanh toán vé lượt, vé tháng (`PaymentController`).
+
+### 4.7. Quản lý Sự cố (Incident Management)
+* Ghi nhận và xử lý các sự cố xảy ra trong bãi đỗ (Mất xe, quẹt xe, hỏng thẻ...) (`IncidentReportController`).
+
+---
+
+## 5. LUỒNG HOẠT ĐỘNG CƠ BẢN (Ví dụ quy trình xe vào)
+1. **Camera chụp ảnh** -> Gửi request lên `LicensePlateRecognitionController`.
+2. Hệ thống bóc tách biển số.
+3. Chuyển thông tin cho `ParkingSessionController` tạo một phiên gửi xe (Session).
+4. Lưu thông tin (ảnh, giờ vào, biển số) xuống Database qua lớp `Service` và `Repository`.
+5. Frontend nhận phản hồi thành công và mở barrier.
+
+---
+
+Tài liệu này đóng vai trò như một bản đồ giúp các lập trình viên nắm bắt nhanh cách hệ thống được cấu trúc và các chức năng hiện có. Khi cần chỉnh sửa chức năng nào, bạn chỉ cần tìm đến Controller tương ứng và trace (dò theo) luồng Controller -> Service -> Repository.

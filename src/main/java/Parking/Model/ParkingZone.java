@@ -13,6 +13,9 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * Entity đại diện cho Khu vực đỗ xe (Ví dụ: Khu vực xe máy, Khu vực ô tô).
+ */
 @Entity
 @Getter
 @Setter
@@ -22,17 +25,18 @@ public class ParkingZone {
      @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "parking_zone_id")
-    private Long parkingZoneId;
+    private Long parkingZoneId; // Mã khu vực
 
     @Column(name = "zone_name", nullable = false)
-    private String zoneName;
+    private String zoneName; // Tên khu vực (Ví dụ: "Khu A - Ô tô", "Khu B - Xe máy")
 
     @Column(name = "capacity", nullable = false)
-    private Integer capacity;
+    private Integer capacity; // Sức chứa tối đa (Tổng số chỗ đỗ trong khu này)
 
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
+    // Khu vực này nằm ở Tầng nào?
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
         name = "parking_floor_id",
@@ -41,6 +45,7 @@ public class ParkingZone {
     )
     private ParkingFloor parkingFloor;
 
+    // Khu vực này dành riêng cho Loại xe nào đỗ? (Chỉ xe máy mới được vào khu xe máy)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
         name = "vehicle_type_id",

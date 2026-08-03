@@ -40,6 +40,8 @@ import lombok.RequiredArgsConstructor;
  * 2. Tạo link thanh toán VNPay (nếu khách chọn VNPay).
  * 3. Nhận phản hồi từ VNPay để cập nhật trạng thái thanh toán thành CÔNG hoặc
  * THẤT BẠI.
+=======
+ * 3. Nhận phản hồi từ VNPay để cập nhật trạng thái thanh toán thành CÔNG hoặc THẤT BẠI.
  */
 @Service
 @RequiredArgsConstructor
@@ -60,6 +62,8 @@ public class PaymentService {
      * Hàm này sẽ tính toán tổng tiền (gồm tiền gửi xe + tiền phạt nếu có).
      * Nếu chọn VNPay thì sinh ra URL thanh toán. Nếu chọn Tiền mặt thì hoàn thành
      * luôn.
+=======
+     * Nếu chọn VNPay thì sinh ra URL thanh toán. Nếu chọn Tiền mặt thì hoàn thành luôn.
      */
     @Transactional
     public GuestCheckOutResponse processCheckOutPayment(ParkingSession parkingSession, PaymentMethod paymentMethod,
@@ -297,6 +301,9 @@ public class PaymentService {
      * hướng (Redirect) trả về Web của chúng ta.
      * Nhiệm vụ là đọc các tham số VNPay gửi kèm trên URL để xem thanh toán thành
      * công hay chưa.
+=======
+     * Hàm này được gọi khi khách hàng thanh toán xong trên web VNPay và bị chuyển hướng (Redirect) trả về Web của chúng ta.
+     * Nhiệm vụ là đọc các tham số VNPay gửi kèm trên URL để xem thanh toán thành công hay chưa.
      */
     @Transactional
     public VnpayReturnResponse handleVnPayCallback(Map<String, String> params) {

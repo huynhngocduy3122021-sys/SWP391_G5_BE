@@ -10,7 +10,6 @@ import Parking.Repository.ParkingBranchRepository;
 import Parking.Repository.ParkingCardRepository;
 import Parking.Repository.ParkingSessionRepository;
 import Parking.Repository.ParkingZoneRepository;
-import Parking.Repository.PaymentRepository;
 import Parking.Repository.PricePolicyRepository;
 import Parking.Repository.VehicleRepository;
 import Parking.Repository.VehicleTypeRepository;
@@ -26,7 +25,6 @@ import Parking.dto.response.ParkingSessionResponse;
 import Parking.enums.ParkingCardStatus;
 import Parking.enums.ParkingSessionStatus;
 import Parking.enums.BookingStatus;
-import Parking.enums.PaymentStatus;
 import Parking.enums.VehicleSource;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +44,13 @@ import java.util.List;
 import java.util.ArrayList;
 
 
+/**
+ * Service xử lý các nghiệp vụ cốt lõi liên quan đến Lượt Gửi Xe (Parking Session).
+ * Bao gồm:
+ * 1. Khách vãng lai quét thẻ vào bãi (guestCheckIn)
+ * 2. Khách vãng lai quét thẻ ra bãi (guestCheckOut)
+ * 3. Khách hàng đã đặt chỗ trước quét thẻ vào bãi (bookingCheckIn)
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -66,13 +71,16 @@ public class ParkingSessionService {
 
     private final PricePolicyRepository pricePolicyRepository;
     
-    private final PaymentRepository paymentRepository;
 
     private final PaymentService paymentService;
     private final BranchScopeService branchScopeService;
     private final MonthlyTicketRepository monthlyTicketRepository;
     private final CurrentUserService currentUserService;
 
+    /**
+     * Nghiệp vụ: Khách vãng lai (hoặc khách dùng vé tháng) chạy xe tới cổng và quẹt thẻ vào bãi.
+     * @param request Chứa thông tin biển số xe, mã thẻ, loại xe... do AI/Nhân viên gửi lên.
+     */
     public ParkingSessionResponse guestCheckIn(GuestCheckInRequest request) { // hàm tạo guest check in
         LocalDateTime currentTime = (request.getTime() != null) ? request.getTime() : LocalDateTime.now();
         
@@ -179,10 +187,10 @@ public class ParkingSessionService {
 
             parkingSession =parkingSessionRepository.save(parkingSession);
 
-            // b9.5 : check and link active booking
+            // b9.5 : check and link active booking luồng này chủ yếu sử lí trường hợp user đến mà không cung cấp code booking
             List<Booking> bookings = bookingRepository.findByVehicleLicensePlateIgnoreCaseAndStatus(licesePlate, BookingStatus.CONFIRMED);
             for (Booking b : bookings) {
-                if (!currentTime.isBefore(b.getExpectedArrivalTime().minusMinutes(15)) && !currentTime.isAfter(b.getHoldUntil())) {
+                if (!currentTime.isBefore(b.getExpectedArrivalTime().minusMinutes(60)) && !currentTime.isAfter(b.getHoldUntil())) {
                     b.setStatus(BookingStatus.COMPLETED);
                     b.setParkingSession(parkingSession);
                     b.setCompletedAt(currentTime);
@@ -200,6 +208,12 @@ public class ParkingSessionService {
             return convertToResponse(parkingSession);
         }
 
+        /**
+         * Nghiệp vụ: Khách quẹt thẻ để lấy xe ra khỏi bãi.
+         * @param request Chứa mã thẻ, biển số xe lúc ra.
+         * @param clientIp IP của khách (Dùng để gửi cho VNPay nếu khách quét mã QR thanh toán).
+         * @return Gọi sang PaymentService để tính toán số tiền khách phải trả.
+         */
         public GuestCheckOutResponse guestCheckOut(GuestCheckOutRequest request, String clientIp) { // hàm check out
             String cardCode = normalizeCardCode(request.getCardCode());
             String exitLicensePlate = normalizeLicensePlate(request.getLicensePlate());
@@ -375,12 +389,7 @@ public class ParkingSessionService {
      * bởi khoảng trắng hoặc sự khác nhau giữa chữ hoa và chữ thường.
      */
     private String normalizeLicensePlate(String licensePlate) {
-        return licensePlate
-            .trim()
-            // Regex "\\s+" khớp với một hoặc nhiều ký tự khoảng trắng ở bất kỳ vị trí nào
-            // (dấu cách, tab, xuống dòng,...); thay bằng chuỗi rỗng để loại bỏ chúng.
-            .replaceAll("\\s+", "")
-            .toUpperCase();
+        return Parking.Util.LicensePlateNormalizer.normalize(licensePlate);
     }
 
     private String normalizeCardCode(String cardCode) {
@@ -415,6 +424,10 @@ public class ParkingSessionService {
         return vehicleRepository.save(vehicle);
     }
 
+    /**
+     * Nghiệp vụ: Khách hàng đã Đặt chỗ trước qua App, đến bãi và quẹt thẻ để check-in.
+     * Hệ thống sẽ kiểm tra xem có đúng giờ không, thẻ có hợp lệ không, sau đó chuyển trạng thái Booking thành COMPLETED.
+     */
     public ParkingSessionResponse bookingCheckIn(String bookingCode, String cardCode, LocalDateTime time) {
         cardCode = normalizeCardCode(cardCode);
 

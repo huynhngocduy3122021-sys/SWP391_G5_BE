@@ -20,23 +20,33 @@ import java.util.List;
 import java.io.IOException;
 import Parking.exception.exceptions.AuthenticationException;
 
+/**
+ * Lớp Filter (Bộ lọc) đứng ở cửa ngõ của ứng dụng.
+ * Mọi request từ Frontend (React/Vue/Postman) gửi xuống BE đều phải đi qua cái cửa này đầu tiên.
+ * Chức năng chính: Kiểm tra xem Request đó có mang theo Token hợp lệ không.
+ */
 @Component
 public class filter extends OncePerRequestFilter {
+    
+    // Trình xử lý ngoại lệ (lỗi) để gửi thông báo lỗi đẹp mắt về cho Frontend nếu token sai
     @Autowired
     @Qualifier("handlerExceptionResolver")
     private HandlerExceptionResolver resolver;
 
+    // Service dùng để giải mã và kiểm tra Token
     @Autowired
     private TokenService tokenService;
 
+    // Danh sách các API công khai (Không cần đăng nhập vẫn gọi được)
     private final List<String> PUBLIC_API_ENDPOINTS = List.of(
                "/",
                 "/index.html",
                 "/favicon.ico",
                 "/style.css",
                 "/app.js",
-                "/api/auth/register",
-                "/api/auth/login",
+                "/api/auth/register", // Ai cũng đăng ký được
+                "/api/auth/verify-register-otp", // Xác thực OTP không cần token
+                "/api/auth/login", // Chưa đăng nhập thì mới cần gọi login
                 "/error",
                 "/swagger-ui/**",
                 "/swagger-ui.html",
@@ -44,17 +54,21 @@ public class filter extends OncePerRequestFilter {
                 "/v3/api-docs/**",
                 "/v3/api-docs",
                 "/api/auth/reset-password",
-                "/api/payments/vnpay-return",
+                "/api/payments/vnpay-return", // Call back từ VNPay
                 "/api/payments/vnpay-ipn"
     );
 
+    // Danh sách các API lấy dữ liệu công khai (Chỉ hỗ trợ phương thức GET)
     private final List<String> PUBLIC_GET_ENDPOINTS = List.of(
-                "/api/parking-branches",
-                "/api/parking-zones/**",
-                "/api/vehicle-types",
-                "/api/price-policies"
+                "/api/parking-branches", // Xem danh sách chi nhánh
+                "/api/parking-zones/**", // Xem khu vực
+                "/api/vehicle-types", // Xem loại xe
+                "/api/price-policies" // Xem bảng giá
     );
 
+            /**
+             * Hàm kiểm tra xem đường dẫn hiện tại có nằm trong danh sách Public hay không.
+             */
             public boolean isPublicAPI(String uri, String method) {
                 AntPathMatcher matcher = new AntPathMatcher();
 
@@ -70,10 +84,15 @@ public class filter extends OncePerRequestFilter {
 
                 return false;
             }
+            
+    /**
+     * Hàm lõi xử lý việc lọc request.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request,
          HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
+        // Cho phép các request dạng OPTIONS (thường dùng để trình duyệt check CORS trước) đi qua
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
@@ -82,61 +101,66 @@ public class filter extends OncePerRequestFilter {
         String uri = request.getServletPath();
       
 
-        //Bỏ qua WebSocket handshake
+        // Bỏ qua WebSocket handshake (dùng cho chat realtime hoặc thông báo)
         if (uri.startsWith("/ws")) {
             filterChain.doFilter(request, response);
             return;
         }
 
+        // Nếu là API công khai (Public) -> Cho đi tiếp vào Controller luôn
         if(isPublicAPI(uri, request.getMethod())){
             //api public
             // tất cả access
             filterChain.doFilter(request , response);
 
         } else {
-            //api theo role
-            //check xem co quyen k
-            //=> check token
+            // Nếu là API cần bảo mật (Private)
+            // Bắt buộc phải có token trong Header
             String token = getToken(request);
             if(token == null) {
+                // Không có token -> Báo lỗi 401
                 resolver.resolveException(request , response , null , new AuthenticationException("Token không được để trống!"));
                 return;
             }
-            // co token
-            // => verify lai cai token do
+            
+            // Nếu có token -> Tiến hành giải mã và xác minh (verify)
             User member = null;
             try {
+                // Giải mã Token để lấy ra thông tin người dùng
                 member = tokenService.extractToken(token);
                 if (member == null) {
                     resolver.resolveException(request , response , null , new AuthenticationException("Không tìm thấy người dùng!"));
                     return;
                 }
+                
+                // Cấm cửa nếu tài khoản đang bị khóa (VD: do spam đặt chỗ)
                 if (!member.isAccountNonLocked()) {
                     resolver.resolveException(request , response , null , new AuthenticationException("Tài khoản của bạn đã bị đình chỉ do vi phạm quy định đặt giữ chỗ quá 3 lần."));
                     return;
                 }
             } catch (ExpiredJwtException expiredJwtException) {
-                //1. token het hang
+                // Lỗi 1: Token đã hết hạn thời gian sử dụng
                 resolver.resolveException(request , response , null , new AuthenticationException("Token đã hết hạn!"));
                 return;
             } catch (MalformedJwtException malformedJwtException) {
-                //2. sai token
+                // Lỗi 2: Token bị sai định dạng (có thể do hacker sửa đổi)
                 resolver.resolveException(request, response, null, new AuthenticationException("Token không hợp lệ!"));
                 return;
             } catch (Exception exception) {
                 resolver.resolveException(request, response, null, new AuthenticationException("Xác thực thất bại: " + exception.getMessage()));
                 return;
             }
-            // luu thong tin vua request
-            // luu vao session
+            
+            // Nếu mọi thứ đều OK (Token hợp lệ, chưa hết hạn, tài khoản không bị khóa)
+            // Lưu thông tin người dùng này vào SecurityContextHolder của Spring Security
+            // Từ đây về sau, ở bất kỳ Controller nào cũng có thể gọi SecurityContextHolder để biết ai đang gọi API
             UsernamePasswordAuthenticationToken
                     authenToken =
                     new UsernamePasswordAuthenticationToken(member, token, member.getAuthorities());
             authenToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authenToken);
 
-            //token chuan
-            //dc phep truy cap vao he thong
+            // Cho phép đi tiếp vào các tầng sâu hơn (Controller)
             filterChain.doFilter(request , response);
 
         }
@@ -144,10 +168,12 @@ public class filter extends OncePerRequestFilter {
 
     }
 
-
+    /**
+     * Hàm bóc tách chữ "Bearer " ra khỏi chuỗi Header để lấy đoạn Token chuẩn.
+     */
     public String getToken(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) return null;
-        return authHeader.substring(7);
+        return authHeader.substring(7); // Cắt bỏ 7 ký tự đầu "Bearer "
     }
 }

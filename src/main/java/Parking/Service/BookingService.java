@@ -27,7 +27,21 @@ import Parking.dto.response.BookingResponse;
 import Parking.exception.exceptions.BookingException;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Service xử lý nghiệp vụ Đặt chỗ trước (Booking) qua ứng dụng di động/web.
+ * Cho phép khách hàng chọn trước chi nhánh, loại xe, giờ đến và giữ chỗ.
+ */
 @Service
+/**
+ * @param bookingRepository
+ * @param userRepository
+ * @param parkingBranchRepository
+ * @param vehicleTypeRepository
+ * @param vehicleRepository
+ * @param parkingSessionRepository
+ * @param branchScopeService
+ * @param parkingZoneRepository
+ */
 @RequiredArgsConstructor
 public class BookingService {
 
@@ -39,6 +53,14 @@ public class BookingService {
     private final ParkingSessionRepository parkingSessionRepository;
     private final BranchScopeService branchScopeService;
 
+    /**
+     * Nghiệp vụ: Khách hàng tạo mới một yêu cầu Đặt chỗ.
+     * Chứa nhiều logic kiểm tra phức tạp (Rule):
+     * 1. Chỉ cho phép Ô tô đặt chỗ (Xe máy không được đặt).
+     * 2. Thời gian đến tối thiểu phải sau 1 tiếng.
+     * 3. Một tài khoản chỉ được đặt tối đa 3 chỗ cùng lúc.
+     * 4. Tính toán xem bãi có còn trống chỗ không thì mới cho đặt.
+     */
     @Transactional
     public BookingResponse createBooking(CreateBookingRequest request) {
         // 1. Lấy thông tin user hiện tại từ Security Context
@@ -94,6 +116,14 @@ public class BookingService {
         // Nếu xe của người dùng booking trùng
         if (vehicle.getUser() != null && !vehicle.getUser().getUserId().equals(user.getUserId())) {
             throw new BookingException("Phương tiện này đã được đăng ký bởi người dùng khác.");
+        }
+
+        // Không tin cậy vehicleTypeId từ request khi biển số đã tồn tại. Nếu không
+        // đối chiếu, xe máy có thể gửi vehicleTypeId của ô tô để vượt qua Rule 2.1.
+        if (vehicle.getVehicleType() == null
+                || !vehicle.getVehicleType().getVehicleTypeId().equals(vehicleType.getVehicleTypeId())) {
+            throw new BookingException(
+                    "Loại phương tiện không khớp với thông tin xe đã đăng ký. Vui lòng chọn đúng loại phương tiện.");
         }
 
         // Cập nhật thông tin màu xe / hiệu xe nếu chưa có
@@ -195,6 +225,10 @@ public class BookingService {
                 .toList();
     }
 
+    /**
+     * Nghiệp vụ: Hủy bỏ một lượt đặt chỗ.
+     * Chỉ người tạo đơn hoặc quản lý/nhân viên mới có quyền hủy.
+     */
     @Transactional
     public BookingResponse cancelBooking(Long bookingId) {
         User user = getCurrentUser();
@@ -227,9 +261,12 @@ public class BookingService {
         return convertToResponse(bookingRepository.save(booking));
     }
 
-    // Scheduler tự động quét dọn dẹp các booking quá hạn giữ chỗ (Rule 5.2)
-    // đỗ trống, cộng điểm phạt vi phạm và tự động khóa tài khoản người dùng nếu vi
-    // phạm >= 3 lần.
+    /**
+     * Nghiệp vụ chạy ngầm (Cron Job): Tự động quét và dọn dẹp các đơn đặt chỗ đã quá hạn (Khách đặt nhưng không tới).
+     * - Chạy 5 phút 1 lần.
+     * - Đổi trạng thái từ CONFIRMED sang EXPIRED.
+     * - Phạt tài khoản: Nếu vi phạm quá 3 lần sẽ khóa tài khoản.
+     */
     @Scheduled(cron = "0 */5 * * * *") // Chạy 5 phút 1 lần
     @Transactional
     public void cleanupExpiredBookings() {

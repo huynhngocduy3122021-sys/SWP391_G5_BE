@@ -1,10 +1,29 @@
 package Parking.Service;
 
-import Parking.Model.*;
-import Parking.Repository.*;
-import Parking.dto.request.*;
+import Parking.Model.IncidentLog;
+import Parking.Model.IncidentReport;
+import Parking.Model.ParkingBranch;
+import Parking.Model.ParkingCard;
+import Parking.Model.ParkingSession;
+import Parking.Model.User;
+import Parking.Repository.IncidentReportRepository;
+import Parking.Repository.ParkingBranchRepository;
+import Parking.Repository.ParkingCardRepository;
+import Parking.Repository.ParkingSessionRepository;
+import Parking.Repository.UserRepository;
+import Parking.dto.request.AssignIncidentRequest;
+import Parking.dto.request.CancelIncidentRequest;
+import Parking.dto.request.CreateIncidentRequest;
+import Parking.dto.request.LostCardIncidentRequest;
+import Parking.dto.request.ResolveIncidentRequest;
 import Parking.dto.response.IncidentReportResponse;
-import Parking.enums.*;
+import Parking.enums.IncidentLogAction;
+import Parking.enums.IncidentPriority;
+import Parking.enums.IncidentStatus;
+import Parking.enums.IncidentType;
+import Parking.enums.ParkingCardStatus;
+import Parking.enums.ParkingSessionStatus;
+import Parking.enums.UserRole;
 import Parking.exception.exceptions.ParkingSessionException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,8 +43,7 @@ public class IncidentReportService {
     private final ParkingBranchRepository parkingBranchRepository;
     private final ParkingSessionRepository parkingSessionRepository;
     private final ParkingCardRepository parkingCardRepository;
-    private final IncidentImageRepository incidentImageRepository;
-    private final IncidentLogRepository incidentLogRepository;
+
     private final BranchScopeService branchScopeService;
 
     // Lấy User hiện tại đăng nhập từ Security Context
@@ -115,17 +133,7 @@ public class IncidentReportService {
         report.setCreatedAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
 
-        // 4. Lưu ảnh hiện trường đính kèm
-        if (request.getImages() != null) {
-            for (CreateIncidentRequest.ImageDto imgDto : request.getImages()) {
-                IncidentImage img = new IncidentImage();
-                img.setImageUrl(imgDto.getImageUrl());
-                img.setPublicId(imgDto.getPublicId());
-                img.setUploadedBy(reporter);
-                img.setUploadedAt(LocalDateTime.now());
-                report.addImage(img);
-            }
-        }
+        // 4. (Đã chuyển xử lý ảnh sang luồng upload riêng biệt)
 
         // 5. Lưu vết nhật ký khởi tạo (Audit Log)
         IncidentLog initialLog = new IncidentLog();
