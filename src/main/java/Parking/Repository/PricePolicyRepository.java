@@ -1,6 +1,7 @@
 package Parking.Repository;
 
 import java.util.Optional;
+import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,7 +14,13 @@ public interface PricePolicyRepository extends JpaRepository<PricePolicy,Long> {
     );
 
     @Query("SELECT p FROM PricePolicy p WHERE p.vehicleType.vehicleTypeId = :vehicleTypeId AND p.active = true AND LOWER(p.policyName) NOT LIKE '%gói%' AND LOWER(p.policyName) NOT LIKE '%tháng%' AND p.policyName NOT LIKE '[Gói%' ORDER BY p.pricePolicyId DESC")
-    java.util.List<PricePolicy> findActiveHourlyPolicies(@Param("vehicleTypeId") Long vehicleTypeId);
+    List<PricePolicy> findActiveHourlyPolicies(@Param("vehicleTypeId") Long vehicleTypeId);
+
+    @Query("SELECT p FROM PricePolicy p WHERE p.vehicleType.vehicleTypeId = :vehicleTypeId AND LOWER(p.policyName) NOT LIKE '%gói%' AND LOWER(p.policyName) NOT LIKE '%tháng%' AND p.policyName NOT LIKE '[Gói%' ORDER BY p.pricePolicyId DESC")
+    List<PricePolicy> findHourlyPolicies(@Param("vehicleTypeId") Long vehicleTypeId);
+
+    @Query("SELECT p FROM PricePolicy p WHERE p.vehicleType.vehicleTypeId = :vehicleTypeId AND (LOWER(p.policyName) LIKE '%gói%' OR LOWER(p.policyName) LIKE '%tháng%') ORDER BY p.pricePolicyId DESC")
+    List<PricePolicy> findPackagePolicies(@Param("vehicleTypeId") Long vehicleTypeId);
 
     default Optional<PricePolicy> findFirstActiveHourlyPolicy(Long vehicleTypeId) {
         return findActiveHourlyPolicies(vehicleTypeId).stream().findFirst();
