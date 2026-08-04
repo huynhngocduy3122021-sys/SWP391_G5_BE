@@ -11,9 +11,11 @@ import Parking.Service.ParkingBranchService;
 import Parking.dto.request.CreateParkingBranchRequest;
 import Parking.dto.request.UpdateParkingBranchRequest;
 import Parking.dto.response.ParkingBranchResponse;
+import Parking.dto.response.ParkingCapacityResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @SecurityRequirement(name = "api_key")
@@ -34,6 +36,16 @@ public class ParkingBranchController {
     @Operation( summary = "Lấy danh sách chi nhánh bãi xe", description = "Trả về toàn bộ các chi nhánh bãi xe đang có trong hệ thống." )
     public ResponseEntity<List<ParkingBranchResponse>> getAll() {
         return ResponseEntity.ok(parkingBranchService.getAllParkingBranches());
+    }
+
+    @GetMapping("/my-capacity")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER')")
+    @Operation(
+            summary = "Lấy sức chứa chi nhánh của nhân viên",
+            description = "Trả về tổng chỗ, số xe đang đỗ, số chỗ đang được giữ bởi booking và số chỗ còn trống tại chi nhánh được gán cho Staff/Manager hiện tại."
+    )
+    public ResponseEntity<ParkingCapacityResponse> getMyCapacity() {
+        return ResponseEntity.ok(parkingBranchService.getMyBranchCapacity());
     }
 
     @GetMapping("/{id}")
