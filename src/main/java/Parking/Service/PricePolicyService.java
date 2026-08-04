@@ -7,8 +7,11 @@ import Parking.Model.VehicleType;
 import Parking.Repository.PricePolicyRepository;
 import Parking.Repository.VehicleTypeRepository;
 import Parking.dto.request.CreatePricePolicyRequest;
+import Parking.dto.request.UpdatePricePolicyRequest;
+import Parking.exception.exceptions.ParkingSessionException;
 import lombok.RequiredArgsConstructor;
 import java.util.List;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -17,10 +20,13 @@ public class PricePolicyService {
     private final VehicleTypeRepository vehicleTypeRepository;
 
     // Tạo mới chính sách giá (giá cơ bản, giá phụ trội, block thời gian) cho loại phương tiện
+    @Transactional
     public PricePolicy createPricePolicy(CreatePricePolicyRequest request) {
         // Tìm thông tin loại phương tiện được áp dụng chính sách giá, ném lỗi nếu không tìm thấy
         VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy loại phương tiện"));
+
+        validateSinglePolicyPerCategory(request.getPolicyName(), request.getVehicleTypeId(), null);
 
         // Khởi tạo thực thể chính sách giá mới
         PricePolicy pricePolicy = new PricePolicy();
@@ -55,12 +61,15 @@ public class PricePolicyService {
     }
 
     // Cập nhật thông tin chính sách giá và gán loại phương tiện áp dụng
-    public PricePolicy updatePricePolicy(Long id, Parking.dto.request.UpdatePricePolicyRequest request) {
+    @Transactional
+    public PricePolicy updatePricePolicy(Long id, UpdatePricePolicyRequest request) {
         // Tìm thông tin chính sách giá hiện tại trong hệ thống theo ID
         PricePolicy pricePolicy = getPricePolicyById(id);
         // Tìm loại phương tiện mới áp dụng từ request
         VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy loại phương tiện có ID: " + request.getVehicleTypeId()));
+
+        validateSinglePolicyPerCategory(request.getPolicyName(), request.getVehicleTypeId(), id);
 
         // Cập nhật lại các thông số giá và thời gian của chính sách
         pricePolicy.setPolicyName(request.getPolicyName());
@@ -81,5 +90,31 @@ public class PricePolicyService {
         PricePolicy pricePolicy = getPricePolicyById(id);
         // Xóa chính sách giá ra khỏi CSDL
         pricePolicyRepository.delete(pricePolicy);
+    }
+
+    private void validateSinglePolicyPerCategory(String policyName, Long vehicleTypeId, Long currentPolicyId) {
+        boolean packagePolicy = isPackagePolicy(policyName);
+        List<PricePolicy> policiesInSameCategory = packagePolicy
+                ? pricePolicyRepository.findPackagePolicies(vehicleTypeId)
+                : pricePolicyRepository.findHourlyPolicies(vehicleTypeId);
+
+        boolean duplicateExists = policiesInSameCategory.stream()
+                .anyMatch(policy -> currentPolicyId == null
+                        || !policy.getPricePolicyId().equals(currentPolicyId));
+
+        if (duplicateExists) {
+            String policyCategory = packagePolicy ? "gói đăng ký" : "chính sách giá check-in/check-out";
+            throw new ParkingSessionException("Loại phương tiện này đã có " + policyCategory
+                    + ". Vui lòng chỉnh sửa chính sách hiện có.");
+        }
+    }
+
+    private boolean isPackagePolicy(String policyName) {
+        if (policyName == null) {
+            return false;
+        }
+
+        String normalizedName = policyName.trim().toLowerCase();
+        return normalizedName.contains("gói") || normalizedName.contains("tháng");
     }
 }

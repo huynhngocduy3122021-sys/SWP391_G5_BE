@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import Parking.Model.PricePolicy;
@@ -31,6 +32,7 @@ public class PricePolicyController {
     private final PricePolicyService pricePolicyService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Hàm tạo đơn giá của xe")
     public ResponseEntity<PricePolicy> createPricePolicy(
             @Valid @RequestBody CreatePricePolicyRequest request
@@ -51,6 +53,7 @@ public class PricePolicyController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Hàm cập nhật đơn giá theo ID")
     public ResponseEntity<PricePolicy> updatePricePolicy(
             @PathVariable Long id,
@@ -60,6 +63,7 @@ public class PricePolicyController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Hàm xóa đơn giá theo ID")
     public ResponseEntity<Void> deletePricePolicy(@PathVariable Long id) {
         pricePolicyService.deletePricePolicy(id);
