@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import Parking.Service.PaymentService;
@@ -58,7 +59,11 @@ public class PaymentController {
     }
 
     @GetMapping("/all")
-    @Operation(summary = "Lấy tất cả payments cho báo cáo doanh thu")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
+    @Operation(
+            summary = "Lấy payments cho báo cáo doanh thu",
+            description = "Staff chỉ nhận thanh toán lượt gửi xe tại chi nhánh được phân công và không nhận doanh thu vé tháng."
+    )
     public ResponseEntity<?> getAllPayments() {
         return ResponseEntity.ok(paymentService.getAllPaymentsForReport());
     }

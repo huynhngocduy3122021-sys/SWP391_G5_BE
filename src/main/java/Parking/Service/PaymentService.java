@@ -8,6 +8,8 @@ import java.time.ZoneId;
 import java.util.UUID;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,13 +25,16 @@ import Parking.Repository.PricePolicyRepository;
 import Parking.Repository.MonthlyTicketRepository;
 import Parking.Repository.MonthlyTicketRequestRepository;
 import Parking.Model.MonthlyTicketRequest;
+import Parking.Model.User;
 import Parking.dto.response.GuestCheckOutResponse;
+import Parking.dto.response.PaymentReportResponse;
 import Parking.dto.response.VnpayReturnResponse;
 import Parking.enums.ParkingCardStatus;
 import Parking.enums.ParkingCardType;
 import Parking.enums.ParkingSessionStatus;
 import Parking.enums.PaymentMethod;
 import Parking.enums.PaymentStatus;
+import Parking.enums.UserRole;
 import Parking.exception.exceptions.ParkingSessionException;
 import lombok.RequiredArgsConstructor;
 
@@ -54,6 +59,7 @@ public class PaymentService {
     private final ParkingCardRepository parkingCardRepository;
     private final MonthlyTicketRepository monthlyTicketRepository;
     private final MonthlyTicketRequestRepository monthlyTicketRequestRepository;
+    private final CurrentUserService currentUserService;
 
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
@@ -520,10 +526,28 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<Parking.dto.response.PaymentReportResponse> getAllPaymentsForReport() {
-        java.util.List<Payment> payments = paymentRepository.findAll();
+    public List<PaymentReportResponse> getAllPaymentsForReport() {
+        User currentUser = currentUserService.getCurrentUser();
+        Stream<Payment> paymentStream = paymentRepository.findAll().stream();
+
+        if (currentUser.getUserRole() == UserRole.STAFF) {
+            if (currentUser.getParkingBranch() == null) {
+                throw new ParkingSessionException("Tài khoản chưa được gán chi nhánh");
+            }
+
+            Long staffBranchId = currentUser.getParkingBranch().getParkingBranchId();
+            paymentStream = paymentStream.filter(payment -> {
+                ParkingSession session = payment.getParkingSession();
+                return session != null
+                        && payment.getMonthlyTicketRequest() == null
+                        && session.getParkingBranch() != null
+                        && staffBranchId.equals(session.getParkingBranch().getParkingBranchId());
+            });
+        }
+
+        List<Payment> payments = paymentStream.toList();
         return payments.stream().map(p -> {
-            Parking.dto.response.PaymentReportResponse.PaymentReportResponseBuilder builder = Parking.dto.response.PaymentReportResponse
+            PaymentReportResponse.PaymentReportResponseBuilder builder = PaymentReportResponse
                     .builder()
                     .paymentId(p.getPaymentId())
                     .amount(p.getAmount())
@@ -563,6 +587,6 @@ public class PaymentService {
             }
 
             return builder.build();
-        }).collect(java.util.stream.Collectors.toList());
+        }).toList();
     }
 }

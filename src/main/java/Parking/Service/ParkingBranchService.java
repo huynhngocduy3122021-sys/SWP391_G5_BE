@@ -15,6 +15,7 @@ import Parking.enums.ParkingSessionStatus;
 import Parking.dto.request.CreateParkingBranchRequest;
 import Parking.dto.request.UpdateParkingBranchRequest;
 import Parking.dto.response.ParkingBranchResponse;
+import Parking.dto.response.ParkingCapacityResponse;
 import Parking.exception.exceptions.ParkingSessionException;
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +27,7 @@ public class ParkingBranchService {
     private final ParkingZoneRepository parkingZoneRepository;
     private final ParkingSessionRepository parkingSessionRepository;
     private final BookingRepository bookingRepository;
+    private final BranchScopeService branchScopeService;
 
     // Tạo chi nhánh bãi xe mới với tên chi nhánh độc nhất (case-insensitive) và kích hoạt trạng thái mặc định
     @Transactional
@@ -60,6 +62,23 @@ public class ParkingBranchService {
     @Transactional(readOnly = true)
     public ParkingBranchResponse getParkingBranchById(Long id) {
         return convertBranchResponse(findBranch(id));
+    }
+
+    // Lấy sức chứa của đúng chi nhánh được gán cho tài khoản Staff/Manager hiện tại.
+    @Transactional(readOnly = true)
+    public ParkingCapacityResponse getMyBranchCapacity() {
+        Long branchId = branchScopeService.resolveReadableBranchId(null);
+        ParkingBranch branch = findBranch(branchId);
+        CapacitySnapshot capacity = calculateCapacity(branchId);
+
+        return ParkingCapacityResponse.builder()
+                .parkingBranchId(branchId)
+                .branchName(branch.getBranchName())
+                .totalCapacity(capacity.totalCapacity())
+                .occupiedCapacity(capacity.occupiedCapacity())
+                .reservedCapacity(capacity.reservedCapacity())
+                .availableCapacity(capacity.availableCapacity())
+                .build();
     }
 
     // Cập nhật thông tin chi nhánh bãi xe (tên, địa chỉ, số điện thoại, mô tả)
@@ -104,16 +123,7 @@ public class ParkingBranchService {
     // Chuyển đổi đối tượng Entity ParkingBranch sang DTO ParkingBranchResponse, tính toán sức chứa thực tế
     private ParkingBranchResponse convertBranchResponse(ParkingBranch parkingBranch) {
         Long branchId = parkingBranch.getParkingBranchId();
-        Long totalCapacityLong = parkingZoneRepository.calculateTotalCapacityByBranch(branchId);
-        int totalCapacity = totalCapacityLong != null ? totalCapacityLong.intValue() : 0;
-
-        long activeSessionsLong = parkingSessionRepository.countByParkingBranchParkingBranchIdAndStatus(branchId, ParkingSessionStatus.ACTIVE);
-        int activeSessions = (int) activeSessionsLong;
-
-        long activeBookingsLong = bookingRepository.countActiveBookingsByBranch(branchId, LocalDateTime.now());
-        int activeBookings = (int) activeBookingsLong;
-
-        int availableCapacity = Math.max(0, totalCapacity - activeSessions - activeBookings);
+        CapacitySnapshot capacity = calculateCapacity(branchId);
 
         return ParkingBranchResponse.builder()
                 .parkingBranchId(branchId)
@@ -122,9 +132,31 @@ public class ParkingBranchService {
                 .phoneNumber(parkingBranch.getPhoneNumber())
                 .description(parkingBranch.getDescription())
                 .active(parkingBranch.isActive())
-                .totalCapacity(totalCapacity)
-                .availableCapacity(availableCapacity)
+                .totalCapacity(capacity.totalCapacity())
+                .availableCapacity(capacity.availableCapacity())
                 .build();
+    }
+
+    private CapacitySnapshot calculateCapacity(Long branchId) {
+        Long totalCapacityLong = parkingZoneRepository.calculateTotalCapacityByBranch(branchId);
+        int totalCapacity = totalCapacityLong != null ? totalCapacityLong.intValue() : 0;
+
+        long activeSessionsLong = parkingSessionRepository.countByParkingBranchParkingBranchIdAndStatus(branchId, ParkingSessionStatus.ACTIVE);
+        int occupiedCapacity = Math.toIntExact(activeSessionsLong);
+
+        long activeBookingsLong = bookingRepository.countActiveBookingsByBranch(branchId, LocalDateTime.now());
+        int reservedCapacity = Math.toIntExact(activeBookingsLong);
+
+        int availableCapacity = Math.max(0, totalCapacity - occupiedCapacity - reservedCapacity);
+
+        return new CapacitySnapshot(totalCapacity, occupiedCapacity, reservedCapacity, availableCapacity);
+    }
+
+    private record CapacitySnapshot(
+            int totalCapacity,
+            int occupiedCapacity,
+            int reservedCapacity,
+            int availableCapacity) {
     }
 
     // Chuẩn hóa dữ liệu văn bản tùy chọn (loại bỏ khoảng trắng thừa, chuyển thành null nếu rỗng)
