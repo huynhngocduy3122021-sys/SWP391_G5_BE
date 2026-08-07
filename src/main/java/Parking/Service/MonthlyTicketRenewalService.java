@@ -67,6 +67,11 @@ public class MonthlyTicketRenewalService {
         MonthlyTicket ticket = ticketRepo.findById(ticketId)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vé tháng"));
 
+        if (ticket.isDeleted()) {
+            throw new InvalidTicketStateException(
+                    "Vé tháng đã bị xóa. Vui lòng đăng ký gói mới");
+        }
+
         if (ticket.getStatus() != Parking.enums.MonthlyTicketStatus.ACTIVE && ticket.getStatus() != Parking.enums.MonthlyTicketStatus.INACTIVE) {
             throw new InvalidTicketStateException("Trạng thái vé tháng không hợp lệ để gia hạn.");
         }

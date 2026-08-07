@@ -278,6 +278,10 @@ public class MonthlyTicketRequestService {
 
             MonthlyTicket oldTicket = req.getRenewalOfTicket();
             if (oldTicket != null) {
+                if (oldTicket.isDeleted()) {
+                    throw new InvalidTicketStateException(
+                            "Vé cũ đã bị xóa; yêu cầu này không thể xử lý như gia hạn");
+                }
                 if (!oldTicket.getVehicle().getVehiclesId().equals(req.getVehicle().getVehiclesId())) {
                     throw new InvalidTicketStateException("Xe gia hạn không khớp vé hiện tại");
                 }
@@ -311,7 +315,7 @@ public class MonthlyTicketRequestService {
                 oldTicket.setPricePolicy(policy);
                 monthlyTicketRepo.save(oldTicket);
             } else {
-                card = parkingCardRepo.findByParkingCardId(parkingCardId)
+                card = parkingCardRepo.findByIdForUpdate(parkingCardId)
                         .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thẻ giữ xe đã chọn."));
 
                 if (card.getParkingBranch() == null

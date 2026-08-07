@@ -42,6 +42,15 @@ public class IncidentReportResponse {
     private Long parkingSessionId;
     private Long parkingCardId;
     private String cardCode;
+    private String parkingCardType;
+
+    private Long replacementCardId;
+    private String replacementCardCode;
+    private Long replacementTicketId;
+    private LocalDateTime replacementAt;
+    private Long replacementByUserId;
+    private String replacementByName;
+    private Boolean monthlyCardReplacementRequired;
 
     private List<IncidentImageResponse> images;
     private List<IncidentLogResponse> logs;

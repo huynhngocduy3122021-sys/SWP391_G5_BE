@@ -6,6 +6,8 @@ import Parking.Model.ParkingBranch;
 import Parking.Model.ParkingCard;
 import Parking.Repository.ParkingBranchRepository;
 import Parking.Repository.ParkingCardRepository;
+import Parking.Repository.ParkingSessionRepository;
+import Parking.Repository.MonthlyTicketRepository;
 import Parking.dto.request.CreateParkingCardRequest;
 import Parking.dto.request.UpdateParkingCardRequest;
 import Parking.dto.response.ParkingCardResponse;
@@ -22,6 +24,8 @@ public class ParkingCardService {
     private final ParkingCardRepository parkingCardRepository;
     private final ParkingBranchRepository parkingBranchRepository;
     private final BranchScopeService branchScopeService;
+    private final ParkingSessionRepository parkingSessionRepository;
+    private final MonthlyTicketRepository monthlyTicketRepository;
 
     @Transactional
     public ParkingCardResponse createParkingCard(CreateParkingCardRequest request) {
@@ -107,6 +111,14 @@ public class ParkingCardService {
         }
 
         if (request.getStatus() != null) {
+            if (request.getStatus() == ParkingCardStatus.AVAILABLE && parkingCard.getStatus() != ParkingCardStatus.AVAILABLE) {
+                if (parkingSessionRepository.existsByParkingCardParkingCardIdAndStatus(parkingCard.getParkingCardId(), Parking.enums.ParkingSessionStatus.ACTIVE)) {
+                    throw new ParkingSessionException("Thẻ đang có phiên gửi xe hoạt động, yêu cầu gọi endpoint dừng vé.");
+                }
+                if (monthlyTicketRepository.existsActiveTicketByCard(parkingCard.getParkingCardId(), java.time.LocalDateTime.now())) {
+                    throw new ParkingSessionException("Thẻ đang có vé tháng hoạt động, yêu cầu gọi endpoint dừng vé.");
+                }
+            }
             parkingCard.setStatus(request.getStatus());
         }
 

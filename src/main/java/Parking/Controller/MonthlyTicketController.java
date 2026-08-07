@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -76,9 +77,29 @@ public class MonthlyTicketController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa vé tháng")
-    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<Void> deleteMonthlyTicket(@PathVariable Long id) {
         monthlyTicketService.deleteMonthlyTicket(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/stop")
+    @Operation(summary = "Dừng vé tháng")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<Void> stopMonthlyTicket(@PathVariable Long id) {
+        monthlyTicketService.stopMonthlyTicket(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/card-lookup")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
+    @Operation(summary = "Kiểm tra trạng thái thẻ tháng tại cổng")
+    public ResponseEntity<Parking.dto.response.MonthlyCardLookupResponse> lookupByCardCode(
+            @RequestParam String cardCode,
+            @RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME)
+            java.time.LocalDateTime time) {
+        return ResponseEntity.ok(
+                monthlyTicketService.lookupByCardCode(cardCode, time));
     }
 }

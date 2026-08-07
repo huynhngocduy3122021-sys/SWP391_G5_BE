@@ -76,6 +76,7 @@ public class ParkingSessionService {
     private final BranchScopeService branchScopeService;
     private final MonthlyTicketRepository monthlyTicketRepository;
     private final CurrentUserService currentUserService;
+    private final MonthlyTicketService monthlyTicketService;
 
     /**
      * Nghiệp vụ: Khách vãng lai (hoặc khách dùng vé tháng) chạy xe tới cổng và quẹt thẻ vào bãi.
@@ -92,6 +93,9 @@ public class ParkingSessionService {
         ParkingCard parkingCard = parkingCardRepository.findByCardCodeIgnoreCase(cardCode)
                                 .orElseThrow(() -> new ParkingSessionException("Không tìm thấy thẻ giữ xe"));
 
+        if (parkingCard.getStatus() == ParkingCardStatus.LOST) {
+            throw new ParkingSessionException("Thẻ đã được báo mất và không còn hiệu lực");
+        }
         if(parkingCard.getStatus() != ParkingCardStatus.AVAILABLE) {
             throw new ParkingSessionException("Thẻ giữ xe hiện không khả dụng");
         }
@@ -139,12 +143,26 @@ public class ParkingSessionService {
 
             // b4.5 : Validate monthly card / monthly ticket properties if it is a monthly card
             if (parkingCard.getType() == ParkingCardType.MONTHLY) {
-                MonthlyTicket activeTicket = monthlyTicketRepository.findActiveTicketByCard(parkingCard.getParkingCardId(), currentTime)
-                        .orElseThrow(() -> new ParkingSessionException("Thẻ tháng không có vé tháng hoạt động hoặc đã hết hạn"));
+                Parking.dto.response.MonthlyCardLookupResponse lookup = monthlyTicketService
+                        .lookupByCardCode(parkingCard.getCardCode(), currentTime);
 
-                // Validate that the license plate matches the vehicle in the monthly ticket
-                if (!activeTicket.getVehicle().getLicensePlate().equalsIgnoreCase(licesePlate)) {
-                    throw new ParkingSessionException("Biển số xe không khớp với thông tin đăng ký trên vé tháng");
+                switch (lookup.getLookupStatus()) {
+                    case "STOPPED" -> throw new Parking.exception.exceptions.InvalidTicketStateException(
+                            "Thẻ tháng đã bị manager dừng");
+                    case "EXPIRED" -> throw new Parking.exception.exceptions.InvalidTicketStateException(
+                            "Thẻ tháng đã hết hạn");
+                    case "NOT_STARTED" -> throw new Parking.exception.exceptions.InvalidTicketStateException(
+                            "Thẻ tháng chưa đến ngày hiệu lực");
+                    case "NOT_ASSIGNED" -> throw new Parking.exception.exceptions.InvalidTicketStateException(
+                            "Thẻ tháng chưa được liên kết với vé nào");
+                    case "ACTIVE" -> {
+                        if (!lookup.getLicensePlate().equalsIgnoreCase(licesePlate)) {
+                            throw new Parking.exception.exceptions.InvalidTicketStateException(
+                                    "Biển số xe không khớp với thông tin đăng ký trên vé tháng");
+                        }
+                    }
+                    default -> throw new Parking.exception.exceptions.InvalidTicketStateException(
+                            "Trạng thái thẻ tháng không hợp lệ");
                 }
             }
 
