@@ -28,6 +28,10 @@ public interface ParkingCardRepository extends JpaRepository<ParkingCard , Long>
     Optional<ParkingCard> findByParkingCardId(Long parkingCardId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT card FROM ParkingCard card WHERE card.parkingCardId = :id")
+    Optional<ParkingCard> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         SELECT pc FROM ParkingCard pc
         WHERE pc.parkingBranch.parkingBranchId = :branchId

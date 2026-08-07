@@ -43,6 +43,7 @@ public class IncidentReportService {
     private final ParkingBranchRepository parkingBranchRepository;
     private final ParkingSessionRepository parkingSessionRepository;
     private final ParkingCardRepository parkingCardRepository;
+    private final Parking.Repository.MonthlyTicketRepository monthlyTicketRepository;
 
     private final BranchScopeService branchScopeService;
 
@@ -278,6 +279,19 @@ public class IncidentReportService {
                 // Yêu cầu check-out xe trước khi resolve ticket báo mất thẻ
                 throw new ParkingSessionException("Không thể hoàn tất sự cố mất thẻ khi phiên gửi xe của phương tiện vẫn đang hoạt động. Vui lòng thực hiện Check-out xe trước.");
             }
+
+            // Mới: Kiểm tra cấp thẻ thay thế nếu vé tháng còn hiệu lực
+            if (report.getParkingCard() != null) {
+                boolean hasActiveMonthlyTicket = monthlyTicketRepository
+                        .findActiveTicketsForLostCard(
+                                report.getParkingCard().getParkingCardId(),
+                                LocalDateTime.now())
+                        .size() == 1;
+
+                if (hasActiveMonthlyTicket && report.getReplacementCard() == null) {
+                    throw new ParkingSessionException("Phải cấp thẻ thay thế trước khi hoàn tất sự cố mất thẻ");
+                }
+            }
         }
 
         IncidentStatus oldStatus = report.getStatus();
@@ -321,6 +335,11 @@ public class IncidentReportService {
         report.setCancelledAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
 
+        // Thêm chặn hủy báo mất nếu đã cấp thẻ thay thế
+        if (report.getReplacementCard() != null) {
+            throw new ParkingSessionException("Không thể hủy báo mất sau khi đã cấp thẻ thay thế");
+        }
+
         // Rollback trạng thái của thẻ xe khi hủy báo mất thẻ (nếu có)
         if (report.getIncidentType() == IncidentType.LOST_CARD && report.getParkingCard() != null) {
             ParkingCard card = report.getParkingCard();
@@ -328,6 +347,9 @@ public class IncidentReportService {
             if (session != null && session.getStatus() == ParkingSessionStatus.ACTIVE) {
                 // Rollback thẻ về trạng thái đang sử dụng nếu session còn kích hoạt
                 card.setStatus(ParkingCardStatus.IN_USE);
+                parkingCardRepository.save(card);
+            } else {
+                card.setStatus(ParkingCardStatus.AVAILABLE);
                 parkingCardRepository.save(card);
             }
         }
@@ -389,7 +411,7 @@ public class IncidentReportService {
         return convertToResponse(report);
     }
 
-    private IncidentReportResponse convertToResponse(IncidentReport report) {
+    public IncidentReportResponse convertToResponse(IncidentReport report) {
         User user = getCurrentUser();
 
         List<IncidentReportResponse.IncidentImageResponse> imgs = report.getIncidentImages().stream()
@@ -443,6 +465,19 @@ public class IncidentReportService {
                 .parkingSessionId(report.getParkingSession() != null ? report.getParkingSession().getParkingSessionId() : null)
                 .parkingCardId(report.getParkingCard() != null ? report.getParkingCard().getParkingCardId() : null)
                 .cardCode(report.getParkingCard() != null ? report.getParkingCard().getCardCode() : null)
+                .parkingCardType(report.getParkingCard() != null && report.getParkingCard().getType() != null ? report.getParkingCard().getType().name() : null)
+                .replacementCardId(report.getReplacementCard() != null ? report.getReplacementCard().getParkingCardId() : null)
+                .replacementCardCode(report.getReplacementCard() != null ? report.getReplacementCard().getCardCode() : null)
+                .replacementTicketId(report.getReplacementTicket() != null ? report.getReplacementTicket().getTicketId() : null)
+                .replacementAt(report.getReplacementAt())
+                .replacementByUserId(report.getReplacementBy() != null ? report.getReplacementBy().getUserId() : null)
+                .replacementByName(report.getReplacementBy() != null ? report.getReplacementBy().getUserFullName() : null)
+                .monthlyCardReplacementRequired(
+                    report.getIncidentType() == IncidentType.LOST_CARD &&
+                    report.getParkingCard() != null &&
+                    report.getReplacementCard() == null &&
+                    monthlyTicketRepository.findActiveTicketsForLostCard(report.getParkingCard().getParkingCardId(), LocalDateTime.now()).size() > 0
+                )
                 .images(imgs)
                 .logs(logs)
                 .build();

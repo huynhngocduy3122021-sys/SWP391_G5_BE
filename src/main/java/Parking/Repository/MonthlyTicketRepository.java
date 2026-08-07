@@ -17,14 +17,16 @@ public interface MonthlyTicketRepository extends JpaRepository<MonthlyTicket, Lo
 
     @Query("""
         SELECT mt FROM MonthlyTicket mt
-        WHERE :branchId IS NULL
-           OR mt.parkingCard.parkingBranch.parkingBranchId = :branchId
+        WHERE mt.deleted = false
+           AND (:branchId IS NULL
+           OR mt.parkingCard.parkingBranch.parkingBranchId = :branchId)
     """)
     List<MonthlyTicket> findAllByBranchId(@Param("branchId") Long branchId);
 
     @Query("""
         SELECT COUNT(mt) > 0 FROM MonthlyTicket mt
-        WHERE mt.vehicle.vehiclesId = :vehicleId
+        WHERE mt.deleted = false
+          AND mt.vehicle.vehiclesId = :vehicleId
           AND mt.status = 1
           AND (:ticketId IS NULL OR mt.ticketId <> :ticketId)
           AND mt.startDate < :endDate
@@ -39,7 +41,8 @@ public interface MonthlyTicketRepository extends JpaRepository<MonthlyTicket, Lo
 
     @Query("""
         SELECT COUNT(mt) > 0 FROM MonthlyTicket mt
-        WHERE mt.parkingCard.parkingCardId = :parkingCardId
+        WHERE mt.deleted = false
+          AND mt.parkingCard.parkingCardId = :parkingCardId
           AND mt.status = 1
           AND (:ticketId IS NULL OR mt.ticketId <> :ticketId)
           AND mt.startDate < :endDate
@@ -54,7 +57,8 @@ public interface MonthlyTicketRepository extends JpaRepository<MonthlyTicket, Lo
 
     @Query("""
         SELECT COUNT(mt) > 0 FROM MonthlyTicket mt
-        WHERE mt.parkingCard.parkingCardId = :parkingCardId
+        WHERE mt.deleted = false
+          AND mt.parkingCard.parkingCardId = :parkingCardId
           AND mt.status = 1
           AND mt.startDate <= :time
           AND mt.endDate >= :time
@@ -66,7 +70,8 @@ public interface MonthlyTicketRepository extends JpaRepository<MonthlyTicket, Lo
 
     @Query("""
         SELECT mt FROM MonthlyTicket mt
-        WHERE mt.parkingCard.parkingCardId = :parkingCardId
+        WHERE mt.deleted = false
+          AND mt.parkingCard.parkingCardId = :parkingCardId
           AND mt.status = 1
           AND mt.startDate <= :time
           AND mt.endDate >= :time
@@ -82,13 +87,15 @@ public interface MonthlyTicketRepository extends JpaRepository<MonthlyTicket, Lo
 
     @Query("""
         SELECT mt FROM MonthlyTicket mt
-        WHERE mt.vehicle.user.userId = :userId
+        WHERE mt.deleted = false
+          AND mt.vehicle.user.userId = :userId
     """)
     List<MonthlyTicket> findAllByUserId(@Param("userId") Long userId);
 
     @Query("""
         SELECT COUNT(mt) > 0 FROM MonthlyTicket mt
-        WHERE mt.vehicle.user.userId = :userId
+        WHERE mt.deleted = false
+          AND mt.vehicle.user.userId = :userId
           AND mt.parkingCard.type = 'EMPLOYEE'
           AND mt.status = 1
           AND (:ticketId IS NULL OR mt.ticketId <> :ticketId)
@@ -102,7 +109,8 @@ public interface MonthlyTicketRepository extends JpaRepository<MonthlyTicket, Lo
 
     @Query("""
         SELECT COUNT(mt) > 0 FROM MonthlyTicket mt
-        WHERE mt.vehicle.vehiclesId = :vehicleId
+        WHERE mt.deleted = false
+          AND mt.vehicle.vehiclesId = :vehicleId
           AND mt.status = 1
           AND mt.startDate <= :time
           AND mt.endDate >= :time
@@ -111,4 +119,33 @@ public interface MonthlyTicketRepository extends JpaRepository<MonthlyTicket, Lo
         @Param("vehicleId") Long vehicleId,
         @Param("time") LocalDateTime time
     );
+
+    @Query("""
+        SELECT mt FROM MonthlyTicket mt
+        JOIN FETCH mt.vehicle vehicle
+        JOIN FETCH vehicle.vehicleType
+        WHERE mt.deleted = false
+          AND mt.parkingCard.parkingCardId = :parkingCardId
+        ORDER BY mt.createdAt DESC, mt.ticketId DESC
+    """)
+    List<MonthlyTicket> findAllByCardOrderByNewest(
+            @Param("parkingCardId") Long parkingCardId);
+
+    java.util.Optional<MonthlyTicket> findByTicketIdAndDeletedFalse(Long ticketId);
+
+    List<MonthlyTicket> findByDeletedTrueOrderByDeletedAtDesc();
+
+    @Query("""
+        SELECT mt FROM MonthlyTicket mt
+        JOIN FETCH mt.vehicle vehicle
+        WHERE mt.deleted = false
+          AND mt.parkingCard.parkingCardId = :cardId
+          AND mt.status = 1
+          AND mt.startDate <= :time
+          AND mt.endDate >= :time
+        ORDER BY mt.createdAt DESC, mt.ticketId DESC
+    """)
+    List<MonthlyTicket> findActiveTicketsForLostCard(
+            @Param("cardId") Long cardId,
+            @Param("time") LocalDateTime time);
 }

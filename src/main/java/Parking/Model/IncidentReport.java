@@ -94,6 +94,21 @@ public class IncidentReport {
     @JoinColumn(name = "parking_card_id")
     private ParkingCard parkingCard; 
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "replacement_card_id")
+    private ParkingCard replacementCard;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "replacement_ticket_id")
+    private MonthlyTicket replacementTicket;
+
+    @Column(name = "replacement_at")
+    private LocalDateTime replacementAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "replacement_by_user_id")
+    private User replacementBy;
+
     // Gắn với hóa đơn đền bù nào? (Nếu có phát sinh tiền đền)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "payment_id")

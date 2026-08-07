@@ -45,4 +45,8 @@ public interface IncidentReportRepository extends JpaRepository<IncidentReport, 
             @Param("assignedStaffId") Long assignedStaffId,
             Pageable pageable
     );
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT report FROM IncidentReport report WHERE report.incidentId = :id")
+    java.util.Optional<IncidentReport> findByIdForUpdate(@Param("id") Long id);
 }

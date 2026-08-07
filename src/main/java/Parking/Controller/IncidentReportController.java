@@ -43,6 +43,7 @@ public class IncidentReportController {
 
     private final IncidentReportService incidentReportService;
     private final IncidentImageService incidentImageService;
+    private final Parking.Service.LostMonthlyCardReplacementService lostMonthlyCardReplacementService;
 
     /**
      * Người dùng (hoặc nhân viên) tạo một báo cáo sự cố chung.
@@ -106,6 +107,17 @@ public class IncidentReportController {
             @Valid @RequestBody CancelIncidentRequest request
     ) {
         return ResponseEntity.ok(incidentReportService.cancelIncident(id, request));
+    }
+
+    @PutMapping("/{id}/replace-monthly-card")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @Operation(summary = "Cấp thẻ thay thế cho báo mất thẻ tháng")
+    public ResponseEntity<IncidentReportResponse> replaceLostMonthlyCard(
+            @PathVariable Long id,
+            @Valid @RequestBody ReplaceLostMonthlyCardRequest request) {
+        return ResponseEntity.ok(
+                lostMonthlyCardReplacementService.replaceCard(
+                        id, request.getReplacementCardId()));
     }
 
     /**

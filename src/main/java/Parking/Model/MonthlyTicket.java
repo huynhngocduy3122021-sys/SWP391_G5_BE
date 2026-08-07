@@ -74,6 +74,16 @@ public class MonthlyTicket {
     @Column(name = "created_at", nullable = true, updatable = false)
     private LocalDateTime createdAt; // Ngày tạo vé
 
+    @Column(name = "deleted", nullable = false)
+    private boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @JoinColumn(name = "deleted_by_user_id")
+    private User deletedBy;
+
     // Hàm tự động điền giờ lúc tạo mới trong DB
     @jakarta.persistence.PrePersist
     protected void onCreate() {
