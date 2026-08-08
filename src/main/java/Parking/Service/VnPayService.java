@@ -64,9 +64,17 @@ public class VnPayService {
          * Nên dùng tiếng Việt không dấu,
          * không chứa ký tự đặc biệt.
          */
-        String orderInfo = payment.getParkingSession() != null
-                ? "Thanh toan phi gui xe session " + payment.getParkingSession().getParkingSessionId()
-                : "Thanh toan ve thang - yeu cau " + payment.getMonthlyTicketRequest().getId();
+        String orderInfo;
+        if (payment.getParkingSession() != null) {
+            orderInfo = "Thanh toan phi gui xe session "
+                    + payment.getParkingSession().getParkingSessionId();
+        } else if (payment.getMonthlyTicketRequest() != null) {
+            orderInfo = "Thanh toan ve thang - yeu cau "
+                    + payment.getMonthlyTicketRequest().getId();
+        } else {
+            orderInfo = "Thanh toan phi mat the - bao cao "
+                    + payment.getIncidentReport().getIncidentId();
+        }
 
         params.put("vnp_OrderInfo", orderInfo);
 
@@ -258,9 +266,12 @@ public class VnPayService {
 
         boolean hasSession = payment.getParkingSession() != null && payment.getParkingSession().getParkingSessionId() != null;
         boolean hasMonthlyTicket = payment.getMonthlyTicketRequest() != null;
+        boolean hasLostCardIncident = payment.getIncidentReport() != null
+                && payment.getIncidentReport().getIncidentId() != null;
 
-        if (!hasSession && !hasMonthlyTicket) {
-            throw new IllegalArgumentException("Thanh toán phải được liên kết với phiên gửi xe hoặc yêu cầu vé tháng");
+        if (!hasSession && !hasMonthlyTicket && !hasLostCardIncident) {
+            throw new IllegalArgumentException(
+                    "Thanh toán phải được liên kết với phiên gửi xe, yêu cầu vé tháng hoặc báo cáo mất thẻ");
         }
 
         if (payment.getMonthlyTicketRequest() != null

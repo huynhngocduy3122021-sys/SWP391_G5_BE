@@ -3,6 +3,7 @@ package Parking.dto.response;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import Parking.enums.PaymentStatus;
 
 @Getter
 @Setter
@@ -15,6 +16,9 @@ public class VnpayReturnResponse {
     private String responseCode;
     private String message;
     private String paymentType;
+    private PaymentStatus paymentStatus;
+    /** Báo cáo mất thẻ tương ứng với paymentType=LOST_CARD. */
+    private Long incidentId;
     private Long requestId;
     private String licensePlate;
     private Long vehicleId;

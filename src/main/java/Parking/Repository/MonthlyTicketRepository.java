@@ -148,4 +148,18 @@ public interface MonthlyTicketRepository extends JpaRepository<MonthlyTicket, Lo
     List<MonthlyTicket> findActiveTicketsForLostCard(
             @Param("cardId") Long cardId,
             @Param("time") LocalDateTime time);
+
+    @Query("""
+        SELECT mt FROM MonthlyTicket mt
+        WHERE mt.deleted = false
+          AND mt.parkingCard.parkingCardId = :cardId
+          AND mt.vehicle.user.userId = :userId
+          AND mt.status = 1
+          AND mt.startDate <= :time
+          AND mt.endDate >= :time
+    """)
+    List<MonthlyTicket> findActiveTicketsByCardAndUser(
+            @Param("cardId") Long cardId,
+            @Param("userId") Long userId,
+            @Param("time") LocalDateTime time);
 }

@@ -10,6 +10,7 @@ import Parking.Model.IncidentLog;
 import Parking.Model.IncidentReport;
 import Parking.Model.MonthlyTicket;
 import Parking.Model.ParkingCard;
+import Parking.Model.ParkingSession;
 import Parking.Model.User;
 import Parking.Repository.IncidentReportRepository;
 import Parking.Repository.MonthlyTicketRepository;
@@ -57,9 +58,38 @@ public class LostMonthlyCardReplacementService {
                     "Sự cố đã kết thúc, không thể cấp thẻ thay thế");
         }
 
+        // Đồng bộ dữ liệu cho các giao dịch cũ: VNPay đã PAID thì report
+        // được phép tiếp tục dù callback trước đó chưa cập nhật status.
+        if (incident.getStatus() == IncidentStatus.WAITING_PAYMENT
+                && incident.getPayment() != null
+                && incident.getPayment().getPaymentStatus() == Parking.enums.PaymentStatus.PAID) {
+            incident.setStatus(IncidentStatus.IN_PROGRESS);
+            incident.setUpdatedAt(LocalDateTime.now());
+        }
+
+        if (incident.getStatus() != IncidentStatus.IN_PROGRESS) {
+            throw new InvalidTicketStateException(
+                    "Manager phải xác minh báo cáo trước khi cấp thẻ tháng thay thế");
+        }
+
+        if (incident.getPayment() == null
+                || incident.getPayment().getPaymentStatus() != Parking.enums.PaymentStatus.PAID) {
+            throw new InvalidTicketStateException(
+                    "User phải thanh toán phí mất thẻ qua VNPay thành công trước khi cấp thẻ mới");
+        }
+
         if (incident.getReplacementCard() != null) {
             throw new InvalidTicketStateException(
                     "Sự cố này đã được cấp thẻ thay thế");
+        }
+
+        if (incident.getParkingCard() == null || incident.getParkingBranch() == null) {
+            throw new InvalidTicketStateException(
+                    "Báo cáo mất thẻ thiếu thông tin thẻ cũ hoặc chi nhánh");
+        }
+        if (replacementCardId == null) {
+            throw new InvalidTicketStateException(
+                    "Phải chọn parkingCardId của thẻ tháng thay thế");
         }
 
         ParkingCard oldCard = cardRepository
@@ -75,12 +105,16 @@ public class LostMonthlyCardReplacementService {
         branchScopeService.assertSameBranch(
                 oldCard.getParkingBranch().getParkingBranchId());
 
-        if (sessionRepository
-                .existsByParkingCardParkingCardIdAndStatus(
-                        oldCard.getParkingCardId(),
-                        ParkingSessionStatus.ACTIVE)) {
-            throw new InvalidTicketStateException(
-                    "Phải checkout xe và hoàn tất xử lý mất thẻ trước khi cấp thẻ mới");
+        ParkingSession activeSession = incident.getParkingSession();
+        if (activeSession == null
+                || activeSession.getStatus() != ParkingSessionStatus.ACTIVE
+                || activeSession.getParkingCard() == null
+                || !oldCard.getParkingCardId().equals(
+                        activeSession.getParkingCard().getParkingCardId())) {
+            activeSession = sessionRepository
+                    .findFirstByParkingCardCardCodeIgnoreCaseAndStatus(
+                            oldCard.getCardCode(), ParkingSessionStatus.ACTIVE)
+                    .orElse(null);
         }
 
         List<MonthlyTicket> activeTickets = ticketRepository
@@ -128,8 +162,14 @@ public class LostMonthlyCardReplacementService {
         ticket.setParkingCard(newCard);
         ticketRepository.save(ticket);
 
-        // AVAILABLE nghĩa là thẻ đã được cấp cho thuê bao nhưng xe chưa ở trong bãi.
-        newCard.setStatus(ParkingCardStatus.AVAILABLE);
+        // Nếu xe vẫn trong bãi, phiên gửi xe được chuyển sang thẻ mới ngay.
+        // User có thể dùng mã thẻ mới để checkout bình thường.
+        if (activeSession != null) {
+            activeSession.setParkingCard(newCard);
+            newCard.setStatus(ParkingCardStatus.IN_USE);
+        } else {
+            newCard.setStatus(ParkingCardStatus.AVAILABLE);
+        }
         cardRepository.save(newCard);
 
         // Tuyệt đối không mở lại thẻ cũ.
@@ -151,7 +191,10 @@ public class LostMonthlyCardReplacementService {
         log.setDescription(
                 "Đã thay thẻ " + oldCard.getCardCode()
                 + " bằng " + newCard.getCardCode()
-                + " cho vé tháng #" + ticket.getTicketId());
+                + " cho vé tháng #" + ticket.getTicketId()
+                + (activeSession != null
+                        ? ". Đã chuyển phiên gửi xe đang hoạt động sang thẻ mới để checkout."
+                        : "."));
         incident.addLog(log);
 
         return incidentReportService.convertToResponse(incidentRepository.save(incident));

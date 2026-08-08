@@ -4,6 +4,9 @@ import Parking.Service.IncidentReportService;
 import Parking.dto.request.*;
 import Parking.dto.response.IncidentReportResponse;
 import Parking.dto.response.IncidentImageResponse;
+import Parking.dto.response.LostCardPaymentResponse;
+import Parking.dto.response.GuestCheckOutResponse;
+import Parking.dto.request.GuestCheckOutRequest;
 import Parking.enums.IncidentPriority;
 import Parking.enums.IncidentStatus;
 import Parking.enums.IncidentType;
@@ -21,6 +24,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import java.util.ArrayList;
@@ -44,6 +48,8 @@ public class IncidentReportController {
     private final IncidentReportService incidentReportService;
     private final IncidentImageService incidentImageService;
     private final Parking.Service.LostMonthlyCardReplacementService lostMonthlyCardReplacementService;
+    private final Parking.Service.PaymentService paymentService;
+    private final Parking.web.ClientIpResolver clientIpResolver;
 
     /**
      * Người dùng (hoặc nhân viên) tạo một báo cáo sự cố chung.
@@ -63,11 +69,12 @@ public class IncidentReportController {
      */
     @PostMapping("/lost-card")
     @Operation(summary = "Nghiệp vụ đặc thù: Báo mất thẻ giữ xe (Tự động khóa thẻ)")
-    @PreAuthorize("hasAnyRole('USER', 'STAFF', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'STAFF')")
     public ResponseEntity<IncidentReportResponse> reportLostCard(
             @Valid @RequestBody LostCardIncidentRequest request
     ) {
-        return ResponseEntity.ok(incidentReportService.reportLostCard(request));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(incidentReportService.reportLostCard(request));
     }
 
     /**
@@ -81,6 +88,14 @@ public class IncidentReportController {
             @Valid @RequestBody AssignIncidentRequest request
     ) {
         return ResponseEntity.ok(incidentReportService.assignIncident(id, request));
+    }
+
+    @PutMapping("/{id}/verify-lost-card")
+    @Operation(summary = "Manager xác minh báo mất thẻ guest; không dùng cho thẻ tháng")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<IncidentReportResponse> verifyLostCard(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(incidentReportService.verifyLostCard(id));
     }
 
     /**
@@ -101,7 +116,7 @@ public class IncidentReportController {
      */
     @PutMapping("/{id}/cancel")
     @Operation(summary = "Hủy báo cáo sự cố (do thông tin sai lệch/spam)")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public ResponseEntity<IncidentReportResponse> cancelIncident(
             @PathVariable Long id,
             @Valid @RequestBody CancelIncidentRequest request
@@ -118,6 +133,28 @@ public class IncidentReportController {
         return ResponseEntity.ok(
                 lostMonthlyCardReplacementService.replaceCard(
                         id, request.getReplacementCardId()));
+    }
+
+    @PostMapping("/{id}/lost-card-payment")
+    @Operation(summary = "Tạo link VNPay phí mất thẻ khi xe đã checkout")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<LostCardPaymentResponse> createLostCardPayment(
+            @PathVariable Long id,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(paymentService.createLostCardPayment(
+                        id, clientIpResolver.resolveIp(request)));
+    }
+
+    @PostMapping("/{id}/lost-card/guest-checkout")
+    @Operation(summary = "Checkout bằng thẻ guest và tạo link VNPay cho báo mất thẻ")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<GuestCheckOutResponse> checkoutLostCardWithGuestCard(
+            @PathVariable Long id,
+            @Valid @RequestBody GuestCheckOutRequest checkoutRequest,
+            HttpServletRequest request) {
+        return ResponseEntity.ok(paymentService.createLostCardCheckoutPayment(
+                id, checkoutRequest, clientIpResolver.resolveIp(request)));
     }
 
     /**
