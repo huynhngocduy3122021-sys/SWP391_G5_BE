@@ -25,15 +25,22 @@ import Parking.Repository.PricePolicyRepository;
 import Parking.Repository.MonthlyTicketRepository;
 import Parking.Repository.MonthlyTicketRequestRepository;
 import Parking.Model.MonthlyTicketRequest;
+import Parking.Model.IncidentReport;
 import Parking.Model.User;
+import Parking.Repository.IncidentReportRepository;
 import Parking.dto.response.GuestCheckOutResponse;
 import Parking.dto.response.PaymentReportResponse;
 import Parking.dto.response.VnpayReturnResponse;
+import Parking.dto.response.LostCardPaymentResponse;
+import Parking.dto.request.CashLostCardPaymentRequest;
+import Parking.dto.request.GuestCheckOutRequest;
 import Parking.enums.ParkingCardStatus;
 import Parking.enums.ParkingCardType;
 import Parking.enums.ParkingSessionStatus;
 import Parking.enums.PaymentMethod;
 import Parking.enums.PaymentStatus;
+import Parking.enums.IncidentStatus;
+import Parking.enums.IncidentType;
 import Parking.enums.UserRole;
 import Parking.exception.exceptions.ParkingSessionException;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +52,6 @@ import lombok.RequiredArgsConstructor;
  * 2. Tạo link thanh toán VNPay (nếu khách chọn VNPay).
  * 3. Nhận phản hồi từ VNPay để cập nhật trạng thái thanh toán thành CÔNG hoặc
  * THẤT BẠI.
-=======
  * 3. Nhận phản hồi từ VNPay để cập nhật trạng thái thanh toán thành CÔNG hoặc THẤT BẠI.
  */
 @Service
@@ -59,7 +65,11 @@ public class PaymentService {
     private final ParkingCardRepository parkingCardRepository;
     private final MonthlyTicketRepository monthlyTicketRepository;
     private final MonthlyTicketRequestRepository monthlyTicketRequestRepository;
+    private final IncidentReportRepository incidentReportRepository;
+    private final BranchScopeService branchScopeService;
     private final CurrentUserService currentUserService;
+
+    private static final BigDecimal LOST_CARD_PAYMENT_AMOUNT = new BigDecimal("50000");
 
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
@@ -68,7 +78,6 @@ public class PaymentService {
      * Hàm này sẽ tính toán tổng tiền (gồm tiền gửi xe + tiền phạt nếu có).
      * Nếu chọn VNPay thì sinh ra URL thanh toán. Nếu chọn Tiền mặt thì hoàn thành
      * luôn.
-=======
      * Nếu chọn VNPay thì sinh ra URL thanh toán. Nếu chọn Tiền mặt thì hoàn thành luôn.
      */
     @Transactional
@@ -258,6 +267,312 @@ public class PaymentService {
         return vnPayService.createPaymentUrl(payment, clientIp);
     }
 
+    /**
+     * Tạo hoặc tái sử dụng payment phí mất thẻ sau khi staff đã tiếp nhận incident.
+     */
+    @Transactional
+    public LostCardPaymentResponse createLostCardPayment(Long incidentId, String clientIp) {
+        User currentUser = currentUserService.getCurrentUser();
+        IncidentReport incident = incidentReportRepository.findByIdForUpdate(incidentId)
+                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy báo cáo mất thẻ"));
+
+        if (incident.getIncidentType() != IncidentType.LOST_CARD) {
+            throw new ParkingSessionException("Incident này không phải báo mất thẻ");
+        }
+        if (currentUser.getUserRole() != UserRole.USER
+                || incident.getReporter() == null
+                || !currentUser.getUserId().equals(incident.getReporter().getUserId())) {
+            throw new ParkingSessionException("Chỉ user tạo báo cáo mới được thanh toán báo cáo này");
+        }
+        if (incident.getStatus() != IncidentStatus.PENDING
+                && incident.getStatus() != IncidentStatus.IN_PROGRESS
+                && incident.getStatus() != IncidentStatus.WAITING_PAYMENT) {
+            throw new ParkingSessionException("Báo mất thẻ đã đóng hoặc không còn nhận thanh toán");
+        }
+        if (incident.getReporter() == null || incident.getParkingCard() == null) {
+            throw new ParkingSessionException("Báo mất thẻ thiếu thông tin chủ thẻ hoặc thẻ xe");
+        }
+        if (incident.getParkingCard().getType() != ParkingCardType.MONTHLY) {
+            throw new ParkingSessionException("Thẻ khách/thẻ lượt không sử dụng phí thay thẻ tháng");
+        }
+
+        if (incident.getParkingSession() != null
+                && incident.getParkingSession().getStatus() == ParkingSessionStatus.ACTIVE) {
+            throw new ParkingSessionException(
+                    "Xe còn trong bãi. Vui lòng checkout bằng thẻ guest trước khi thanh toán phí mất thẻ");
+        }
+
+        boolean owner = monthlyTicketRepository.findActiveTicketsForLostCard(
+                        incident.getParkingCard().getParkingCardId(), LocalDateTime.now())
+                .stream()
+                .anyMatch(ticket -> ticket.getVehicle() != null
+                        && ticket.getVehicle().getUser() != null
+                        && incident.getReporter().getUserId().equals(
+                                ticket.getVehicle().getUser().getUserId()));
+        if (!owner) {
+            throw new ParkingSessionException("Chủ báo cáo không còn sở hữu vé tháng của thẻ này");
+        }
+
+        Payment payment = paymentRepository.findByIncidentReportIncidentId(incidentId)
+                .orElse(null);
+        if (payment != null && payment.getPaymentStatus() == PaymentStatus.PAID) {
+            return buildLostCardPaymentResponse(incident, payment, null);
+        }
+        if (payment != null && payment.getPaymentStatus() == PaymentStatus.CASH_PENDING_VERIFICATION) {
+            throw new ParkingSessionException("Báo cáo đã chọn thanh toán tiền mặt, không thể tạo giao dịch VNPay");
+        }
+        if (payment != null && payment.getPaymentStatus() == PaymentStatus.PENDING
+                && payment.getPaymentMethod() == PaymentMethod.VNPAY) {
+            String paymentUrl = vnPayService.createPaymentUrl(payment, clientIp);
+            return buildLostCardPaymentResponse(incident, payment, paymentUrl);
+        }
+        if (payment == null) {
+            payment = new Payment();
+        }
+
+        payment.setIncidentReport(incident);
+        payment.setAmount(LOST_CARD_PAYMENT_AMOUNT);
+        payment.setPaymentMethod(PaymentMethod.VNPAY);
+        payment.setPaymentStatus(PaymentStatus.PENDING);
+        payment.setTransactionRef("TXN_LOST_" + System.currentTimeMillis() + "_"
+                + UUID.randomUUID().toString().substring(0, 8));
+        payment.setResponseCode(null);
+        payment.setVnpTransactionNo(null);
+        payment.setBankCode(null);
+        payment.setPaidAt(null);
+        payment.setPaymentExpiresAt(LocalDateTime.now(VIETNAM_ZONE).plusMinutes(15));
+
+        payment = paymentRepository.save(payment);
+        incident.setPayment(payment);
+        incident.setStatus(IncidentStatus.WAITING_PAYMENT);
+        incident.setUpdatedAt(LocalDateTime.now());
+        incidentReportRepository.save(incident);
+
+        String paymentUrl = vnPayService.createPaymentUrl(payment, clientIp);
+        return buildLostCardPaymentResponse(incident, payment, paymentUrl);
+    }
+
+    /**
+     * Checkout xe đang trong bãi bằng thẻ guest và tạo đúng một giao dịch VNPay.
+     * Giao dịch bao gồm phí gửi xe (nếu có) và phí mất thẻ 50.000 VND; sau callback
+     * VNPay thành công, payment sẽ chuyển PAID và incident chuyển IN_PROGRESS.
+     */
+    @Transactional
+    public GuestCheckOutResponse createLostCardCheckoutPayment(
+            Long incidentId, GuestCheckOutRequest request, String clientIp) {
+        User currentUser = currentUserService.getCurrentUser();
+        IncidentReport incident = incidentReportRepository.findByIdForUpdate(incidentId)
+                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy báo cáo mất thẻ"));
+
+        if (incident.getIncidentType() != IncidentType.LOST_CARD
+                || incident.getParkingCard() == null
+                || incident.getParkingCard().getType() != ParkingCardType.MONTHLY) {
+            throw new ParkingSessionException("Chỉ thẻ tháng mới sử dụng được luồng checkout mất thẻ");
+        }
+        if (incident.getReporter() == null
+                || !currentUser.getUserId().equals(incident.getReporter().getUserId())) {
+            throw new ParkingSessionException("Chỉ chủ thẻ mới được checkout và thanh toán báo cáo này");
+        }
+        if (incident.getStatus() != IncidentStatus.PENDING
+                && incident.getStatus() != IncidentStatus.IN_PROGRESS
+                && incident.getStatus() != IncidentStatus.WAITING_PAYMENT) {
+            throw new ParkingSessionException("Báo cáo mất thẻ đã đóng hoặc không còn nhận thanh toán");
+        }
+        if (request.getPaymentMethod() != null && request.getPaymentMethod() != PaymentMethod.VNPAY) {
+            throw new ParkingSessionException("Luồng mất thẻ chỉ hỗ trợ thanh toán VNPay");
+        }
+
+        ParkingCard guestCard = parkingCardRepository.findByCardCodeIgnoreCase(request.getCardCode().trim())
+                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy thẻ guest"));
+        if (guestCard.getType() != ParkingCardType.REGULAR
+                || guestCard.getStatus() != ParkingCardStatus.AVAILABLE) {
+            throw new ParkingSessionException("Thẻ sử dụng checkout phải là thẻ guest đang khả dụng");
+        }
+        if (guestCard.getParkingBranch() == null
+                || !guestCard.getParkingBranch().getParkingBranchId()
+                        .equals(incident.getParkingBranch().getParkingBranchId())) {
+            throw new ParkingSessionException("Thẻ guest không thuộc chi nhánh của báo cáo");
+        }
+
+        ParkingSession session = incident.getParkingSession();
+        if (session == null || session.getStatus() != ParkingSessionStatus.ACTIVE) {
+            throw new ParkingSessionException("Không còn phiên gửi xe hoạt động cần checkout");
+        }
+        if (request.getLicensePlate() == null
+                || !session.getVehicle().getLicensePlate().equalsIgnoreCase(request.getLicensePlate().trim())) {
+            throw new ParkingSessionException("Biển số xe checkout không khớp báo cáo mất thẻ");
+        }
+
+        GuestCheckOutResponse response = processCheckOutPayment(
+                session, PaymentMethod.VNPAY, clientIp, true, request.getTime());
+
+        Payment payment = paymentRepository.findByParkingSessionParkingSessionId(session.getParkingSessionId())
+                .orElseThrow(() -> new ParkingSessionException("Không tạo được giao dịch checkout mất thẻ"));
+        payment.setIncidentReport(incident);
+        incident.setPayment(payment);
+        incident.setLostCardFee(LOST_CARD_PAYMENT_AMOUNT);
+        incident.setStatus(IncidentStatus.WAITING_PAYMENT);
+        incident.setUpdatedAt(LocalDateTime.now(VIETNAM_ZONE));
+        paymentRepository.save(payment);
+        incidentReportRepository.save(incident);
+
+        return response;
+    }
+
+    /** Staff/Manager/Admin ghi nhận đã thu 50.000 VND tiền mặt tại quầy. */
+    @Transactional
+    public LostCardPaymentResponse createLostCardCashPayment(
+            Long incidentId, CashLostCardPaymentRequest request) {
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser.getUserRole() != UserRole.STAFF
+                && currentUser.getUserRole() != UserRole.MANAGER
+                && currentUser.getUserRole() != UserRole.ADMIN) {
+            throw new ParkingSessionException("Chỉ staff, manager hoặc admin được ghi nhận thanh toán tiền mặt");
+        }
+
+        IncidentReport incident = incidentReportRepository.findByIdForUpdate(incidentId)
+                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy báo cáo mất thẻ"));
+        validateLostCardPaymentIncident(incident);
+        branchScopeService.assertSameBranch(incident.getParkingBranch().getParkingBranchId());
+
+        Payment payment = paymentRepository.findByIncidentReportIncidentId(incidentId).orElse(null);
+        if (payment != null && payment.getPaymentStatus() == PaymentStatus.PAID) {
+            return buildLostCardPaymentResponse(incident, payment, null);
+        }
+        if (payment != null && (payment.getPaymentStatus() == PaymentStatus.PENDING
+                || payment.getPaymentStatus() == PaymentStatus.CASH_PENDING_VERIFICATION)) {
+            if (payment.getPaymentMethod() != PaymentMethod.CASH) {
+                throw new ParkingSessionException("Báo cáo đã chọn thanh toán VNPay, không thể chọn tiền mặt");
+            }
+            markCashPaymentPaid(payment, incident, currentUser);
+            return buildLostCardPaymentResponse(incident, payment, null);
+        }
+        if (payment == null) {
+            payment = new Payment();
+        }
+
+        payment.setIncidentReport(incident);
+        payment.setAmount(LOST_CARD_PAYMENT_AMOUNT);
+        payment.setPaymentMethod(PaymentMethod.CASH);
+        // Staff/manager là người thu và xác nhận tại quầy, nên tiền mặt được PAID ngay.
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        payment.setTransactionRef("CASH_LOST_" + System.currentTimeMillis() + "_"
+                + UUID.randomUUID().toString().substring(0, 8));
+        payment.setResponseCode(null);
+        payment.setVnpTransactionNo(null);
+        payment.setBankCode(null);
+        payment.setPaidAt(LocalDateTime.now(VIETNAM_ZONE));
+        payment.setPaymentExpiresAt(null);
+        payment.setCashReceiptNumber(request.getReceiptNumber().trim());
+        payment.setCashNote(request.getNote());
+        payment.setCashCollectedBy(currentUser);
+        payment.setCashCollectedAt(LocalDateTime.now(VIETNAM_ZONE));
+        payment.setCashVerifiedBy(currentUser);
+        payment.setCashVerifiedAt(LocalDateTime.now(VIETNAM_ZONE));
+
+        payment = paymentRepository.save(payment);
+        incident.setPayment(payment);
+        incident.setStatus(IncidentStatus.IN_PROGRESS);
+        incident.setUpdatedAt(LocalDateTime.now(VIETNAM_ZONE));
+        incidentReportRepository.save(incident);
+        return buildLostCardPaymentResponse(incident, payment, null);
+    }
+
+    private void markCashPaymentPaid(Payment payment, IncidentReport incident, User operator) {
+        payment.setAmount(LOST_CARD_PAYMENT_AMOUNT);
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        payment.setPaidAt(LocalDateTime.now(VIETNAM_ZONE));
+        payment.setCashVerifiedBy(operator);
+        payment.setCashVerifiedAt(LocalDateTime.now(VIETNAM_ZONE));
+        paymentRepository.save(payment);
+
+        incident.setStatus(IncidentStatus.IN_PROGRESS);
+        incident.setUpdatedAt(LocalDateTime.now(VIETNAM_ZONE));
+        incidentReportRepository.save(incident);
+    }
+
+    /** Manager xác nhận tiền mặt; chỉ sau bước này mới được cấp thẻ mới. */
+    @Transactional
+    public LostCardPaymentResponse verifyLostCardCashPayment(Long incidentId) {
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser.getUserRole() != UserRole.MANAGER && currentUser.getUserRole() != UserRole.ADMIN) {
+            throw new ParkingSessionException("Chỉ manager hoặc admin được xác nhận tiền mặt");
+        }
+
+        IncidentReport incident = incidentReportRepository.findByIdForUpdate(incidentId)
+                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy báo cáo mất thẻ"));
+        validateLostCardPaymentIncident(incident);
+        branchScopeService.assertSameBranch(incident.getParkingBranch().getParkingBranchId());
+
+        Payment payment = paymentRepository.findByIncidentReportIncidentId(incidentId)
+                .orElseThrow(() -> new ParkingSessionException("Chưa có khoản tiền mặt cần xác nhận"));
+        if (payment.getPaymentMethod() != PaymentMethod.CASH) {
+            throw new ParkingSessionException("Khoản thanh toán của báo cáo không phải tiền mặt");
+        }
+        if (payment.getPaymentStatus() == PaymentStatus.PAID) {
+            return buildLostCardPaymentResponse(incident, payment, null);
+        }
+        if (payment.getPaymentStatus() != PaymentStatus.CASH_PENDING_VERIFICATION) {
+            throw new ParkingSessionException("Khoản tiền mặt không ở trạng thái chờ manager xác nhận");
+        }
+
+        payment.setAmount(LOST_CARD_PAYMENT_AMOUNT);
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        payment.setPaidAt(LocalDateTime.now(VIETNAM_ZONE));
+        payment.setCashVerifiedBy(currentUser);
+        payment.setCashVerifiedAt(LocalDateTime.now(VIETNAM_ZONE));
+        paymentRepository.save(payment);
+
+        incident.setStatus(IncidentStatus.IN_PROGRESS);
+        incident.setUpdatedAt(LocalDateTime.now(VIETNAM_ZONE));
+        incidentReportRepository.save(incident);
+        return buildLostCardPaymentResponse(incident, payment, null);
+    }
+
+    private void validateLostCardPaymentIncident(IncidentReport incident) {
+        if (incident.getIncidentType() != IncidentType.LOST_CARD) {
+            throw new ParkingSessionException("Incident này không phải báo mất thẻ");
+        }
+        if (incident.getStatus() != IncidentStatus.PENDING
+                && incident.getStatus() != IncidentStatus.IN_PROGRESS
+                && incident.getStatus() != IncidentStatus.WAITING_PAYMENT) {
+            throw new ParkingSessionException("Báo mất thẻ đã đóng hoặc không còn nhận thanh toán");
+        }
+        if (incident.getReporter() == null || incident.getParkingCard() == null) {
+            throw new ParkingSessionException("Báo mất thẻ thiếu thông tin chủ thẻ hoặc thẻ xe");
+        }
+    }
+
+    private LostCardPaymentResponse buildLostCardPaymentResponse(
+            IncidentReport incident, Payment payment, String paymentUrl) {
+        return LostCardPaymentResponse.builder()
+                .incidentId(incident.getIncidentId())
+                .paymentId(payment.getPaymentId())
+                .amount(payment.getAmount())
+                .paymentMethod(payment.getPaymentMethod())
+                .paymentStatus(payment.getPaymentStatus())
+                .transactionRef(payment.getTransactionRef())
+                .paymentUrl(paymentUrl)
+                .cashReceiptNumber(payment.getCashReceiptNumber())
+                .cashCollectedByUserId(payment.getCashCollectedBy() != null
+                        ? payment.getCashCollectedBy().getUserId() : null)
+                .cashCollectedAt(payment.getCashCollectedAt())
+                .cashVerifiedByUserId(payment.getCashVerifiedBy() != null
+                        ? payment.getCashVerifiedBy().getUserId() : null)
+                .cashVerifiedAt(payment.getCashVerifiedAt())
+                .build();
+    }
+
+    private void markLostCardPaymentPaid(Payment payment) {
+        IncidentReport incident = payment.getIncidentReport();
+        if (incident != null && incident.getIncidentType() == IncidentType.LOST_CARD
+                && incident.getStatus() == IncidentStatus.WAITING_PAYMENT) {
+            incident.setStatus(IncidentStatus.IN_PROGRESS);
+            incident.setUpdatedAt(LocalDateTime.now());
+            incidentReportRepository.save(incident);
+        }
+    }
+
     public BigDecimal caculateParkingFee(LocalDateTime checkInTime, LocalDateTime checkOutTime,
             PricePolicy pricePolicy) {
         if (checkInTime == null) {
@@ -307,7 +622,6 @@ public class PaymentService {
      * hướng (Redirect) trả về Web của chúng ta.
      * Nhiệm vụ là đọc các tham số VNPay gửi kèm trên URL để xem thanh toán thành
      * công hay chưa.
-=======
      * Hàm này được gọi khi khách hàng thanh toán xong trên web VNPay và bị chuyển hướng (Redirect) trả về Web của chúng ta.
      * Nhiệm vụ là đọc các tham số VNPay gửi kèm trên URL để xem thanh toán thành công hay chưa.
      */
@@ -332,6 +646,7 @@ public class PaymentService {
 
         String txnRef = params.get("vnp_TxnRef");
         String responseCode = params.get("vnp_ResponseCode");
+        String transactionStatus = params.get("vnp_TransactionStatus");
         String vnpTxnNo = params.get("vnp_TransactionNo");
         String bankCode = params.get("vnp_BankCode");
 
@@ -340,12 +655,16 @@ public class PaymentService {
 
         ParkingSession parkingSession = payment.getParkingSession();
         MonthlyTicketRequest monthlyRequest = payment.getMonthlyTicketRequest();
+        IncidentReport lostCardIncident = payment.getIncidentReport();
 
         String paymentType;
         if (parkingSession != null) {
             paymentType = "PARKING_SESSION";
         } else if (monthlyRequest != null) {
             paymentType = "MONTHLY_TICKET";
+        } else if (lostCardIncident != null
+                && lostCardIncident.getIncidentType() == IncidentType.LOST_CARD) {
+            paymentType = "LOST_CARD";
         } else {
             throw new ParkingSessionException("Giao dịch không gắn với đối tượng thanh toán");
         }
@@ -355,8 +674,14 @@ public class PaymentService {
                     "Thanh toán đã được xác nhận thành công trước đó", txnRef, payment.getVnpTransactionNo(),
                     payment.getResponseCode());
         }
+        if (payment.getPaymentStatus() == PaymentStatus.CANCELLED) {
+            return buildVnPayReturnResponse(payment, paymentType, false,
+                    "Báo cáo mất thẻ đã bị hủy, giao dịch này không còn hiệu lực.",
+                    txnRef, vnpTxnNo, responseCode);
+        }
 
-        boolean isSuccess = "00".equals(responseCode);
+        boolean isSuccess = "00".equals(responseCode)
+                && (transactionStatus == null || "00".equals(transactionStatus));
         if (isSuccess) {
             String vnpAmountStr = params.get("vnp_Amount");
             if (vnpAmountStr != null) {
@@ -378,6 +703,8 @@ public class PaymentService {
             payment.setPaymentStatus(PaymentStatus.PAID);
             payment.setPaidAt(LocalDateTime.now());
 
+            markLostCardPaymentPaid(payment);
+
             if (session != null) {
                 session.setStatus(ParkingSessionStatus.COMPLETED);
 
@@ -397,14 +724,18 @@ public class PaymentService {
             }
             paymentRepository.save(payment);
 
+            String successMessage = "LOST_CARD".equals(paymentType)
+                    ? "Thanh toán phí mất thẻ thành công."
+                    : "Thanh toán thành công. Phiên gửi xe đã kết thúc.";
             return buildVnPayReturnResponse(payment, paymentType, true,
-                    "Thanh toán thành công. Phiên gửi xe đã kết thúc.", txnRef, vnpTxnNo, responseCode);
+                    successMessage, txnRef, vnpTxnNo, responseCode);
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);
             paymentRepository.save(payment);
 
-            return buildVnPayReturnResponse(payment, paymentType, false, "Thanh toán thất bại.", txnRef, vnpTxnNo,
-                    responseCode);
+            return buildVnPayReturnResponse(payment, paymentType, false,
+                    "Thanh toán VNPay thất bại (mã " + responseCode + ").",
+                    txnRef, vnpTxnNo, responseCode);
         }
     }
 
@@ -416,7 +747,8 @@ public class PaymentService {
                 .transactionRef(txnRef)
                 .vnpTransactionNo(vnpTxnNo)
                 .responseCode(responseCode)
-                .paymentType(paymentType);
+                .paymentType(paymentType)
+                .paymentStatus(payment.getPaymentStatus());
 
         MonthlyTicketRequest monthlyRequest = payment.getMonthlyTicketRequest();
         if (monthlyRequest != null) {
@@ -431,6 +763,11 @@ public class PaymentService {
                 responseBuilder.policyId(monthlyRequest.getPricePolicy().getPricePolicyId());
                 responseBuilder.policyName(monthlyRequest.getPricePolicy().getPolicyName());
             }
+        }
+
+        IncidentReport lostCardIncident = payment.getIncidentReport();
+        if (lostCardIncident != null && "LOST_CARD".equals(paymentType)) {
+            responseBuilder.incidentId(lostCardIncident.getIncidentId());
         }
 
         return responseBuilder
@@ -456,6 +793,7 @@ public class PaymentService {
 
             String txnRef = params.get("vnp_TxnRef");
             String responseCode = params.get("vnp_ResponseCode");
+            String transactionStatus = params.get("vnp_TransactionStatus");
             String vnpTxnNo = params.get("vnp_TransactionNo");
             String bankCode = params.get("vnp_BankCode");
             String vnpAmountStr = params.get("vnp_Amount");
@@ -476,13 +814,15 @@ public class PaymentService {
             }
 
             if (payment.getPaymentStatus() == PaymentStatus.PAID
-                    || payment.getPaymentStatus() == PaymentStatus.FAILED) {
+                    || payment.getPaymentStatus() == PaymentStatus.FAILED
+                    || payment.getPaymentStatus() == PaymentStatus.CANCELLED) {
                 response.put("RspCode", "02");
                 response.put("Message", "Giao dịch đã được xác nhận");
                 return response;
             }
 
-            boolean isSuccess = "00".equals(responseCode);
+            boolean isSuccess = "00".equals(responseCode)
+                    && (transactionStatus == null || "00".equals(transactionStatus));
             payment.setVnpTransactionNo(vnpTxnNo);
             payment.setBankCode(bankCode);
             payment.setResponseCode(responseCode);
@@ -492,6 +832,8 @@ public class PaymentService {
             if (isSuccess) {
                 payment.setPaymentStatus(PaymentStatus.PAID);
                 payment.setPaidAt(LocalDateTime.now());
+
+                markLostCardPaymentPaid(payment);
 
                 if (session != null) {
                     session.setStatus(ParkingSessionStatus.COMPLETED);

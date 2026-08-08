@@ -24,6 +24,7 @@ import Parking.Model.ParkingBranch;
 import Parking.Model.ParkingSession;
 import Parking.Model.User;
 import Parking.Repository.MonthlyTicketRequestRepository;
+import Parking.Repository.IncidentReportRepository;
 import Parking.Repository.MonthlyTicketRepository;
 import Parking.Repository.ParkingCardRepository;
 import Parking.Repository.ParkingSessionRepository;
@@ -43,6 +44,8 @@ class PaymentServiceMonthlyTicketTest {
     @Mock private ParkingCardRepository parkingCardRepository;
     @Mock private MonthlyTicketRepository monthlyTicketRepository;
     @Mock private MonthlyTicketRequestRepository monthlyTicketRequestRepository;
+    @Mock private IncidentReportRepository incidentReportRepository;
+    @Mock private BranchScopeService branchScopeService;
     @Mock private CurrentUserService currentUserService;
 
     @InjectMocks private PaymentService paymentService;

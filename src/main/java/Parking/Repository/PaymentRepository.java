@@ -21,6 +21,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
         Optional<Payment> findByMonthlyTicketRequestId(
                         Long monthlyTicketRequestId);
 
+        Optional<Payment> findByIncidentReportIncidentId(Long incidentId);
+
         @Lock(LockModeType.PESSIMISTIC_WRITE)
         @Query("""
                         SELECT payment
@@ -29,6 +31,3 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
                          """)
         Optional<Payment> findByTransactionRefForUpdate(@Param("transactionRef") String transactionRef);
 }
-
-
-    

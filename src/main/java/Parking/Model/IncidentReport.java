@@ -3,6 +3,8 @@ package Parking.Model;
 import Parking.enums.IncidentPriority;
 import Parking.enums.IncidentStatus;
 import Parking.enums.IncidentType;
+import Parking.enums.LostCardStage;
+import Parking.enums.ParkingCardType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -94,6 +96,14 @@ public class IncidentReport {
     @JoinColumn(name = "parking_card_id")
     private ParkingCard parkingCard; 
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "card_type")
+    private ParkingCardType cardType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lost_stage")
+    private LostCardStage lostStage;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "replacement_card_id")
     private ParkingCard replacementCard;
@@ -110,8 +120,8 @@ public class IncidentReport {
     private User replacementBy;
 
     // Gắn với hóa đơn đền bù nào? (Nếu có phát sinh tiền đền)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payment_id")
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_id", unique = true)
     private Payment payment; 
 
     // Nhật ký các bước xử lý sự cố (Lưu lịch sử)

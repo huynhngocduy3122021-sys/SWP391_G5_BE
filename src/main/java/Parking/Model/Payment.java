@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 
 import Parking.enums.PaymentMethod;
 import Parking.enums.PaymentStatus;
+import Parking.Model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -16,6 +17,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -79,6 +81,26 @@ public class Payment {
     @Column(name = "payment_expires_at")
     private LocalDateTime paymentExpiresAt;
 
+    @Column(name = "cash_receipt_number", length = 100)
+    private String cashReceiptNumber;
+
+    @Column(name = "cash_note", length = 500)
+    private String cashNote;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cash_collected_by_user_id")
+    private User cashCollectedBy;
+
+    @Column(name = "cash_collected_at")
+    private LocalDateTime cashCollectedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cash_verified_by_user_id")
+    private User cashVerifiedBy;
+
+    @Column(name = "cash_verified_at")
+    private LocalDateTime cashVerifiedAt;
+
     // Giao dịch thanh toán này thuộc về Lượt gửi xe (ParkingSession) nào?
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parking_session_id", unique = true)
@@ -87,6 +109,10 @@ public class Payment {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "monthly_ticket_request_id", unique = true)
     private MonthlyTicketRequest monthlyTicketRequest;
+
+    /** Incident mất thẻ mà payment này dùng để xử lý phí thay thẻ. */
+    @OneToOne(mappedBy = "payment", fetch = FetchType.LAZY)
+    private IncidentReport incidentReport;
 
     @PrePersist
     public void prePersist(){
