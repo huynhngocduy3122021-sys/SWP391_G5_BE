@@ -1,5 +1,6 @@
 package Parking.Service;
 
+import java.math.BigDecimal;
 import Parking.Model.IncidentLog;
 import Parking.Model.IncidentReport;
 import Parking.Model.ParkingBranch;
@@ -21,7 +22,9 @@ import Parking.enums.IncidentLogAction;
 import Parking.enums.IncidentPriority;
 import Parking.enums.IncidentStatus;
 import Parking.enums.IncidentType;
+import Parking.enums.LostCardStage;
 import Parking.enums.ParkingCardStatus;
+import Parking.enums.ParkingCardType;
 import Parking.enums.ParkingSessionStatus;
 import Parking.enums.UserRole;
 import Parking.exception.exceptions.ParkingSessionException;
@@ -104,6 +107,14 @@ public class IncidentReportService {
                 throw new ParkingSessionException("Cần cung cấp thông tin thẻ xe hoặc phiên giữ xe để báo mất thẻ!");
             }
 
+            // Báo mất thẻ tháng phải đi qua API /lost-card để bắt buộc
+            // chính chủ tài khoản USER khai báo và hỗ trợ cả trường hợp
+            // xe chưa vào bãi (parkingSessionId = null).
+            if (card.getType() == ParkingCardType.MONTHLY) {
+                throw new ParkingSessionException(
+                        "Báo mất thẻ tháng phải được thực hiện bởi chính chủ qua API /api/incidents/lost-card");
+            }
+
             // Chống tạo trùng lặp ticket mất thẻ chưa được đóng
             boolean hasDuplicate = incidentReportRepository.existsByParkingCardParkingCardIdAndIncidentTypeAndStatusIn(
                     card.getParkingCardId(),
@@ -119,17 +130,22 @@ public class IncidentReportService {
             parkingCardRepository.save(card);
         }
 
+        IncidentStatus initialStatus = IncidentStatus.PENDING;
+
         // 3. Khởi tạo đối tượng IncidentReport
         IncidentReport report = new IncidentReport();
         report.setTitle(request.getTitle());
         report.setDescription(request.getDescription());
         report.setIncidentType(request.getIncidentType());
         report.setPriority(request.getPriority());
-        report.setStatus(IncidentStatus.PENDING);
+        report.setStatus(initialStatus);
         report.setReporter(reporter);
         report.setParkingBranch(branch);
         report.setParkingSession(session);
         report.setParkingCard(card);
+        if (request.getIncidentType() == IncidentType.LOST_CARD) {
+            report.setLostCardFee(BigDecimal.ZERO);
+        }
         report.setLocationDetails(request.getLocationDetails());
         report.setCreatedAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
@@ -141,7 +157,7 @@ public class IncidentReportService {
         initialLog.setChangedBy(reporter);
         initialLog.setChangedAt(LocalDateTime.now());
         initialLog.setOldStatus(null);
-        initialLog.setNewStatus(IncidentStatus.PENDING);
+        initialLog.setNewStatus(initialStatus);
         initialLog.setActionType(IncidentLogAction.CREATE);
         initialLog.setDescription("Sự cố đã được khởi tạo bởi " + reporter.getUserFullName());
         report.addLog(initialLog);
@@ -153,16 +169,74 @@ public class IncidentReportService {
     public IncidentReportResponse reportLostCard(LostCardIncidentRequest request) {
         User reporter = getCurrentUser();
 
-        ParkingSession session = parkingSessionRepository.findById(request.getParkingSessionId())
-                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy phiên giữ xe đang hoạt động"));
+        ParkingSession session = null;
+        ParkingBranch branch;
+        ParkingCard card;
 
-        if (session.getStatus() != ParkingSessionStatus.ACTIVE) {
-            throw new ParkingSessionException("Phiên giữ xe này đã kết thúc, không thể báo mất thẻ!");
+        if (request.getParkingSessionId() != null) {
+            session = parkingSessionRepository.findById(request.getParkingSessionId())
+                    .orElseThrow(() -> new ParkingSessionException("Không tìm thấy phiên giữ xe đang hoạt động"));
+
+            if (session.getStatus() != ParkingSessionStatus.ACTIVE) {
+                throw new ParkingSessionException("Phiên giữ xe này đã kết thúc, không thể báo mất thẻ!");
+            }
+
+            branch = session.getParkingBranch();
+            if (request.getParkingBranchId() != null
+                    && !request.getParkingBranchId().equals(branch.getParkingBranchId())) {
+                throw new ParkingSessionException("Chi nhánh không khớp với phiên gửi xe");
+            }
+            card = session.getParkingCard();
+        } else {
+            if (request.getParkingCardId() == null
+                    && (request.getCardCode() == null || request.getCardCode().isBlank())) {
+                throw new ParkingSessionException("Khi xe chưa vào bãi, cần cung cấp parkingCardId hoặc cardCode");
+            }
+            if (request.getParkingBranchId() == null) {
+                throw new ParkingSessionException("Khi xe chưa vào bãi, cần cung cấp parkingBranchId");
+            }
+
+            card = request.getParkingCardId() != null
+                    ? parkingCardRepository.findByIdForUpdate(request.getParkingCardId())
+                        .orElseThrow(() -> new ParkingSessionException("Không tìm thấy thẻ giữ xe"))
+                    : parkingCardRepository.findByCardCodeIgnoreCase(request.getCardCode().trim())
+                        .orElseThrow(() -> new ParkingSessionException("Không tìm thấy thẻ giữ xe"));
+
+            branch = parkingBranchRepository.findById(request.getParkingBranchId())
+                    .orElseThrow(() -> new ParkingSessionException("Không tìm thấy chi nhánh bãi xe"));
+            if (card.getParkingBranch() == null
+                    || !card.getParkingBranch().getParkingBranchId().equals(branch.getParkingBranchId())) {
+                throw new ParkingSessionException("Thẻ giữ xe không thuộc chi nhánh đã chọn");
+            }
+
+            if (card.getType() != ParkingCardType.MONTHLY) {
+                throw new ParkingSessionException("Chỉ thẻ tháng có thể báo mất khi xe chưa vào bãi");
+            }
+
+            boolean belongsToReporter = monthlyTicketRepository.findActiveTicketsByCardAndUser(
+                    card.getParkingCardId(), reporter.getUserId(), LocalDateTime.now()).stream().anyMatch(ticket ->
+                            ticket.getVehicle() != null && ticket.getVehicle().getUser() != null
+                                    && reporter.getUserId().equals(ticket.getVehicle().getUser().getUserId()));
+            if (!belongsToReporter) {
+                throw new ParkingSessionException("Thẻ tháng không thuộc tài khoản đang đăng nhập hoặc đã hết hiệu lực");
+            }
         }
 
-        ParkingCard card = session.getParkingCard();
         if (card == null) {
             throw new ParkingSessionException("Không tìm thấy thẻ giữ xe đi kèm với phiên này!");
+        }
+
+        // Thẻ tháng luôn phải do chính chủ USER tự khai báo.
+        // STAFF chỉ được tạo báo cáo cho thẻ guest/regular đang có phiên trong bãi.
+        if (card.getType() == ParkingCardType.MONTHLY
+                && reporter.getUserRole() != UserRole.USER) {
+            throw new ParkingSessionException(
+                    "Báo mất thẻ tháng phải được chính chủ USER thực hiện");
+        }
+
+        ParkingCardType cardType = request.getCardType() != null ? request.getCardType() : card.getType();
+        if (card.getType() != cardType) {
+            throw new ParkingSessionException("Loại thẻ không khớp với thẻ được xác minh");
         }
 
         // Xác thực cardCode nếu được truyền vào
@@ -193,9 +267,14 @@ public class IncidentReportService {
         report.setPriority(IncidentPriority.HIGH);
         report.setStatus(IncidentStatus.PENDING);
         report.setReporter(reporter);
-        report.setParkingBranch(session.getParkingBranch());
+        report.setParkingBranch(branch);
         report.setParkingSession(session);
         report.setParkingCard(card);
+        report.setCardType(cardType);
+        report.setLostCardFee(BigDecimal.ZERO);
+        report.setLostStage(request.getLostStage() != null
+                ? request.getLostStage()
+                : session != null ? LostCardStage.INSIDE_PARKING : LostCardStage.BEFORE_ENTRY);
         report.setCreatedAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
 
@@ -204,7 +283,7 @@ public class IncidentReportService {
         log.setChangedBy(reporter);
         log.setChangedAt(LocalDateTime.now());
         log.setOldStatus(null);
-        log.setNewStatus(IncidentStatus.PENDING);
+        log.setNewStatus(report.getStatus());
         log.setActionType(IncidentLogAction.CREATE);
         log.setDescription("Khách hàng báo mất thẻ qua hệ thống. Thẻ " + card.getCardCode() + " đã tự động bị khóa sang LOST.");
         report.addLog(log);
@@ -254,6 +333,46 @@ public class IncidentReportService {
     }
 
     @Transactional
+    public IncidentReportResponse verifyLostCard(Long id) {
+        User operator = getCurrentUser();
+        IncidentReport report = incidentReportRepository.findById(id)
+                .orElseThrow(() -> new ParkingSessionException("Không tìm thấy báo cáo sự cố"));
+
+        if (report.getIncidentType() != IncidentType.LOST_CARD) {
+            throw new ParkingSessionException("Sự cố này không phải báo mất thẻ");
+        }
+        branchScopeService.assertSameBranch(report.getParkingBranch().getParkingBranchId());
+        if (report.getReporter() == null || report.getParkingCard() == null) {
+            throw new ParkingSessionException("Báo cáo thiếu thông tin chủ thẻ hoặc thẻ xe");
+        }
+
+        if (report.getParkingCard().getType() == ParkingCardType.MONTHLY) {
+            throw new ParkingSessionException(
+                    "Báo cáo mất thẻ tháng không cần manager xác minh; user phải thanh toán VNPay trước");
+        }
+
+        if (report.getStatus() != IncidentStatus.PENDING) {
+            throw new ParkingSessionException("Báo mất thẻ không còn ở trạng thái chờ xác minh");
+        }
+
+        IncidentStatus oldStatus = report.getStatus();
+        report.setLostCardFee(BigDecimal.ZERO);
+        report.setStatus(IncidentStatus.IN_PROGRESS);
+        report.setUpdatedAt(LocalDateTime.now());
+
+        IncidentLog log = new IncidentLog();
+        log.setChangedBy(operator);
+        log.setChangedAt(LocalDateTime.now());
+        log.setOldStatus(oldStatus);
+        log.setNewStatus(IncidentStatus.IN_PROGRESS);
+        log.setActionType(IncidentLogAction.UPDATE_STATUS);
+        log.setDescription("Đã xác minh báo mất thẻ; chuyển sang chờ checkout/cấp thẻ tháng mới.");
+        report.addLog(log);
+
+        return convertToResponse(incidentReportRepository.save(report));
+    }
+
+    @Transactional
     public IncidentReportResponse resolveIncident(Long id, ResolveIncidentRequest request) {
         User staff = getCurrentUser();
         IncidentReport report = incidentReportRepository.findById(id)
@@ -273,31 +392,32 @@ public class IncidentReportService {
         }
 
         // Nghiệp vụ mất thẻ: kiểm tra điều kiện hoàn thành (RESOLVED)
-        if (report.getIncidentType() == IncidentType.LOST_CARD) {
+        if (report.getIncidentType() == IncidentType.LOST_CARD
+                && report.getParkingCard() != null
+                && report.getParkingCard().getType() == ParkingCardType.MONTHLY) {
+            if (report.getStatus() != IncidentStatus.IN_PROGRESS) {
+                throw new ParkingSessionException("Báo cáo phải được manager xác minh trước khi hoàn tất");
+            }
+
             ParkingSession session = report.getParkingSession();
             if (session != null && session.getStatus() == ParkingSessionStatus.ACTIVE) {
                 // Yêu cầu check-out xe trước khi resolve ticket báo mất thẻ
                 throw new ParkingSessionException("Không thể hoàn tất sự cố mất thẻ khi phiên gửi xe của phương tiện vẫn đang hoạt động. Vui lòng thực hiện Check-out xe trước.");
             }
 
-            // Mới: Kiểm tra cấp thẻ thay thế nếu vé tháng còn hiệu lực
-            if (report.getParkingCard() != null) {
-                boolean hasActiveMonthlyTicket = monthlyTicketRepository
-                        .findActiveTicketsForLostCard(
-                                report.getParkingCard().getParkingCardId(),
-                                LocalDateTime.now())
-                        .size() == 1;
-
-                if (hasActiveMonthlyTicket && report.getReplacementCard() == null) {
-                    throw new ParkingSessionException("Phải cấp thẻ thay thế trước khi hoàn tất sự cố mất thẻ");
-                }
+            if (report.getReplacementCard() == null) {
+                throw new ParkingSessionException("Phải cấp thẻ tháng thay thế trước khi hoàn tất report");
             }
         }
 
         IncidentStatus oldStatus = report.getStatus();
         report.setStatus(IncidentStatus.RESOLVED);
         report.setResolutionNotes(request.getResolutionNotes());
-        if (request.getLostCardFee() != null) {
+        if (report.getIncidentType() == IncidentType.LOST_CARD
+                && report.getParkingCard() != null
+                && report.getParkingCard().getType() == ParkingCardType.MONTHLY) {
+            report.setLostCardFee(BigDecimal.ZERO);
+        } else if (request.getLostCardFee() != null) {
             report.setLostCardFee(request.getLostCardFee());
         }
         report.setResolvedAt(LocalDateTime.now());
@@ -326,8 +446,34 @@ public class IncidentReportService {
             throw new ParkingSessionException("Không thể hủy sự cố đã được khắc phục hoàn tất!");
         }
 
+        if (report.getPayment() != null
+                && report.getPayment().getPaymentStatus() == Parking.enums.PaymentStatus.PAID) {
+            throw new ParkingSessionException("Không thể hủy báo cáo đã thanh toán");
+        }
+
+        boolean managerOrAdmin = operator.getUserRole() == UserRole.MANAGER
+                || operator.getUserRole() == UserRole.ADMIN;
+        if (!managerOrAdmin) {
+            if (operator.getUserRole() != UserRole.USER
+                    || report.getReporter() == null
+                    || !operator.getUserId().equals(report.getReporter().getUserId())) {
+                throw new ParkingSessionException("Bạn không có quyền hủy báo cáo này");
+            }
+        }
+
         // Kiểm tra quyền chi nhánh: Admin được thao tác toàn bộ, Manager/Staff chỉ thao tác nhánh của mình
-        branchScopeService.assertSameBranch(report.getParkingBranch().getParkingBranchId());
+        if (managerOrAdmin) {
+            branchScopeService.assertSameBranch(report.getParkingBranch().getParkingBranchId());
+        }
+
+        if (report.getReplacementCard() != null) {
+            throw new ParkingSessionException("Không thể hủy báo cáo đã cấp thẻ thay thế");
+        }
+
+        if (report.getPayment() != null
+                && report.getPayment().getPaymentStatus() != Parking.enums.PaymentStatus.PAID) {
+            report.getPayment().setPaymentStatus(Parking.enums.PaymentStatus.CANCELLED);
+        }
 
         IncidentStatus oldStatus = report.getStatus();
         report.setStatus(IncidentStatus.CANCELLED);
@@ -450,6 +596,23 @@ public class IncidentReportService {
                 .resolutionNotes(report.getResolutionNotes())
                 .locationDetails(report.getLocationDetails())
                 .lostCardFee(report.getLostCardFee())
+                .paymentId(report.getPayment() != null ? report.getPayment().getPaymentId() : null)
+                .paymentStatus(report.getPayment() != null ? report.getPayment().getPaymentStatus() : null)
+                .paymentMethod(report.getPayment() != null ? report.getPayment().getPaymentMethod() : null)
+                .paymentTransactionRef(report.getPayment() != null ? report.getPayment().getTransactionRef() : null)
+                .paymentPaidAt(report.getPayment() != null ? report.getPayment().getPaidAt() : null)
+                .paymentCashReceiptNumber(report.getPayment() != null
+                        ? report.getPayment().getCashReceiptNumber() : null)
+                .paymentCashCollectedByUserId(report.getPayment() != null
+                        && report.getPayment().getCashCollectedBy() != null
+                        ? report.getPayment().getCashCollectedBy().getUserId() : null)
+                .paymentCashCollectedAt(report.getPayment() != null
+                        ? report.getPayment().getCashCollectedAt() : null)
+                .paymentCashVerifiedByUserId(report.getPayment() != null
+                        && report.getPayment().getCashVerifiedBy() != null
+                        ? report.getPayment().getCashVerifiedBy().getUserId() : null)
+                .paymentCashVerifiedAt(report.getPayment() != null
+                        ? report.getPayment().getCashVerifiedAt() : null)
                 .createdAt(report.getCreatedAt())
                 .updatedAt(report.getUpdatedAt())
                 .resolvedAt(report.getResolvedAt())
@@ -466,6 +629,8 @@ public class IncidentReportService {
                 .parkingCardId(report.getParkingCard() != null ? report.getParkingCard().getParkingCardId() : null)
                 .cardCode(report.getParkingCard() != null ? report.getParkingCard().getCardCode() : null)
                 .parkingCardType(report.getParkingCard() != null && report.getParkingCard().getType() != null ? report.getParkingCard().getType().name() : null)
+                .cardType(report.getCardType())
+                .lostStage(report.getLostStage())
                 .replacementCardId(report.getReplacementCard() != null ? report.getReplacementCard().getParkingCardId() : null)
                 .replacementCardCode(report.getReplacementCard() != null ? report.getReplacementCard().getCardCode() : null)
                 .replacementTicketId(report.getReplacementTicket() != null ? report.getReplacementTicket().getTicketId() : null)

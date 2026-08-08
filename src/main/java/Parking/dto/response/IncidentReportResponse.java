@@ -3,6 +3,10 @@ package Parking.dto.response;
 import Parking.enums.IncidentPriority;
 import Parking.enums.IncidentStatus;
 import Parking.enums.IncidentType;
+import Parking.enums.LostCardStage;
+import Parking.enums.ParkingCardType;
+import Parking.enums.PaymentStatus;
+import Parking.enums.PaymentMethod;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,6 +27,16 @@ public class IncidentReportResponse {
     private String resolutionNotes;
     private String locationDetails;
     private BigDecimal lostCardFee;
+    private Long paymentId;
+    private PaymentStatus paymentStatus;
+    private PaymentMethod paymentMethod;
+    private String paymentTransactionRef;
+    private LocalDateTime paymentPaidAt;
+    private String paymentCashReceiptNumber;
+    private Long paymentCashCollectedByUserId;
+    private LocalDateTime paymentCashCollectedAt;
+    private Long paymentCashVerifiedByUserId;
+    private LocalDateTime paymentCashVerifiedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime resolvedAt;
@@ -43,6 +57,8 @@ public class IncidentReportResponse {
     private Long parkingCardId;
     private String cardCode;
     private String parkingCardType;
+    private ParkingCardType cardType;
+    private LostCardStage lostStage;
 
     private Long replacementCardId;
     private String replacementCardCode;

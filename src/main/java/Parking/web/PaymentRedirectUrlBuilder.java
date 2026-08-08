@@ -23,10 +23,15 @@ public class PaymentRedirectUrlBuilder {
                 + "&paymentType=" + encode(response.getPaymentType())
                 + "&transactionRef=" + encode(response.getTransactionRef())
                 + "&responseCode=" + encode(response.getResponseCode())
+                + "&paymentStatus=" + encode(response.getPaymentStatus() != null
+                        ? response.getPaymentStatus().name() : null)
                 + "&message=" + encode(response.getMessage());
 
         if (response.getRequestId() != null) {
             query += "&requestId=" + response.getRequestId();
+        }
+        if (response.getIncidentId() != null) {
+            query += "&incidentId=" + response.getIncidentId();
         }
 
         String baseUrl = frontendUrl.endsWith("/")
